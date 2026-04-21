@@ -38,33 +38,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  // is_active and role check for authenticated users
-  if (user && !pathname.startsWith('/login')) {
-    const { createClient } = await import('@supabase/supabase-js')
-    const adminClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    )
-
-    const { data: dbUser } = await adminClient
-      .from('users')
-      .select('is_active, role')
-      .eq('id', user.id)
-      .single()
-
-    if (!dbUser || !dbUser.is_active) {
-      await supabase.auth.signOut()
-      const url = new URL('/login', request.url)
-      url.searchParams.set('error', 'akun-nonaktif')
-      return NextResponse.redirect(url)
-    }
-
-    // Admin-only routes
-    if (pathname.startsWith('/admin') && dbUser.role !== 'admin') {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
-    }
-  }
+  // Role and is_active checks are handled in server components via cached getSession()
 
   return supabaseResponse
 }
