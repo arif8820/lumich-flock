@@ -102,6 +102,56 @@ lib/db/queries/  → semua DB queries (Drizzle)
 
 Alasan: kalau pola ini dijaga, migrasi ke native mobile app nanti tinggal wrap `lib/services/` dengan API routes — tidak perlu rewrite.
 
+## Coding Rules (STRICT)
+
+### A — TypeScript
+- `strict: true` di tsconfig — wajib
+- No `any`. Kalau terpaksa, wajib komentar: `// any: <alasan>`
+- Zod untuk semua external input (form, API, env vars)
+
+### B — Component rules
+- Default: Server Component. `'use client'` hanya kalau butuh: event handler, browser API, useState/useEffect
+- Setiap `'use client'` wajib komentar 1 baris kenapa: `// client: needs onClick handler`
+- No prop drilling > 2 level — pass data dari server atau pakai context
+
+### C — Error handling
+- Server Actions selalu return `{ success: boolean, data?: T, error?: string }` — tidak pernah throw ke client
+- Semua DB operations dalam try/catch di `lib/services/` — bukan di actions
+- Error message user-facing: Bahasa Indonesia
+
+### D — Naming conventions
+- Files: `kebab-case.ts`
+- Components: `PascalCase.tsx`
+- Functions: `camelCase`, verb-noun (`createFlock`, `getFlockById`)
+- DB columns: `snake_case` (sudah di Drizzle schema)
+- Zod schemas: `<entity>Schema` (`flockSchema`, `coopSchema`)
+- Service files: `<entity>.service.ts`
+- Query files: `<entity>.queries.ts`
+
+### E — No premature abstraction
+Duplicate dulu, extract nanti. Rule:
+
+**Jangan extract ke `lib/utils/` atau shared helper sampai fungsi yang sama dipakai di 3 tempat berbeda.**
+
+Tracking pakai komentar di file util:
+```ts
+// USED BY: [flock-service, coop-service] — count: 2
+export function formatWeeks(days: number) { ... }
+```
+
+Workflow:
+1. Tulis fungsi inline dulu di service/component yang butuh
+2. Kalau muncul di tempat ke-2: duplicate, tambah komentar `// USED BY` di kedua tempat
+3. Kalau muncul di tempat ke-3: extract ke `lib/utils/`, buat file util, update komentar count
+4. Setiap kali AI pakai fungsi util yang sudah ada, **update komentar `USED BY` dan `count`**
+
+Kalau count di komentar < 3 dan fungsi ada di `lib/utils/`: flag ke user sebelum extract.
+
+### F — Testing
+- Unit test wajib untuk semua `lib/services/` — test business logic, bukan implementation detail
+- No unit test untuk thin actions atau UI components di Phase 1
+- Test file: `<entity>.service.test.ts` di samping file service
+
 ## Performance Targets
 - Dashboard load: < 3 seconds
 - PDF invoice generation: < 5 seconds
