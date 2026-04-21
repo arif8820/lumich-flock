@@ -4,3 +4,7 @@
 .next/
 node_modules/
 .superpowers/
+.scratch/
+.playwright-mcp/
+.claude/
+design/
