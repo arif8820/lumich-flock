@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **lumich-flock** — ERP system for layer chicken farms (ayam petelur). Tracks egg production, inventory, sales, and flock management. Single-tenant MVP; one farm instance per deployment.
 
-Full spec in [docs/PRD_ERP_Ayam_Petelur_v1_7.md](docs/PRD_ERP_Ayam_Petelur_v1_7.md). Sprint plan in [docs/development_plan.md](docs/development_plan.md).
+Full spec in [docs/PRD_ERP_Ayam_Petelur_v1_8.md](docs/PRD_ERP_Ayam_Petelur_v1_8.md). Sprint plan in [docs/development_plan.md](docs/development_plan.md).
 
 ## Planned Tech Stack
 
