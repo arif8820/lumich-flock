@@ -5,7 +5,6 @@ import { getSession } from '@/lib/auth/get-session'
 import {
   getAllActiveFlocks,
   createFlock,
-  updateFlockById,
   retireFlock,
 } from '@/lib/services/flock.service'
 

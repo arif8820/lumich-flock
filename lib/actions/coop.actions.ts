@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 import { getSession } from '@/lib/auth/get-session'
-import { createCoop, getAllCoops, updateCoop, deactivateCoop, activateCoop } from '@/lib/services/coop.service'
+import { createCoop, getAllCoops, updateCoop, deactivateCoop } from '@/lib/services/coop.service'
 
 const coopSchema = z.object({
   name: z.string().min(1, 'Nama kandang wajib diisi'),

@@ -1,6 +1,5 @@
 import {
   findAllActiveFlocks,
-  findFlockById,
   insertFlock,
   updateFlock,
 } from '@/lib/db/queries/flock.queries'

@@ -7,7 +7,6 @@ import {
   getAllCustomers,
   updateCustomerById,
   deactivateCustomer,
-  activateCustomer,
 } from '@/lib/services/customer.service'
 
 const customerSchema = z.object({
