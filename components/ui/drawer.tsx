@@ -1,3 +1,4 @@
+// client: uses Vaul drawer which requires touch/pointer event handlers
 "use client"
 
 import * as React from "react"

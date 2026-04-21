@@ -1,3 +1,4 @@
+// client: uses Radix Label which requires DOM refs
 "use client"
 
 import * as React from "react"

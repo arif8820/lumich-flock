@@ -1,3 +1,4 @@
+// client: wraps Sonner toast library which requires browser APIs
 "use client"
 
 import {

@@ -1,3 +1,4 @@
+// client: uses Radix Sheet which requires focus trap and portal
 "use client"
 
 import * as React from "react"
