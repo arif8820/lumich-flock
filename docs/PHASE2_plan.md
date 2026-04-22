@@ -1,59 +1,117 @@
-## Phase 1: Foundation (Sprint 1 — 2 weeks)
+## Phase 2: Production Core (Sprint 2–4 — 6 weeks)
 
 ### Goals
-- Project runs locally and on Vercel
-- Auth works (login, session, invite flow)
-- Admin can manage users and master data
+- Daily production input works with role-based backdate rules
+- Inventory ledger (`inventory_movements`) tracks all stock changes
+- Dashboard shows live KPIs and trends
 
-### Tasks
+---
 
-#### 1.1 Project Setup
-- [ ] Init Next.js 16 + Tailwind v4 + shadcn/ui
-- [ ] Setup Supabase project (Cloud)
-- [ ] Configure Drizzle ORM + DB connection
-- [ ] Setup environment variables (local + Vercel)
-- [ ] Configure Supabase RLS (Row Level Security) skeleton
-- [ ] Setup CI/CD: GitHub → Vercel auto-deploy
+### Sprint 2 — Daily Production Input (2 weeks)
 
-#### 1.2 Database Schema — Core Tables
-Create all tables per Section 8 (PRD v1.7):
-- [ ] `users` (sync with Supabase Auth)
-- [ ] `coops` (master kandang)
-- [ ] `flocks` (with `coop_id FK`, `retired_at`)
-- [ ] `customers`
-- [ ] `user_coop_assignments`
+#### Database
+- [ ] `daily_records` table
+- [ ] `inventory_movements` table (ledger foundation)
+- [ ] `inventory_snapshots` table
 
-#### 1.3 Authentication (Section 6.7)
-- [ ] Email + password login via Supabase Auth
-- [ ] Admin-only user creation (no self-registration)
-- [ ] Email invitation flow — user sets own password
-- [ ] Session timeout: 8h inactive / 24h max
-- [ ] Password policy: 8 chars, 1 uppercase, 1 number
-- [ ] Deactivate user (is_active = false) — blocks login
-- [ ] Admin: change role, reset password
-- [ ] Middleware: validate `is_active` on every request
+#### Features (Section 6.1.1)
+- [ ] Daily input form: deaths, culled, eggs grade A/B/cracked/abnormal, weight, feed
+- [ ] Auto-fill today's date
+- [ ] Flock dropdown — active flocks only, filtered by coop assignment for Operator
+- [ ] Auto-calc on form: total depletion, active population, HDP%, feed/bird, FCR
+- [ ] First-day logic: pull `initial_count` from `flocks` if no prior `daily_records`
+- [ ] Backdate rules per role (Operator: H-1, Supervisor: H-3, Admin: unlimited)
+- [ ] `is_late_input` flag + badge in table
+- [ ] Double-submit guard (unique constraint on flock_id + record_date)
+- [ ] On submit: create `inventory_movements IN` (grade A + B only)
+- [ ] Form state persisted in `sessionStorage` (restore after re-login with toast)
 
-#### 1.4 Master Data — Coops
-- [ ] CRUD coops (Admin only)
-- [ ] List coops (all roles view)
+#### Edge cases
+- [ ] Negative values blocked (frontend + backend)
+- [ ] Total depletion > active population → warning + block submit
+- [ ] Network error → form data preserved, retry enabled
+- [ ] Session expired → form restored after re-login
 
-#### 1.5 Master Data — Flocks (Section 6.3.1)
-- [ ] Create/edit flock (Supervisor + Admin)
-- [ ] Auto-calc: age in days/weeks, production phase badge
-- [ ] Retire/close flock (Admin only)
-- [ ] Coop assignment via `coop_id FK`
-- [ ] `user_coop_assignments` management (Admin)
+### Acceptance Criteria Sprint 2
+- [ ] Input completes in < 2 min
+- [ ] Operator cannot submit for date > H-1
+- [ ] Late input badge visible in table
+- [ ] `inventory_movements` row created on submit
 
-#### 1.6 Master Data — Customers (Section 6.2.3)
-- [ ] CRUD customers (Admin only)
-- [ ] Fields: name, type, phone, address, credit_limit, payment_terms, status, notes, created_by
-- [ ] Supervisor: view only
+---
 
-### Acceptance Criteria
-- [ ] All listed roles can log in
-- [ ] Deactivated user cannot log in
-- [ ] Admin can create user; invite email sent < 1 min
-- [ ] Flock phase calculated correctly
-- [ ] Multi-coop assignment works for Operator
+### Sprint 3 — Inventory Ledger & Stock Management (2 weeks)
+
+#### Features (Section 6.2.1–6.2.2)
+
+**Stock Ledger**
+- [ ] Real-time stock = `SUM(inventory_movements)` per egg_category
+- [ ] Performance: use `inventory_snapshots` + delta since last snapshot
+- [ ] Nightly snapshot via Supabase scheduled function (pg_cron, midnight)
+- [ ] Stock display: Grade A (butir), Grade B (butir), total, estimated weight (kg)
+- [ ] Movement history with pagination (server-side)
+- [ ] Index: `inventory_movements(egg_category, movement_date)`
+
+**Stock Adjustment — Regular (6.2.2a)**
+- [ ] Form: date, category, quantity (+/-), reason, notes, photo
+- [ ] Supervisor + Admin only
+- [ ] Immediate effect (no approval needed)
+- [ ] Creates `inventory_movements adjustment` (source: manual)
+- [ ] Cannot reduce below zero
+
+**Regrading (6.2.2b)**
+- [ ] Form: date, from_grade, to_grade (auto-fill), quantity, reason, notes, photo
+- [ ] Submit → `regrade_requests` status: pending
+- [ ] Pending blocks quantity from sale: `available = stock - SUM(pending regrade from that grade)`
+- [ ] Admin approve → 2x `inventory_movements` in one DB transaction (OUT + IN, source: regrade)
+- [ ] Admin reject → no movement, request closed
+- [ ] Admin receives in-app notification on new regrade request
+- [ ] Admin self-approve allowed
+- [ ] Warning if stock drops below pending during review
+
+#### Database
+- [ ] `stock_adjustments` table
+- [ ] `regrade_requests` table
+
+### Acceptance Criteria Sprint 3
+- [ ] Stock real-time correct after any mutation
+- [ ] Regrading flow complete (pending → approved/rejected)
+- [ ] Pending regrade blocks stock from sale
+- [ ] Stock history paginated, loads < 3s
+
+---
+
+### Sprint 4 — Dashboard KPI (2 weeks)
+
+#### Features (Section 6.1.2, 6.1.4)
+
+**KPI Cards**
+- [ ] HDP% today
+- [ ] FCR (7-day rolling) — label "(< 7 hari)" if insufficient data
+- [ ] FCR Cumulative on flock detail page
+- [ ] Total production today (butir)
+- [ ] Stock ready to sell (Grade A + B)
+- [ ] Active population
+- [ ] Feed per bird (gr)
+
+**Charts**
+- [ ] HDP% trend (7/14/30 days) — line chart
+- [ ] FCR trend (7/14/30 days) — line chart
+- [ ] Daily production (Grade A vs B) — bar chart
+- [ ] Cumulative depletion — area chart
+
+**Table**
+- [ ] Last 7 daily records with late-input badge
+
+**Filters**
+- [ ] Time range: 7d / 14d / 30d / custom
+- [ ] Operator: only assigned coops
+- [ ] Supervisor + Admin: filter per coop or all coops
+- [ ] Empty state shown when no data in range
+
+### Acceptance Criteria Sprint 4
+- [ ] Dashboard loads < 3s (even with > 1 year data)
+- [ ] FCR 7-day and cumulative computed correctly
+- [ ] Operator sees only assigned coop data
 
 ---

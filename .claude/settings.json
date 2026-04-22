@@ -3,7 +3,16 @@
     "allow": [
       "Bash(ls -d .worktrees)",
       "Bash(ls -d worktrees)",
-      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir=false --import-alias=\"@/*\" --use-npm --yes)"
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir=false --import-alias=\"@/*\" --use-npm --yes)",
+      "Bash(bash /c/Users/170574.arif/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/brainstorming/scripts/start-server.sh --project-dir /d/App/lumich-flock)",
+      "Bash(git -C \"d:\\\\App\\\\lumich-flock\" worktree add .worktrees/phase2-production-core -b worktree-phase2-production-core)",
+      "Bash(git -C \"d:\\\\App\\\\lumich-flock\" add CLAUDE.md)",
+      "Bash(git -C \"d:\\\\App\\\\lumich-flock\" commit -m \"docs: add git worktree convention to CLAUDE.md\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)"
+    ],
+    "additionalDirectories": [
+      "D:\\App\\lumich-flock",
+      "D:\\App\\lumich-flock\\docs\\test-case"
     ]
   }
 }
