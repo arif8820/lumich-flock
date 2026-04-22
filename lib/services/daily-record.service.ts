@@ -3,7 +3,7 @@ import {
   insertDailyRecordWithMovements,
   getTotalDepletionByFlock,
 } from '@/lib/db/queries/daily-record.queries'
-import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
+import { findAllActiveFlocks, findFlockById } from '@/lib/db/queries/flock.queries'
 import { findAssignedCoopIds } from '@/lib/db/queries/user-coop-assignment.queries'
 import type { DailyRecord, NewDailyRecord, NewInventoryMovement } from '@/lib/db/schema'
 
@@ -74,6 +74,17 @@ export async function createDailyRecord(
 
   const existing = await findDailyRecord(input.flockId, input.recordDate)
   if (existing) throw new Error('Data untuk tanggal ini sudah ada')
+
+  const [flock, dep] = await Promise.all([
+    findFlockById(input.flockId),
+    getTotalDepletionByFlock(input.flockId),
+  ])
+  if (!flock) throw new Error('Flock tidak ditemukan')
+  const currentPop = Math.max(0, flock.initialCount - dep.deaths - dep.culled)
+  const todayDepletion = input.deaths + input.culled
+  if (todayDepletion > currentPop) {
+    throw new Error(`Total depletion (${todayDepletion}) melebihi populasi aktif (${currentPop})`)
+  }
 
   const isLateInput = computeIsLateInput(input.recordDate, now)
 

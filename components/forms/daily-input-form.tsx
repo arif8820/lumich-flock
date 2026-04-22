@@ -75,12 +75,18 @@ export function DailyInputForm({ flocks, userRole }: Props) {
   const [values, setValues] = useState<FormValues>(empty(defaultFlockId))
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const [restored, setRestored] = useState(false)
+  const [networkError, setNetworkError] = useState(false)
 
   useEffect(() => {
     const saved = sessionStorage.getItem(SESSION_KEY)
     if (saved) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      try { setValues(JSON.parse(saved) as FormValues) } catch { /* ignore */ }
+      /* eslint-disable react-hooks/set-state-in-effect */
+      try {
+        setValues(JSON.parse(saved) as FormValues)
+        setRestored(true)
+      } catch { /* ignore */ }
+      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [])
 
@@ -96,8 +102,11 @@ export function DailyInputForm({ flocks, userRole }: Props) {
     const a = parseInt(values.eggsGradeA) || 0
     const b = parseInt(values.eggsGradeB) || 0
     const feed = parseFloat(values.feedKg) || 0
-    const pop = Math.max(0, (flock?.currentPopulation ?? 0) - d - c)
-    return { totalDepletion: d + c, activePopulation: pop, hdp: calcHDP(a, b, pop), feedPerBird: calcFeedPerBird(feed, pop), fcr: calcFCR(feed, a, b) }
+    const currentPop = flock?.currentPopulation ?? 0
+    const totalDepletion = d + c
+    const depletionOverflow = totalDepletion > currentPop
+    const pop = Math.max(0, currentPop - totalDepletion)
+    return { totalDepletion, activePopulation: pop, hdp: calcHDP(a, b, pop), feedPerBird: calcFeedPerBird(feed, pop), fcr: calcFCR(feed, a, b), depletionOverflow }
   }, [values, flock])
 
   function field(k: keyof FormValues) {
@@ -105,9 +114,10 @@ export function DailyInputForm({ flocks, userRole }: Props) {
       setValues((p) => ({ ...p, [k]: e.target.value }))
   }
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
+  async function submitForm() {
+    if (calc.depletionOverflow) return
     setError(null)
+    setNetworkError(false)
     setPending(true)
     try {
       const fd = new FormData()
@@ -120,9 +130,16 @@ export function DailyInputForm({ flocks, userRole }: Props) {
         router.push('/produksi')
         router.refresh()
       }
+    } catch {
+      setNetworkError(true)
     } finally {
       setPending(false)
     }
+  }
+
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    void submitForm()
   }
 
   if (flocks.length === 0) {
@@ -131,6 +148,13 @@ export function DailyInputForm({ flocks, userRole }: Props) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-5">
+      {restored && (
+        <div className="flex items-center justify-between bg-[var(--lf-blue-pale)] rounded-lg px-4 py-2.5 text-sm border border-[var(--lf-blue-light)]">
+          <span style={{ color: 'var(--lf-blue-active)' }}>Data form dipulihkan dari sesi sebelumnya.</span>
+          <button type="button" onClick={() => { sessionStorage.removeItem(SESSION_KEY); setValues(empty(defaultFlockId)); setRestored(false) }}
+            className="text-xs underline ml-3" style={{ color: 'var(--lf-blue-active)' }}>Reset</button>
+        </div>
+      )}
       {/* Flock + Date */}
       <div className="bg-white rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)] space-y-4">
         <div>
@@ -195,11 +219,16 @@ export function DailyInputForm({ flocks, userRole }: Props) {
       </div>
 
       {/* Auto-calc */}
-      <div className="bg-[var(--lf-blue-pale)] rounded-xl p-4 border border-[var(--lf-blue-light)]">
-        <p className="text-xs font-medium text-[var(--lf-blue-active)] uppercase tracking-wide mb-3">Kalkulasi Otomatis</p>
+      <div className={`rounded-xl p-4 border ${calc.depletionOverflow ? 'bg-[var(--lf-danger-bg)] border-[var(--lf-danger-text)]' : 'bg-[var(--lf-blue-pale)] border-[var(--lf-blue-light)]'}`}>
+        <p className={`text-xs font-medium uppercase tracking-wide mb-3 ${calc.depletionOverflow ? 'text-[var(--lf-danger-text)]' : 'text-[var(--lf-blue-active)]'}`}>Kalkulasi Otomatis</p>
+        {calc.depletionOverflow && (
+          <p className="text-sm mb-3 font-medium" style={{ color: 'var(--lf-danger-text)' }}>
+            Peringatan: total depletion ({calc.totalDepletion}) melebihi populasi aktif ({flock?.currentPopulation ?? 0}). Tidak dapat menyimpan.
+          </p>
+        )}
         <div className="grid grid-cols-2 gap-y-2 text-sm">
           <span className="text-[var(--lf-text-mid)]">Depletion hari ini</span>
-          <span className="font-medium text-right text-[var(--lf-text-dark)]">{calc.totalDepletion}</span>
+          <span className={`font-medium text-right ${calc.depletionOverflow ? 'text-[var(--lf-danger-text)]' : 'text-[var(--lf-text-dark)]'}`}>{calc.totalDepletion}</span>
           <span className="text-[var(--lf-text-mid)]">Populasi aktif</span>
           <span className="font-medium text-right text-[var(--lf-text-dark)]">{calc.activePopulation.toLocaleString('id')}</span>
           <span className="text-[var(--lf-text-mid)]">HDP%</span>
@@ -219,9 +248,17 @@ export function DailyInputForm({ flocks, userRole }: Props) {
         <div className="bg-[var(--lf-danger-bg)] rounded-lg px-4 py-3 text-sm" style={{ color: 'var(--lf-danger-text)' }}>{error}</div>
       )}
 
+      {networkError && (
+        <div className="bg-[var(--lf-danger-bg)] rounded-lg px-4 py-3 text-sm flex items-center justify-between" style={{ color: 'var(--lf-danger-text)' }}>
+          <span>Gagal terhubung ke server. Data tersimpan, coba lagi.</span>
+          <button type="button" onClick={submitForm}
+            className="ml-3 text-xs font-medium underline">Coba lagi</button>
+        </div>
+      )}
+
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || calc.depletionOverflow}
         className="w-full bg-gradient-to-r from-[#7aadd4] to-[#5090be] text-white font-medium rounded-xl py-3 shadow-lf-btn disabled:opacity-60"
       >
         {pending ? 'Menyimpan...' : 'Simpan Data Produksi'}
