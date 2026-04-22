@@ -39,8 +39,11 @@ export async function getStockBalanceAction(
   const session = await getSession()
   if (!session) return { success: false, error: 'Tidak terautentikasi' }
 
+  const parsed = z.object({ flockId: z.string().uuid(), grade: z.enum(['A', 'B']) }).safeParse({ flockId, grade })
+  if (!parsed.success) return { success: false, error: 'Input tidak valid. Periksa kembali data yang diisi.' }
+
   try {
-    const balance = await getStockBalance(flockId, grade)
+    const balance = await getStockBalance(parsed.data.flockId, parsed.data.grade)
     return { success: true, data: balance }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal memuat saldo stok' }
@@ -104,7 +107,7 @@ export async function approveRegradeRequestAction(
 ): Promise<ActionResult> {
   const session = await getSession()
   if (!session) return { success: false, error: 'Tidak terautentikasi' }
-  if (session.role !== 'admin') return { success: false, error: 'Tidak diizinkan' }
+  if (session.role !== 'admin') return { success: false, error: 'Tidak diizinkan' } // admin-only per PRD
 
   try {
     await approveRegradeRequest(requestId, session.id)
@@ -119,7 +122,7 @@ export async function rejectRegradeRequestAction(
 ): Promise<ActionResult> {
   const session = await getSession()
   if (!session) return { success: false, error: 'Tidak terautentikasi' }
-  if (session.role !== 'admin') return { success: false, error: 'Tidak diizinkan' }
+  if (session.role !== 'admin') return { success: false, error: 'Tidak diizinkan' } // admin-only per PRD
 
   try {
     await rejectRegradeRequest(requestId, session.id)
