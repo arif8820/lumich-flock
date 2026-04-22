@@ -10,9 +10,11 @@ import type { FlockOption } from '@/lib/services/daily-record.service'
 function calcHDP(a: number, b: number, pop: number) {
   return pop > 0 ? ((a + b) / pop) * 100 : 0
 }
+// USED BY: [daily-record.service, daily-input-form] — count: 2
 function calcFeedPerBird(feedKg: number, pop: number) {
   return pop > 0 ? (feedKg / pop) * 1000 : 0
 }
+// USED BY: [daily-record.service, daily-input-form] — count: 2
 function calcFCR(feedKg: number, a: number, b: number) {
   const total = a + b
   return total > 0 ? feedKg / (total / 12) : 0
@@ -65,7 +67,7 @@ function empty(flockId: string): FormValues {
 }
 
 const inputClass =
-  'mt-1 w-full border border-[var(--lf-border)] rounded-lg px-3 py-2 text-sm bg-[#fafaf9] focus:outline-none focus:ring-2 focus:ring-[var(--lf-blue)]'
+  'mt-1 w-full border border-[var(--lf-border)] rounded-lg px-3 py-2 text-sm bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--lf-blue)]'
 
 export function DailyInputForm({ flocks, userRole }: Props) {
   const router = useRouter()

@@ -73,6 +73,7 @@
   --lf-danger-text:  #e07a6a;
   --lf-danger-bg:    #fdeeed;
   --lf-warning-bg:   #fffbf0;
+  --lf-input-bg:     #fafaf9;
 
   /* shadcn vars — mapped to LumichFlock tokens */
   --background: #f7f5f1;
