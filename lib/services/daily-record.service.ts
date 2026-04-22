@@ -1,7 +1,10 @@
 import {
   findDailyRecord,
   insertDailyRecordWithMovements,
+  getTotalDepletionByFlock,
 } from '@/lib/db/queries/daily-record.queries'
+import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
+import { findAssignedCoopIds } from '@/lib/db/queries/user-coop-assignment.queries'
 import type { DailyRecord, NewDailyRecord, NewInventoryMovement } from '@/lib/db/schema'
 
 type Role = 'operator' | 'supervisor' | 'admin'
@@ -114,4 +117,32 @@ export async function createDailyRecord(
   }
 
   return insertDailyRecordWithMovements(record, movements)
+}
+
+export type FlockOption = {
+  id: string
+  name: string
+  coopName: string
+  initialCount: number
+  currentPopulation: number
+}
+
+export async function getFlockOptionsForInput(userId: string, role: Role): Promise<FlockOption[]> {
+  let rawFlocks = await findAllActiveFlocks()
+  if (role === 'operator') {
+    const coopIds = new Set(await findAssignedCoopIds(userId))
+    rawFlocks = rawFlocks.filter((f) => coopIds.has(f.coopId))
+  }
+  return Promise.all(
+    rawFlocks.map(async (f) => {
+      const dep = await getTotalDepletionByFlock(f.id)
+      return {
+        id: f.id,
+        name: f.name,
+        coopName: f.coopName,
+        initialCount: f.initialCount,
+        currentPopulation: Math.max(0, f.initialCount - dep.deaths - dep.culled),
+      }
+    })
+  )
 }

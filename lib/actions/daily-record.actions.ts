@@ -2,10 +2,7 @@
 
 import { z } from 'zod'
 import { getSession } from '@/lib/auth/get-session'
-import { createDailyRecord } from '@/lib/services/daily-record.service'
-import { findRecentDailyRecords, getTotalDepletionByFlock } from '@/lib/db/queries/daily-record.queries'
-import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
-import { findAssignedCoopIds } from '@/lib/db/queries/user-coop-assignment.queries'
+import { createDailyRecord, getFlockOptionsForInput } from '@/lib/services/daily-record.service'
 
 const dailyRecordSchema = z.object({
   flockId: z.string().uuid('Flock tidak valid'),
@@ -54,37 +51,15 @@ export async function createDailyRecordAction(
   }
 }
 
-export type FlockOption = {
-  id: string
-  name: string
-  coopName: string
-  initialCount: number
-  currentPopulation: number
-}
+export type { FlockOption } from '@/lib/services/daily-record.service'
 
-export async function getFlockOptionsForInputAction(): Promise<ActionResult<FlockOption[]>> {
+export async function getFlockOptionsForInputAction(): Promise<ActionResult<import('@/lib/services/daily-record.service').FlockOption[]>> {
   const session = await getSession()
   if (!session) return { success: false, error: 'Tidak terautentikasi' }
 
   try {
-    let flocks = await findAllActiveFlocks()
-    if (session.role === 'operator') {
-      const coopIds = new Set(await findAssignedCoopIds(session.id))
-      flocks = flocks.filter((f) => coopIds.has(f.coopId))
-    }
-    const options = await Promise.all(
-      flocks.map(async (f) => {
-        const dep = await getTotalDepletionByFlock(f.id)
-        return {
-          id: f.id,
-          name: f.name,
-          coopName: f.coopName,
-          initialCount: f.initialCount,
-          currentPopulation: Math.max(0, f.initialCount - dep.deaths - dep.culled),
-        }
-      })
-    )
-    return { success: true, data: options }
+    const data = await getFlockOptionsForInput(session.id, session.role)
+    return { success: true, data }
   } catch {
     return { success: false, error: 'Gagal memuat daftar flock' }
   }

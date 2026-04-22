@@ -3,6 +3,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('@/lib/db/queries/daily-record.queries', () => ({
   findDailyRecord: vi.fn(),
   insertDailyRecordWithMovements: vi.fn(),
+  getTotalDepletionByFlock: vi.fn(),
+}))
+
+vi.mock('@/lib/db/queries/flock.queries', () => ({
+  findAllActiveFlocks: vi.fn(),
+}))
+
+vi.mock('@/lib/db/queries/user-coop-assignment.queries', () => ({
+  findAssignedCoopIds: vi.fn(),
 }))
 
 import * as queries from '@/lib/db/queries/daily-record.queries'
