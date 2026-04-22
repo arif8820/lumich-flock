@@ -6,7 +6,7 @@ export const inventoryMovements = pgTable('inventory_movements', {
   id: uuid('id').primaryKey().defaultRandom(),
   flockId: uuid('flock_id').notNull().references(() => flocks.id),
   movementType: text('movement_type', { enum: ['IN', 'OUT'] }).notNull(),
-  grade: text('grade', { enum: ['A', 'B'] }).notNull(),
+  grade: text('grade', { enum: ['A', 'B'] }).notNull(), // cracked/abnormal written off at daily_records level, never enter ledger
   quantity: integer('quantity').notNull(), // always positive; direction from movementType
   referenceType: text('reference_type'), // 'daily_record' | 'stock_adjustment' | 'regrade'
   referenceId: uuid('reference_id'),
