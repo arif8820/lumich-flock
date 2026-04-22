@@ -17,6 +17,18 @@ export async function getStockBalance(flockId: string, grade: 'A' | 'B'): Promis
   return Number(row?.balance ?? '0')
 }
 
+export async function getAllStockBalances(): Promise<{ flockId: string; grade: 'A' | 'B'; balance: number }[]> {
+  const rows = await db
+    .select({
+      flockId: inventoryMovements.flockId,
+      grade: inventoryMovements.grade,
+      balance: sum(sql<number>`CASE WHEN ${inventoryMovements.movementType} = 'IN' THEN ${inventoryMovements.quantity} ELSE -${inventoryMovements.quantity} END`),
+    })
+    .from(inventoryMovements)
+    .groupBy(inventoryMovements.flockId, inventoryMovements.grade)
+  return rows.map((r) => ({ flockId: r.flockId, grade: r.grade as 'A' | 'B', balance: Number(r.balance ?? '0') }))
+}
+
 
 export async function insertStockAdjustmentWithMovement(
   adjustment: NewStockAdjustment,

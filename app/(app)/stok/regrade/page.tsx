@@ -23,7 +23,7 @@ export default async function RegradePage({
     'use server'
     const result = await submitRegradeRequestAction(formData)
     if (result.success) redirect('/stok/regrade')
-    else redirect(`/stok/regrade?error=${encodeURIComponent(result.error)}`)
+    else redirect(`/stok/regrade?error=${encodeURIComponent(result.error ?? 'Terjadi kesalahan')}`)
   }
 
   const inputClass = 'mt-1 w-full border border-[var(--lf-border)] rounded-lg px-3 py-2 text-sm bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--lf-blue)]'
@@ -32,7 +32,7 @@ export default async function RegradePage({
     <div className="p-6 max-w-2xl mx-auto space-y-8">
       <h1 className="text-xl font-semibold text-[var(--lf-text-dark)]">Regrade Telur</h1>
 
-      {error && <div className="bg-[#fdeeed] text-[#e07a6a] rounded-lg px-4 py-3 text-sm">{error}</div>}
+      {error && <div className="bg-[var(--lf-danger-bg)] rounded-lg px-4 py-3 text-sm" style={{ color: 'var(--lf-danger-text)' }}>{error}</div>}
 
       <form action={handleSubmit} className="bg-white rounded-xl p-5 shadow-lf-sm border border-[var(--lf-border)] space-y-4">
         <p className="text-sm font-medium text-[var(--lf-text-dark)]">Permintaan Regrade Baru</p>

@@ -1,21 +1,20 @@
 import { getSession } from '@/lib/auth/get-session'
 import { redirect } from 'next/navigation'
 import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
-import { getStockBalance } from '@/lib/db/queries/inventory.queries'
+import { getAllStockBalances } from '@/lib/db/queries/inventory.queries'
 import Link from 'next/link'
 
 export default async function StokPage() {
   const session = await getSession()
   if (!session) redirect('/login')
 
-  const flocks = await findAllActiveFlocks()
-  const stockData = await Promise.all(
-    flocks.map(async (f) => ({
-      ...f,
-      gradeA: await getStockBalance(f.id, 'A'),
-      gradeB: await getStockBalance(f.id, 'B'),
-    }))
-  )
+  const [flocks, balances] = await Promise.all([findAllActiveFlocks(), getAllStockBalances()])
+  const balanceMap = new Map(balances.map((b) => [`${b.flockId}:${b.grade}`, b.balance]))
+  const stockData = flocks.map((f) => ({
+    ...f,
+    gradeA: balanceMap.get(`${f.id}:A`) ?? 0,
+    gradeB: balanceMap.get(`${f.id}:B`) ?? 0,
+  }))
 
   return (
     <div className="p-6">

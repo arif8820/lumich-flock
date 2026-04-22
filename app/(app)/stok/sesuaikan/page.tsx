@@ -18,7 +18,7 @@ export default async function SesuaikanPage({
     'use server'
     const result = await createStockAdjustmentAction(formData)
     if (result.success) redirect('/stok')
-    else redirect(`/stok/sesuaikan?error=${encodeURIComponent(result.error)}`)
+    else redirect(`/stok/sesuaikan?error=${encodeURIComponent(result.error ?? 'Terjadi kesalahan')}`)
   }
 
   const inputClass = 'mt-1 w-full border border-[var(--lf-border)] rounded-lg px-3 py-2 text-sm bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--lf-blue)]'
@@ -27,7 +27,7 @@ export default async function SesuaikanPage({
     <div className="p-6 max-w-lg mx-auto">
       <h1 className="text-xl font-semibold text-[var(--lf-text-dark)] mb-6">Penyesuaian Stok</h1>
       {error && (
-        <div className="mb-4 bg-[#fdeeed] text-[#e07a6a] rounded-lg px-4 py-3 text-sm">{error}</div>
+        <div className="mb-4 bg-[var(--lf-danger-bg)] rounded-lg px-4 py-3 text-sm" style={{ color: 'var(--lf-danger-text)' }}>{error}</div>
       )}
       <form action={handleSubmit} className="bg-white rounded-xl p-5 shadow-lf-sm border border-[var(--lf-border)] space-y-4">
         <div>
