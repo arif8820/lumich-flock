@@ -1,4 +1,5 @@
 import { getSession } from '@/lib/auth/get-session'
+import { redirect } from 'next/navigation'
 import { KpiCard } from '@/components/ui/kpi-card'
 import { MOCK_KPI, MOCK_CHART_DATA, MOCK_RECENT_RECORDS } from '@/lib/mock/dashboard.mock'
 import dynamic from 'next/dynamic'
@@ -22,6 +23,7 @@ const DepletionAreaChart = dynamic(
 
 export default async function DashboardPage() {
   const user = await getSession()
+  if (!user) redirect('/login')
 
   return (
     <div className="p-6 space-y-6">
