@@ -46,7 +46,7 @@ export default async function ProduksiPage() {
                   <td className="px-3 py-3 rounded-l-xl font-medium text-[var(--lf-text-dark)]">
                     {new Date(r.recordDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}
                     {r.isLateInput && (
-                      <span className="ml-2 text-[10px] bg-[#fdeeed] text-[#e07a6a] rounded px-1.5 py-0.5">Terlambat</span>
+                      <span className="ml-2 text-[10px] bg-[var(--lf-danger-bg)] rounded px-1.5 py-0.5" style={{ color: 'var(--lf-danger-text)' }}>Terlambat</span>
                     )}
                   </td>
                   <td className="px-3 py-3 text-right text-[var(--lf-text-dark)]">{r.eggsGradeA.toLocaleString('id')}</td>

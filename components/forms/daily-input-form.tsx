@@ -194,7 +194,7 @@ export function DailyInputForm({ flocks, userRole }: Props) {
       </div>
 
       {/* Auto-calc */}
-      <div className="bg-[var(--lf-blue-pale)] rounded-xl p-4 border border-[#bbd5ee]">
+      <div className="bg-[var(--lf-blue-pale)] rounded-xl p-4 border border-[var(--lf-blue-light)]">
         <p className="text-xs font-medium text-[var(--lf-blue-active)] uppercase tracking-wide mb-3">Kalkulasi Otomatis</p>
         <div className="grid grid-cols-2 gap-y-2 text-sm">
           <span className="text-[var(--lf-text-mid)]">Depletion hari ini</span>
@@ -215,7 +215,7 @@ export function DailyInputForm({ flocks, userRole }: Props) {
       </div>
 
       {error && (
-        <div className="bg-[#fdeeed] text-[#e07a6a] rounded-lg px-4 py-3 text-sm">{error}</div>
+        <div className="bg-[var(--lf-danger-bg)] rounded-lg px-4 py-3 text-sm" style={{ color: 'var(--lf-danger-text)' }}>{error}</div>
       )}
 
       <button
