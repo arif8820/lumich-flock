@@ -62,7 +62,7 @@ export async function createStockAdjustmentAction(
     notes: formData.get('notes') || undefined,
   })
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
+    return { success: false, error: 'Input tidak valid. Periksa kembali data yang diisi.' }
   }
 
   try {
@@ -88,7 +88,7 @@ export async function submitRegradeRequestAction(
     notes: formData.get('notes') || undefined,
   })
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
+    return { success: false, error: 'Input tidak valid. Periksa kembali data yang diisi.' }
   }
 
   try {
