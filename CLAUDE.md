@@ -24,21 +24,39 @@ Full spec in [docs/PRD_ERP_Ayam_Petelur_v1_8.md](docs/PRD_ERP_Ayam_Petelur_v1_8.
 npm run dev        # local dev server
 npm run build      # production build
 npm run lint       # ESLint
-npm run db:push    # push Drizzle schema to Supabase
+npm run db:generate  # generate SQL migration file from schema changes
+npm run db:migrate   # apply pending migrations to Supabase
 npm run db:studio  # Drizzle Studio GUI
 ```
+
+## Database Migration Rules (STRICT)
+
+**NEVER use `db:push` for schema changes.** `db:push` bypasses migration history and is destructive in production.
+
+**Workflow wajib untuk setiap schema change:**
+1. Edit schema file di `lib/db/schema/`
+2. Run `npm run db:generate` → generates SQL file in `lib/db/migrations/`
+3. Review generated SQL — pastikan tidak ada DROP TABLE / DROP COLUMN yang tidak diinginkan
+4. Run `npm run db:migrate` → applies migration to Supabase
+5. Commit schema file + migration file bersama dalam satu commit
+
+Migration files: `lib/db/migrations/` — committed to git, source of truth for DB history.
+Phase 1 baseline: `lib/db/migrations/0000_complex_ultron.sql`
+Phase 2 schemas (daily_records, inventory_movements, etc.) harus ada migration file sendiri.
 
 ## Architecture
 
 ```
 app/
   (auth)/          # login, session
-  (dashboard)/     # KPI widgets, HDP%, FCR, population
-  production/      # daily egg input per coop
-  inventory/       # stock ledger, adjustments, regrades
-  sales/           # orders, returns, credit notes, invoices
-  flocks/          # batch tracking with age/phase calc
-  admin/           # user management, coop setup
+  (app)/           # authenticated app shell
+    dashboard/     # KPI widgets, HDP%, FCR, population
+    flock/         # batch tracking with age/phase calc
+    stok/          # inventory ledger, adjustments, regrades
+    produksi/      # daily egg input per coop
+    laporan/       # reports (Phase 3)
+    admin/         # user management, coop setup
+  sales/           # orders, returns, credit notes, invoices (Phase 3+)
 lib/
   db/              # Drizzle schema + queries
   actions/         # Next.js Server Actions (mutations)
@@ -47,6 +65,17 @@ components/
   ui/              # shadcn primitives
   forms/           # domain forms
 ```
+
+## Design System
+
+Source of truth: [`design/README.md`](design/README.md)
+
+- **Colors:** LumichFlock CSS vars (`--lf-blue`, `--lf-teal`, etc.) in `app/globals.css`. Shadcn vars (`--primary`, `--foreground`, etc.) are mapped to LumichFlock hex values.
+- **Font:** DM Sans via `next/font/google` (`DM_Sans`, variable `--font-sans`) in `app/layout.tsx`
+- **Shadows:** `.shadow-lf-sm`, `.shadow-lf-md`, `.shadow-lf-btn`, `.shadow-lf-logo` — defined in `@layer utilities` in `globals.css`
+- **Radius:** `--radius: 1rem` (16px for cards via shadcn scale), explicit `border-radius: 10px` for inputs/buttons, 20px for login card
+- **Shared components:** KPI card → `components/ui/kpi-card.tsx`, Section card → `components/ui/section-card.tsx`, Charts → `components/ui/charts/`
+- **Do not use** slate/sky/green/red Tailwind color utilities — use `style={{ color: '#...' }}` with LumichFlock hex values or CSS vars
 
 ## Key Domain Rules
 

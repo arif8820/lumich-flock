@@ -7,6 +7,7 @@ import {
   getAllCustomers,
   updateCustomerById,
   deactivateCustomer,
+  activateCustomer,
 } from '@/lib/services/customer.service'
 
 const customerSchema = z.object({
@@ -84,6 +85,17 @@ export async function deactivateCustomerAction(id: string): Promise<ActionResult
     return { success: true, data: undefined }
   } catch {
     return { success: false, error: 'Gagal menonaktifkan pelanggan' }
+  }
+}
+
+export async function activateCustomerAction(id: string): Promise<ActionResult> {
+  const guard = await requireAdmin()
+  if (guard) return guard
+  try {
+    await activateCustomer(id)
+    return { success: true, data: undefined }
+  } catch {
+    return { success: false, error: 'Gagal mengaktifkan pelanggan' }
   }
 }
 
