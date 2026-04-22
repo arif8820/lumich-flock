@@ -86,8 +86,8 @@ export async function createDailyRecord(
     eggsGradeB: input.eggsGradeB,
     eggsCracked: input.eggsCracked,
     eggsAbnormal: input.eggsAbnormal,
-    avgWeightKg: input.avgWeightKg != null ? input.avgWeightKg : null,
-    feedKg: input.feedKg != null ? input.feedKg : null,
+    avgWeightKg: input.avgWeightKg != null ? String(input.avgWeightKg) : null,
+    feedKg: input.feedKg != null ? String(input.feedKg) : null,
     isLateInput,
     createdBy: userId,
   }
