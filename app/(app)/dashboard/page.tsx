@@ -1,25 +1,8 @@
 import { getSession } from '@/lib/auth/get-session'
 import { redirect } from 'next/navigation'
 import { KpiCard } from '@/components/ui/kpi-card'
+import { DashboardCharts } from '@/components/ui/charts/dashboard-charts'
 import { MOCK_KPI, MOCK_CHART_DATA, MOCK_RECENT_RECORDS } from '@/lib/mock/dashboard.mock'
-import dynamic from 'next/dynamic'
-
-const HdpLineChart = dynamic(
-  () => import('@/components/ui/charts/hdp-line-chart').then((m) => m.HdpLineChart),
-  { ssr: false }
-)
-const FcrLineChart = dynamic(
-  () => import('@/components/ui/charts/fcr-line-chart').then((m) => m.FcrLineChart),
-  { ssr: false }
-)
-const ProductionBarChart = dynamic(
-  () => import('@/components/ui/charts/production-bar-chart').then((m) => m.ProductionBarChart),
-  { ssr: false }
-)
-const DepletionAreaChart = dynamic(
-  () => import('@/components/ui/charts/depletion-area-chart').then((m) => m.DepletionAreaChart),
-  { ssr: false }
-)
 
 export default async function DashboardPage() {
   const user = await getSession()
@@ -44,24 +27,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Charts 2x2 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white rounded-2xl p-4 shadow-lf-sm border border-[var(--lf-border)]">
-          <p className="text-xs font-medium text-[var(--lf-text-soft)] uppercase tracking-wide mb-3">HDP% (7 Hari)</p>
-          <HdpLineChart data={MOCK_CHART_DATA} />
-        </div>
-        <div className="bg-white rounded-2xl p-4 shadow-lf-sm border border-[var(--lf-border)]">
-          <p className="text-xs font-medium text-[var(--lf-text-soft)] uppercase tracking-wide mb-3">FCR (7 Hari)</p>
-          <FcrLineChart data={MOCK_CHART_DATA} />
-        </div>
-        <div className="bg-white rounded-2xl p-4 shadow-lf-sm border border-[var(--lf-border)]">
-          <p className="text-xs font-medium text-[var(--lf-text-soft)] uppercase tracking-wide mb-3">Produksi Grade A / B</p>
-          <ProductionBarChart data={MOCK_CHART_DATA} />
-        </div>
-        <div className="bg-white rounded-2xl p-4 shadow-lf-sm border border-[var(--lf-border)]">
-          <p className="text-xs font-medium text-[var(--lf-text-soft)] uppercase tracking-wide mb-3">Kumulatif Depletion</p>
-          <DepletionAreaChart data={MOCK_CHART_DATA} />
-        </div>
-      </div>
+      <DashboardCharts data={MOCK_CHART_DATA} />
 
       {/* Recent records table */}
       <div className="bg-white rounded-2xl p-4 shadow-lf-sm border border-[var(--lf-border)]">
