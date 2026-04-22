@@ -1,7 +1,7 @@
 // client: interactive coop table with create form, inline edit, activate/deactivate
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CreateCoopForm } from './create-coop-form'
 import { EditCoopForm } from './edit-coop-form'
@@ -71,8 +71,8 @@ export function CoopManagementClient({ coops }: Props) {
           </thead>
           <tbody className="divide-y divide-[var(--lf-border)]">
             {coops.map((coop) => (
-              <>
-                <tr key={coop.id} className="bg-white hover:bg-[var(--lf-bg)]">
+              <React.Fragment key={coop.id}>
+                <tr className="bg-white hover:bg-[var(--lf-bg)]">
                   <td className="px-4 py-3 text-[var(--lf-text-dark)] font-medium">{coop.name}</td>
                   <td className="px-4 py-3 text-[var(--lf-text-mid)]">
                     {coop.capacity != null ? `${coop.capacity.toLocaleString('id-ID')} ekor` : '—'}
@@ -107,7 +107,7 @@ export function CoopManagementClient({ coops }: Props) {
                   </td>
                 </tr>
                 {editingCoopId === coop.id && (
-                  <tr key={`${coop.id}-edit`}>
+                  <tr>
                     <td colSpan={4} className="px-4 py-3 bg-[var(--lf-bg)]">
                       <EditCoopForm
                         coop={coop}
@@ -117,7 +117,7 @@ export function CoopManagementClient({ coops }: Props) {
                     </td>
                   </tr>
                 )}
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>

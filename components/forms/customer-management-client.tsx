@@ -1,7 +1,7 @@
 // client: interactive customer table with create form, inline edit, activate/deactivate
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CreateCustomerForm } from './create-customer-form'
 import { EditCustomerForm } from './edit-customer-form'
@@ -79,8 +79,8 @@ export function CustomerManagementClient({ customers }: Props) {
           </thead>
           <tbody className="divide-y divide-[var(--lf-border)]">
             {customers.map((customer) => (
-              <>
-                <tr key={customer.id} className="bg-white hover:bg-[var(--lf-bg)]">
+              <React.Fragment key={customer.id}>
+                <tr className="bg-white hover:bg-[var(--lf-bg)]">
                   <td className="px-4 py-3 text-[var(--lf-text-dark)] font-medium">{customer.name}</td>
                   <td className="px-4 py-3 text-[var(--lf-text-mid)]">
                     {customer.type ? TYPE_LABELS[customer.type] ?? customer.type : '—'}
@@ -121,7 +121,7 @@ export function CustomerManagementClient({ customers }: Props) {
                   </td>
                 </tr>
                 {editingCustomerId === customer.id && (
-                  <tr key={`${customer.id}-edit`}>
+                  <tr>
                     <td colSpan={6} className="px-4 py-3 bg-[var(--lf-bg)]">
                       <EditCustomerForm
                         customer={customer}
@@ -131,7 +131,7 @@ export function CustomerManagementClient({ customers }: Props) {
                     </td>
                   </tr>
                 )}
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>
