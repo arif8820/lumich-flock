@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Git worktrees created by superpowers:using-git-worktrees
+    ".worktrees/**",
+    // Brainstorming canvas — not app code
+    "design/**",
   ]),
   {
     files: ["**/*.test.ts", "**/*.test.tsx"],
