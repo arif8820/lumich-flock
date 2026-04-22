@@ -12,7 +12,7 @@ export function DepletionAreaChart({ data }: { data: DataPoint[] }) {
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e8df" />
         <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#8fa08f' }} />
         <YAxis tick={{ fontSize: 11, fill: '#8fa08f' }} />
-        <Tooltip formatter={(v: number) => [v, 'Kumulatif Depletion']} />
+        <Tooltip formatter={(v) => [v, 'Kumulatif Depletion']} />
         <Area type="monotone" dataKey="cumulativeDepletion" stroke="#e8a5a0" fill="#fdeeed" strokeWidth={2} />
       </AreaChart>
     </ResponsiveContainer>

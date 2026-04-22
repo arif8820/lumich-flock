@@ -12,7 +12,7 @@ export function FcrLineChart({ data }: { data: DataPoint[] }) {
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e8df" />
         <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#8fa08f' }} />
         <YAxis domain={[1, 3]} tick={{ fontSize: 11, fill: '#8fa08f' }} />
-        <Tooltip formatter={(v: number) => [v.toFixed(2), 'FCR']} />
+        <Tooltip formatter={(v) => [typeof v === 'number' ? v.toFixed(2) : v, 'FCR']} />
         <ReferenceLine y={2.1} stroke="#e07a6a" strokeDasharray="4 2" label={{ value: '2.1', fill: '#e07a6a', fontSize: 10 }} />
         <Line type="monotone" dataKey="fcr" stroke="#7ab8b0" strokeWidth={2} dot={false} />
       </LineChart>
