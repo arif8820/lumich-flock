@@ -165,6 +165,28 @@ Kalau count di komentar < 3 dan fungsi ada di `lib/utils/`: flag ke user sebelum
 - No unit test untuk thin actions atau UI components di Phase 1
 - Test file: `<entity>.service.test.ts` di samping file service
 
+## Git Worktrees
+
+Worktrees disimpan di `.worktrees/` (root repo), bukan di `.claude/worktrees/`.
+
+**Cara buat worktree baru:**
+```bash
+# Dari root repo (d:\App\lumich-flock)
+git worktree add .worktrees/<nama> -b worktree-<nama>
+```
+
+**Cara masuk ke worktree yang sudah ada (via EnterWorktree tool):**
+Gunakan parameter `path`, bukan `name`:
+```
+EnterWorktree(path: "d:\\App\\lumich-flock\\.worktrees\\<nama>")
+```
+
+**Jangan** biarkan EnterWorktree buat worktree baru dengan parameter `name` — itu akan buat di `.claude/worktrees/` yang tidak seragam.
+
+Contoh worktrees yang ada:
+- `.worktrees/phase1-foundation` — branch `worktree-phase1-foundation`
+- `.worktrees/phase2-production-core` — branch `worktree-phase2-production-core`
+
 ## Performance Targets
 - Dashboard load: < 3 seconds
 - PDF invoice generation: < 5 seconds
