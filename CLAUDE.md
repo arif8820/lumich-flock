@@ -48,6 +48,17 @@ components/
   forms/           # domain forms
 ```
 
+## Design System
+
+Source of truth: [`design/README.md`](design/README.md)
+
+- **Colors:** LumichFlock CSS vars (`--lf-blue`, `--lf-teal`, etc.) in `app/globals.css`. Shadcn vars (`--primary`, `--foreground`, etc.) are mapped to LumichFlock hex values.
+- **Font:** DM Sans via `next/font/google` (`DM_Sans`, variable `--font-sans`) in `app/layout.tsx`
+- **Shadows:** `.shadow-lf-sm`, `.shadow-lf-md`, `.shadow-lf-btn`, `.shadow-lf-logo` — defined in `@layer utilities` in `globals.css`
+- **Radius:** `--radius: 1rem` (16px for cards via shadcn scale), explicit `border-radius: 10px` for inputs/buttons, 20px for login card
+- **Shared components:** KPI card → `components/ui/kpi-card.tsx`, Section card → `components/ui/section-card.tsx`, Charts → `components/ui/charts/`
+- **Do not use** slate/sky/green/red Tailwind color utilities — use `style={{ color: '#...' }}` with LumichFlock hex values or CSS vars
+
 ## Key Domain Rules
 
 ### Inventory Ledger
