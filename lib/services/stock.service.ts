@@ -61,6 +61,7 @@ export async function submitRegradeRequest(
   input: RegradeInput,
   userId: string
 ): Promise<RegradeRequest> {
+  if (input.gradeFrom === input.gradeTo) throw new Error('Grade asal dan tujuan tidak boleh sama')
   const balance = await _getStockBalance(input.flockId, input.gradeFrom)
   validateStockNotBelowZero(balance, -input.quantity)
   return insertRegradeRequest({ ...input, status: 'PENDING', createdBy: userId })

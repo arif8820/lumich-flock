@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/lib/db/queries/inventory.queries', () => ({
   getStockBalance: vi.fn(),
-  findStockMovements: vi.fn(),
   insertStockAdjustmentWithMovement: vi.fn(),
   findPendingRegradeRequests: vi.fn(),
   findRegradeRequestById: vi.fn(),
@@ -79,6 +78,15 @@ describe('stock.service', () => {
   })
 
   describe('submitRegradeRequest', () => {
+    it('throws when gradeFrom equals gradeTo', async () => {
+      await expect(
+        submitRegradeRequest(
+          { flockId: 'f1', gradeFrom: 'A', gradeTo: 'A', quantity: 100, requestDate: new Date() },
+          'user-1'
+        )
+      ).rejects.toThrow('Grade asal dan tujuan tidak boleh sama')
+    })
+
     it('checks source grade balance', async () => {
       vi.mocked(q.getStockBalance).mockResolvedValue(1000)
       vi.mocked(q.insertRegradeRequest).mockResolvedValue({ id: 'rr-1' } as any) // any: partial mock

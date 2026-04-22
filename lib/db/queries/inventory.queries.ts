@@ -1,32 +1,22 @@
 import { db } from '@/lib/db'
 import { inventoryMovements, stockAdjustments, regradeRequests } from '@/lib/db/schema'
-import { eq, and, desc, sum } from 'drizzle-orm'
+import { eq, and, desc, sql, sum } from 'drizzle-orm'
 import type {
-  InventoryMovement, NewInventoryMovement,
+  NewInventoryMovement,
   StockAdjustment, NewStockAdjustment,
   RegradeRequest, NewRegradeRequest,
 } from '@/lib/db/schema'
 
 export async function getStockBalance(flockId: string, grade: 'A' | 'B'): Promise<number> {
-  const [inRow] = await db
-    .select({ total: sum(inventoryMovements.quantity) })
+  const [row] = await db
+    .select({
+      balance: sum(sql<number>`CASE WHEN ${inventoryMovements.movementType} = 'IN' THEN ${inventoryMovements.quantity} ELSE -${inventoryMovements.quantity} END`),
+    })
     .from(inventoryMovements)
-    .where(and(eq(inventoryMovements.flockId, flockId), eq(inventoryMovements.grade, grade), eq(inventoryMovements.movementType, 'IN')))
-  const [outRow] = await db
-    .select({ total: sum(inventoryMovements.quantity) })
-    .from(inventoryMovements)
-    .where(and(eq(inventoryMovements.flockId, flockId), eq(inventoryMovements.grade, grade), eq(inventoryMovements.movementType, 'OUT')))
-  return Number(inRow?.total ?? '0') - Number(outRow?.total ?? '0')
+    .where(and(eq(inventoryMovements.flockId, flockId), eq(inventoryMovements.grade, grade)))
+  return Number(row?.balance ?? '0')
 }
 
-export async function findStockMovements(flockId: string, limit: number): Promise<InventoryMovement[]> {
-  return db
-    .select()
-    .from(inventoryMovements)
-    .where(eq(inventoryMovements.flockId, flockId))
-    .orderBy(desc(inventoryMovements.createdAt))
-    .limit(limit)
-}
 
 export async function insertStockAdjustmentWithMovement(
   adjustment: NewStockAdjustment,
@@ -76,6 +66,7 @@ export async function approveRegradeRequestTx(requestId: string, reviewedBy: str
       .where(eq(regradeRequests.id, requestId))
       .limit(1)
     if (!request) throw new Error('Not found')
+    if (request.status !== 'PENDING') throw new Error('Permintaan sudah diproses')
 
     await tx
       .update(regradeRequests)
