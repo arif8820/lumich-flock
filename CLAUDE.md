@@ -24,9 +24,25 @@ Full spec in [docs/PRD_ERP_Ayam_Petelur_v1_8.md](docs/PRD_ERP_Ayam_Petelur_v1_8.
 npm run dev        # local dev server
 npm run build      # production build
 npm run lint       # ESLint
-npm run db:push    # push Drizzle schema to Supabase
+npm run db:generate  # generate SQL migration file from schema changes
+npm run db:migrate   # apply pending migrations to Supabase
 npm run db:studio  # Drizzle Studio GUI
 ```
+
+## Database Migration Rules (STRICT)
+
+**NEVER use `db:push` for schema changes.** `db:push` bypasses migration history and is destructive in production.
+
+**Workflow wajib untuk setiap schema change:**
+1. Edit schema file di `lib/db/schema/`
+2. Run `npm run db:generate` → generates SQL file in `lib/db/migrations/`
+3. Review generated SQL — pastikan tidak ada DROP TABLE / DROP COLUMN yang tidak diinginkan
+4. Run `npm run db:migrate` → applies migration to Supabase
+5. Commit schema file + migration file bersama dalam satu commit
+
+Migration files: `lib/db/migrations/` — committed to git, source of truth for DB history.
+Phase 1 baseline: `lib/db/migrations/0000_complex_ultron.sql`
+Phase 2 schemas (daily_records, inventory_movements, etc.) harus ada migration file sendiri.
 
 ## Architecture
 
