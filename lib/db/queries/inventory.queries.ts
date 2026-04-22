@@ -69,10 +69,14 @@ export async function updateRegradeRequestStatus(
 }
 
 export async function approveRegradeRequestTx(requestId: string, reviewedBy: string): Promise<void> {
-  const request = await findRegradeRequestById(requestId)
-  if (!request) throw new Error('Not found')
-
   await db.transaction(async (tx) => {
+    const [request] = await tx
+      .select()
+      .from(regradeRequests)
+      .where(eq(regradeRequests.id, requestId))
+      .limit(1)
+    if (!request) throw new Error('Not found')
+
     await tx
       .update(regradeRequests)
       .set({ status: 'APPROVED', reviewedBy, reviewedAt: new Date() })

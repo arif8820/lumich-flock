@@ -61,7 +61,8 @@ describe('stock.service', () => {
       ).rejects.toThrow('Stok tidak mencukupi')
     })
 
-    it('skips balance check for positive adjustment', async () => {
+    it('always calls balance check even for positive adjustment', async () => {
+      vi.mocked(q.getStockBalance).mockResolvedValue(500)
       vi.mocked(q.insertStockAdjustmentWithMovement).mockResolvedValue({ id: 'adj-1' } as any) // any: partial mock
 
       await createStockAdjustment(
@@ -69,7 +70,11 @@ describe('stock.service', () => {
         'user-1'
       )
 
-      expect(q.getStockBalance).not.toHaveBeenCalled()
+      expect(q.getStockBalance).toHaveBeenCalledWith('f1', 'A')
+      expect(q.insertStockAdjustmentWithMovement).toHaveBeenCalledWith(
+        expect.objectContaining({ quantity: 100 }),
+        expect.objectContaining({ movementType: 'IN', quantity: 100 })
+      )
     })
   })
 

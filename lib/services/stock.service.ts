@@ -9,7 +9,9 @@ import {
 } from '@/lib/db/queries/inventory.queries'
 import type { StockAdjustment, RegradeRequest } from '@/lib/db/schema'
 
-export { _getStockBalance as getStockBalance }
+export async function getStockBalance(flockId: string, grade: 'A' | 'B'): Promise<number> {
+  return _getStockBalance(flockId, grade)
+}
 
 export function validateStockNotBelowZero(currentBalance: number, quantity: number): void {
   if (currentBalance + quantity < 0) throw new Error('Stok tidak mencukupi untuk operasi ini')
@@ -28,10 +30,8 @@ export async function createStockAdjustment(
   input: AdjustmentInput,
   userId: string
 ): Promise<StockAdjustment> {
-  if (input.quantity < 0) {
-    const balance = await _getStockBalance(input.flockId, input.grade)
-    validateStockNotBelowZero(balance, input.quantity)
-  }
+  const balance = await _getStockBalance(input.flockId, input.grade)
+  validateStockNotBelowZero(balance, input.quantity)
   const movementType = input.quantity >= 0 ? 'IN' : 'OUT'
   const qty = Math.abs(input.quantity)
   return insertStockAdjustmentWithMovement(
