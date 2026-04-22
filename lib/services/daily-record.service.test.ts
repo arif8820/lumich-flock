@@ -90,6 +90,16 @@ describe('daily-record.service — pure functions', () => {
     })
   })
 
+  describe('computeFeedPerBird', () => {
+    it('converts kg to grams per bird', () => {
+      expect(computeFeedPerBird(10, 1000)).toBeCloseTo(10)
+    })
+
+    it('returns 0 when population is 0', () => {
+      expect(computeFeedPerBird(5, 0)).toBe(0)
+    })
+  })
+
   describe('createDailyRecord', () => {
     beforeEach(() => vi.clearAllMocks())
 
@@ -106,7 +116,7 @@ describe('daily-record.service — pure functions', () => {
 
     it('inserts record with IN movements for grade A and B', async () => {
       vi.mocked(queries.findDailyRecord).mockResolvedValue(null)
-      vi.mocked(queries.insertDailyRecordWithMovements).mockResolvedValue({ id: 'r1' } as any)
+      vi.mocked(queries.insertDailyRecordWithMovements).mockResolvedValue({ id: 'r1' } as any) // any: partial mock
 
       await createDailyRecord(
         { flockId: 'f1', recordDate: new Date('2026-04-20'), deaths: 2, culled: 0, eggsGradeA: 900, eggsGradeB: 50, eggsCracked: 0, eggsAbnormal: 0 },
@@ -124,7 +134,7 @@ describe('daily-record.service — pure functions', () => {
 
     it('sets isLateInput true when submitted next calendar day', async () => {
       vi.mocked(queries.findDailyRecord).mockResolvedValue(null)
-      vi.mocked(queries.insertDailyRecordWithMovements).mockResolvedValue({ id: 'r1' } as any)
+      vi.mocked(queries.insertDailyRecordWithMovements).mockResolvedValue({ id: 'r1' } as any) // any: partial mock
 
       await createDailyRecord(
         { flockId: 'f1', recordDate: new Date('2026-04-20'), deaths: 0, culled: 0, eggsGradeA: 100, eggsGradeB: 0, eggsCracked: 0, eggsAbnormal: 0 },
