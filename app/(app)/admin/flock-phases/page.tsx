@@ -9,25 +9,26 @@ export default async function FlockPhasesPage() {
   const phases = await getAllFlockPhases()
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-slate-900">Fase Flock</h1>
-      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 border-b border-slate-200">
-            <tr>
-              <th className="text-left px-4 py-3 text-slate-600 font-medium">Nama Fase</th>
-              <th className="text-left px-4 py-3 text-slate-600 font-medium">Min Minggu</th>
-              <th className="text-left px-4 py-3 text-slate-600 font-medium">Maks Minggu</th>
-              <th className="text-left px-4 py-3 text-slate-600 font-medium">Urutan</th>
+    <div className="p-6 space-y-5">
+      <h1 className="text-[18px] font-bold" style={{ color: '#2d3a2e', letterSpacing: '-0.3px' }}>
+        Fase Flock
+      </h1>
+      <div className="bg-white rounded-2xl shadow-lf-sm overflow-hidden">
+        <table className="w-full" style={{ fontSize: '13px', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ borderBottom: '2px solid #e0e8df' }}>
+              {['Nama Fase', 'Min Minggu', 'Maks Minggu', 'Urutan'].map(h => (
+                <th key={h} className="text-left px-4 py-3 font-semibold" style={{ color: '#8fa08f', fontSize: '12px' }}>{h}</th>
+              ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody>
             {phases.map((phase) => (
-              <tr key={phase.id} className="hover:bg-slate-50">
-                <td className="px-4 py-3 font-medium text-slate-900">{phase.name}</td>
-                <td className="px-4 py-3 text-slate-600">{phase.minWeeks}</td>
-                <td className="px-4 py-3 text-slate-600">{phase.maxWeeks ?? '∞'}</td>
-                <td className="px-4 py-3 text-slate-600">{phase.sortOrder}</td>
+              <tr key={phase.id} className="transition-colors hover:bg-[#fafaf8]" style={{ borderBottom: '1px solid #f0ede8' }}>
+                <td className="px-4 py-3 font-medium" style={{ color: '#2d3a2e' }}>{phase.name}</td>
+                <td className="px-4 py-3" style={{ color: '#5a6b5b' }}>{phase.minWeeks}</td>
+                <td className="px-4 py-3" style={{ color: '#5a6b5b' }}>{phase.maxWeeks ?? '∞'}</td>
+                <td className="px-4 py-3" style={{ color: '#5a6b5b' }}>{phase.sortOrder}</td>
               </tr>
             ))}
           </tbody>

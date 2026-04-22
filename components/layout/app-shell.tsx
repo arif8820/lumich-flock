@@ -15,7 +15,7 @@ export function AppShell({
   const pathname = usePathname()
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen flex" style={{ background: '#f7f5f1' }}>
       <Sidebar user={user} currentPath={pathname} />
       <main className="flex-1 overflow-auto pb-16 md:pb-0">
         {children}

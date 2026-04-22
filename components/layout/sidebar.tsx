@@ -43,7 +43,7 @@ export function Sidebar({ user, currentPath }: { user: SessionUser; currentPath:
         </p>
         <p className="text-[12px] font-semibold" style={{ color: '#2d3a2e' }}>LumichFarm</p>
         <div className="flex items-center gap-1.5 mt-0.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
+          <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#7ab8b0' }} />
           <span className="text-[11px]" style={{ color: '#5a6b5b' }}>Aktif</span>
         </div>
       </div>
@@ -103,7 +103,7 @@ export function Sidebar({ user, currentPath }: { user: SessionUser; currentPath:
           <p className="text-[10px]" style={{ color: '#8fa08f' }}>{getRoleLabel(user.role)}</p>
         </div>
         {/* Logout via GET route that calls supabase.auth.signOut() and redirects to /login */}
-        <a href="/auth/logout" style={{ color: '#8fa08f' }}>
+        <a href="/logout" style={{ color: '#8fa08f' }}>
           <LogOut size={14} strokeWidth={1.8} />
         </a>
       </div>
