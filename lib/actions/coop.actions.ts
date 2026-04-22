@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 import { getSession } from '@/lib/auth/get-session'
-import { createCoop, getAllCoops, updateCoop, deactivateCoop } from '@/lib/services/coop.service'
+import { createCoop, getAllCoops, updateCoop, deactivateCoop, activateCoop } from '@/lib/services/coop.service'
 
 const coopSchema = z.object({
   name: z.string().min(1, 'Nama kandang wajib diisi'),
@@ -66,6 +66,17 @@ export async function deactivateCoopAction(id: string): Promise<ActionResult> {
     return { success: true, data: undefined }
   } catch {
     return { success: false, error: 'Gagal menonaktifkan kandang' }
+  }
+}
+
+export async function activateCoopAction(id: string): Promise<ActionResult> {
+  const guard = await requireAdmin()
+  if (guard) return guard
+  try {
+    await activateCoop(id)
+    return { success: true, data: undefined }
+  } catch {
+    return { success: false, error: 'Gagal mengaktifkan kandang' }
   }
 }
 
