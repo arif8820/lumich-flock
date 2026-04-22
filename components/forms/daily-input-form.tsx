@@ -79,6 +79,7 @@ export function DailyInputForm({ flocks, userRole }: Props) {
   useEffect(() => {
     const saved = sessionStorage.getItem(SESSION_KEY)
     if (saved) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       try { setValues(JSON.parse(saved) as FormValues) } catch { /* ignore */ }
     }
   }, [])
