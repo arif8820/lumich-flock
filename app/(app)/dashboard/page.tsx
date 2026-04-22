@@ -1,7 +1,9 @@
+import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/get-session'
 
 export default async function DashboardPage() {
   const user = await getSession()
+  if (!user) redirect('/login')
 
   return (
     <div className="p-6 space-y-5">

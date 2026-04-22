@@ -33,12 +33,14 @@ npm run db:studio  # Drizzle Studio GUI
 ```
 app/
   (auth)/          # login, session
-  (dashboard)/     # KPI widgets, HDP%, FCR, population
-  production/      # daily egg input per coop
-  inventory/       # stock ledger, adjustments, regrades
-  sales/           # orders, returns, credit notes, invoices
-  flocks/          # batch tracking with age/phase calc
-  admin/           # user management, coop setup
+  (app)/           # authenticated app shell
+    dashboard/     # KPI widgets, HDP%, FCR, population
+    flock/         # batch tracking with age/phase calc
+    stok/          # inventory ledger, adjustments, regrades
+    produksi/      # daily egg input per coop
+    laporan/       # reports (Phase 3)
+    admin/         # user management, coop setup
+  sales/           # orders, returns, credit notes, invoices (Phase 3+)
 lib/
   db/              # Drizzle schema + queries
   actions/         # Next.js Server Actions (mutations)
