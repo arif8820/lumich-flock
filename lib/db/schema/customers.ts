@@ -2,7 +2,7 @@ import { pgTable, uuid, text, integer, numeric, timestamp, pgEnum } from 'drizzl
 import { users } from './users'
 
 export const customerTypeEnum = pgEnum('customer_type', ['retail', 'wholesale', 'distributor'])
-export const customerStatusEnum = pgEnum('customer_status', ['active', 'inactive'])
+export const customerStatusEnum = pgEnum('customer_status', ['active', 'inactive', 'blocked'])
 
 export const customers = pgTable('customers', {
   id: uuid('id').primaryKey().defaultRandom(),
