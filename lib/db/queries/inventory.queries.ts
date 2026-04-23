@@ -102,7 +102,6 @@ export async function approveRegradeRequestTx(requestId: string, reviewedBy: str
       sourceId: requestId,
       grade: request.gradeFrom,
       quantity: request.quantity,
-,
       movementDate: new Date(),
       createdBy: reviewedBy,
     })
