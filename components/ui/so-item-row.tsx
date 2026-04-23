@@ -72,7 +72,7 @@ export function SOItemRow({
       </td>
       <td className="px-4 py-3 text-sm text-right">Rp {subtotal.toLocaleString('id-ID')}</td>
       {onRemove && (
-        <tdtd className="px-4py-3 text-sm">
+        <td className="px-4 py-3 text-sm">
           <button
             type="button"
             onClick={() => onRemove(index)}

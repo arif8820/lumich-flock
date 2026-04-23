@@ -54,7 +54,7 @@ export async function createDraftSOAction(formData: FormData): Promise<ActionRes
     return { success: false, error: 'Data item tidak valid' }
   }
 
-  let items
+  let items: any[]
   try {
     items = JSON.parse(itemsJson)
   } catch {

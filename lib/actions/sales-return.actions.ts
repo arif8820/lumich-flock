@@ -55,7 +55,7 @@ export async function createSalesReturnAction(formData: FormData): Promise<Actio
     return { success: false, error: 'Data item tidak valid' }
   }
 
-  let items
+  let items: any[]
   try {
     items = JSON.parse(itemsJson)
   } catch {

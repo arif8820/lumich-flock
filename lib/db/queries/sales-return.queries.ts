@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { salesReturns, salesReturnItems, inventoryMovements, invoices, customerCredits } from '@/lib/db/schema'
-import { eq, and, desc, sql, count } from 'drizzle-orm'
+import { eq, desc, sql, count } from 'drizzle-orm'
 import type { SalesReturn, SalesReturnItem, NewSalesReturn, NewSalesReturnItem, NewInventoryMovement, NewInvoice, NewCustomerCredit } from '@/lib/db/schema'
 
 export async function findSalesReturnById(id: string): Promise<SalesReturn | null> {

@@ -41,7 +41,6 @@ export async function updateSalesOrderStatus(
   status: 'draft' | 'confirmed' | 'fulfilled' | 'cancelled',
   updatedBy: string
 ): Promise<void> {
- {
   await db
     .update(salesOrders)
     .set({ status, updatedBy })
