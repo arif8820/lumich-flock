@@ -1,8 +1,9 @@
 import * as customerQueries from '@/lib/db/queries/customer.queries'
 import * as salesOrderQueries from '@/lib/db/queries/sales-order.queries'
 import * as inventoryQueries from '@/lib/db/queries/inventory.queries'
+import * as invoiceQueries from '@/lib/db/queries/invoice.queries'
 import { generateOrderNumber } from '@/lib/utils/order-number'
-import type { NewSalesOrder, NewSalesOrderItem } from '@/lib/db/schema'
+import type { NewSalesOrder, NewSalesOrderItem, NewInventoryMovement, NewInvoice } from '@/lib/db/schema'
 
 const { findCustomerById } = customerQueries
 const {
@@ -15,7 +16,8 @@ const {
   fulfillSOTx,
   getCustomerOutstandingCredit,
 } = salesOrderQueries
-const { getStockBalance } = inventoryQueries
+const { getStockBalanceByGrade } = inventoryQueries
+const { countInvoicesThisMonth } = invoiceQueries
 
 type CreateDraftInput = {
   customerId: string
@@ -90,7 +92,7 @@ export async function createDraftSO(input: CreateDraftInput, userId: string, rol
     createdBy: userId,
   }
 
-  const salesOrderItems: NewSalesOrderItem[] = itemsWithSubtotal.map((item) => ({
+  const salesOrderItems: Omit<NewSalesOrderItem, 'orderId'>[] = itemsWithSubtotal.map((item) => ({
     itemType: item.itemType,
     itemRefId: item.itemRefId || null,
     description: item.description || null,
@@ -161,7 +163,7 @@ export async function fulfillSO(orderId: string, userId: string, role: string) {
   for (const item of items) {
     if (item.itemType === 'egg_grade_a' || item.itemType === 'egg_grade_b') {
       const grade = item.itemType === 'egg_grade_a' ? 'A' : 'B'
-      const available = await getStockBalance('', grade)
+      const available = await getStockBalanceByGrade(grade)
       if (available < item.quantity) {
         throw new Error('Stok tidak mencukupi saat transaksi diproses')
       }
@@ -178,6 +180,52 @@ export async function fulfillSO(orderId: string, userId: string, role: string) {
     }
   }
 
-  await fulfillSOTx(orderId, userId)
+  // Build inventory OUT movements for egg items
+  const movements: NewInventoryMovement[] = items
+    .filter((item) => item.itemType === 'egg_grade_a' || item.itemType === 'egg_grade_b')
+    .map((item) => ({
+      flockId: null,
+      movementType: 'out' as const,
+      source: 'sale' as const,
+      sourceType: 'sales_order_items' as const,
+      sourceId: orderId,
+      grade: item.itemType === 'egg_grade_a' ? 'A' as const : 'B' as const,
+      quantity: item.quantity,
+      movementDate: new Date(),
+      createdBy: userId,
+    }))
+
+  // Build invoice
+  const invSeq = await countInvoicesThisMonth('INV')
+  const invoiceNumber = generateOrderNumber('INV', invSeq)
+  const today = new Date()
+  const dueDate = new Date(today)
+  dueDate.setDate(dueDate.getDate() + (customer.paymentTerms || 0))
+
+  const invoice: NewInvoice = {
+    invoiceNumber,
+    type: so.paymentMethod === 'cash' ? 'cash_receipt' : 'sales_invoice',
+    orderId,
+    referenceInvoiceId: null,
+    returnId: null,
+    customerId: so.customerId,
+    issueDate: today,
+    dueDate,
+    totalAmount: so.totalAmount,
+    paidAmount: so.paymentMethod === 'cash' ? so.totalAmount : '0',
+    status: so.paymentMethod === 'cash' ? 'paid' : 'sent',
+    notes: null,
+    createdBy: userId,
+  }
+
+  // Build flock retirement updates for flock items
+  const flockUpdates = items
+    .filter((item) => item.itemType === 'flock' && item.itemRefId)
+    .map((item) => ({
+      flockId: item.itemRefId!,
+      retiredAt: new Date(),
+    }))
+
+  await fulfillSOTx(orderId, userId, movements, invoice, flockUpdates)
   return so
 }

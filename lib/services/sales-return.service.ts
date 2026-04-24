@@ -1,9 +1,11 @@
 import * as salesOrderQueries from '@/lib/db/queries/sales-order.queries'
 import * as salesReturnQueries from '@/lib/db/queries/sales-return.queries'
+import * as invoiceQueries from '@/lib/db/queries/invoice.queries'
 import { generateOrderNumber } from '@/lib/utils/order-number'
 import type { NewSalesReturn, NewSalesReturnItem, NewInventoryMovement, NewInvoice, NewCustomerCredit } from '@/lib/db/schema'
 
 const { findSalesOrderById, findSalesOrderItems } = salesOrderQueries
+const { countInvoicesThisMonth, findInvoiceByOrderId } = invoiceQueries
 const {
   findSalesReturnById,
   findSalesReturnItems,
@@ -43,7 +45,7 @@ export async function createSalesReturn(input: CreateReturnInput, userId: string
   // Validate return quantities don't exceed original SO quantities
   for (const returnItem of input.items) {
     const soItem = soItems.find(
-      (si) => si.itemType === returnItem.itemType && si.itemRefId === returnItem.itemRefId
+      (si) => si.itemType === returnItem.itemType && (si.itemRefId ?? null) === (returnItem.itemRefId ?? null)
     )
 
     if (!soItem || returnItem.quantity > soItem.quantity) {
@@ -66,7 +68,7 @@ export async function createSalesReturn(input: CreateReturnInput, userId: string
     submittedBy: userId,
   }
 
-  const salesReturnItems: NewSalesReturnItem[] = input.items.map((item) => ({
+  const salesReturnItems: Omit<NewSalesReturnItem, 'returnId'>[] = input.items.map((item) => ({
     itemType: item.itemType,
     itemRefId: item.itemRefId || null,
     quantity: item.quantity,
@@ -89,43 +91,62 @@ export async function approveSalesReturn(returnId: string, userId: string, role:
   }
 
   const returnItems = await findSalesReturnItems(returnId)
+  const soItems = await findSalesOrderItems(salesReturn.orderId)
+  const originalInvoice = await findInvoiceByOrderId(salesReturn.orderId)
 
-  // Build inventory movements (IN) for each return item
-  const movements: NewInventoryMovement[] = returnItems.map((item) => ({
-    flockId: null,
-    movementType: 'in',
-    source: 'sale',
-    sourceType: 'sales_returns',
-    sourceId: returnId,
-    grade: item.itemType === 'egg_grade_a' ? 'A' : 'B',
-    quantity: item.quantity,
-    movementDate: new Date(),
-    createdBy: userId,
-  }))
+  // Calculate credit amount: sum returnQty * pricePerUnit * (1 - discount/100) per item
+  let creditAmount = 0
+  for (const returnItem of returnItems) {
+    const soItem = soItems.find((si) => si.itemType === returnItem.itemType)
+    if (soItem) {
+      const priceAfterDiscount =
+        Number(soItem.pricePerUnit) * (1 - Number(soItem.discountPct) / 100)
+      creditAmount += returnItem.quantity * priceAfterDiscount
+    }
+  }
 
-  // Build credit note invoice (negative amount)
+  // Build inventory movements (IN) for egg return items only
+  const movements: NewInventoryMovement[] = returnItems
+    .filter((item) => item.itemType === 'egg_grade_a' || item.itemType === 'egg_grade_b')
+    .map((item) => ({
+      flockId: null,
+      movementType: 'in' as const,
+      source: 'sale' as const,
+      sourceType: 'sales_returns' as const,
+      sourceId: returnId,
+      grade: item.itemType === 'egg_grade_a' ? ('A' as const) : ('B' as const),
+      quantity: item.quantity,
+      movementDate: new Date(),
+      createdBy: userId,
+    }))
+
+  // Generate credit note invoice number
+  const invSeq = await countInvoicesThisMonth('CN')
+  const creditNoteNumber = generateOrderNumber('CN', invSeq)
+
   const creditNoteInvoice: NewInvoice = {
-    invoiceNumber: '', // Will be generated in transaction
+    invoiceNumber: creditNoteNumber,
     type: 'credit_note',
     orderId: salesReturn.orderId,
-    referenceInvoiceId: null, // Would need to find original invoice
+    referenceInvoiceId: originalInvoice?.id ?? null,
     returnId: returnId,
     customerId: salesReturn.customerId,
     issueDate: new Date(),
     dueDate: new Date(),
-    totalAmount: '0', // Will be calculated in transaction
+    totalAmount: creditAmount.toString(),
     paidAmount: '0',
     status: 'sent',
     notes: null,
+    createdBy: userId,
   }
 
   // Build customer credit entry
   const customerCredit: NewCustomerCredit = {
     customerId: salesReturn.customerId,
-    amount: '0', // Will be calculated in transaction
+    amount: creditAmount.toString(),
     sourceType: 'credit_note',
     sourcePaymentId: null,
-    sourceInvoiceId: '', // Will be set after invoice creation
+    sourceInvoiceId: '', // will be overwritten in tx with actual invoice id
     usedAmount: '0',
     notes: null,
   }

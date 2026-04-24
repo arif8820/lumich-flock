@@ -1,11 +1,18 @@
 import { db } from '@/lib/db'
-import { salesOrders, salesOrderItems, inventoryMovements, invoices, flocks } from '@/lib/db/schema'
-import { eq, and, desc, sql, count } from 'drizzle-orm'
+import { salesOrders, salesOrderItems, inventoryMovements, invoices, flocks, customers } from '@/lib/db/schema'
+import { eq, and, desc, sql, count, getTableColumns } from 'drizzle-orm'
 import type { SalesOrder, SalesOrderItem, NewSalesOrder, NewSalesOrderItem, NewInventoryMovement, NewInvoice } from '@/lib/db/schema'
 
-export async function findSalesOrderById(id: string): Promise<SalesOrder | null> {
-  const [row] = await db.select().from(salesOrders).where(eq(salesOrders.id, id)).limit(1)
-  return row ?? null
+export type SalesOrderWithCustomer = SalesOrder & { customerName: string | null }
+
+export async function findSalesOrderById(id: string): Promise<SalesOrderWithCustomer | null> {
+  const [row] = await db
+    .select({ ...getTableColumns(salesOrders), customerName: customers.name })
+    .from(salesOrders)
+    .leftJoin(customers, eq(salesOrders.customerId, customers.id))
+    .where(eq(salesOrders.id, id))
+    .limit(1)
+  return row ? (row as SalesOrderWithCustomer) : null
 }
 
 export async function findSalesOrderItems(orderId: string): Promise<SalesOrderItem[]> {
@@ -16,16 +23,17 @@ export async function countSalesOrdersThisMonth(prefix: string): Promise<number>
   const now = new Date()
   const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`
   const pattern = `${prefix}-${yearMonth}-%`
+  // Use MAX on trailing seq to avoid collision when rows are deleted (COUNT would reuse numbers)
   const [row] = await db
-    .select({ cnt: count() })
+    .select({ maxSeq: sql<string>`MAX(CAST(SPLIT_PART(${salesOrders.orderNumber}, '-', 3) AS INTEGER))` })
     .from(salesOrders)
     .where(sql`${salesOrders.orderNumber} LIKE ${pattern}`)
-  return row?.cnt ?? 0
+  return row?.maxSeq ? parseInt(row.maxSeq) : 0
 }
 
 export async function insertSalesOrderWithItems(
   order: NewSalesOrder,
-  items: NewSalesOrderItem[]
+  items: Omit<NewSalesOrderItem, 'orderId'>[]
 ): Promise<SalesOrder> {
   return db.transaction(async (tx) => {
     const [so] = await tx.insert(salesOrders).values(order).returning()
@@ -59,16 +67,14 @@ export async function fulfillSOTx(
   userId: string,
   movements: NewInventoryMovement[],
   invoice: NewInvoice,
-  flockUpdates: { flockId: string; status: string; retiredAt: Date }[]
+  flockUpdates: { flockId: string; retiredAt: Date }[]
 ): Promise<void> {
   await db.transaction(async (tx) => {
-    // Lock SO row
     const [so] = await tx
       .select()
       .from(salesOrders)
       .where(eq(salesOrders.id, orderId))
       .limit(1)
-      .for('update')
 
     if (!so) throw new Error('SO not found')
     if (so.status !== 'confirmed') throw new Error('Status SO tidak valid untuk operasi ini')
@@ -108,7 +114,7 @@ export async function fulfillSOTx(
     for (const fu of flockUpdates) {
       await tx
         .update(flocks)
-        .set({ status: fu.status, retiredAt: fu.retiredAt })
+        .set({ retiredAt: fu.retiredAt })
         .where(eq(flocks.id, fu.flockId))
     }
   })
@@ -132,8 +138,10 @@ export async function listSalesOrders(
   page: number = 1,
   pageSize: number = 20,
   status?: string
-): Promise<{ data: SalesOrder[]; total: number }> {
-  const conditions = status ? eq(salesOrders.status, status as any) : undefined
+): Promise<{ data: SalesOrderWithCustomer[]; total: number }> {
+  const conditions = status
+    ? eq(salesOrders.status, status as 'draft' | 'confirmed' | 'fulfilled' | 'cancelled')
+    : undefined
   const whereClause = conditions ?? sql`1=1`
 
   const [countRow] = await db
@@ -141,13 +149,14 @@ export async function listSalesOrders(
     .from(salesOrders)
     .where(whereClause)
 
-  const data = await db
-    .select()
+  const rows = await db
+    .select({ ...getTableColumns(salesOrders), customerName: customers.name })
     .from(salesOrders)
+    .leftJoin(customers, eq(salesOrders.customerId, customers.id))
     .where(whereClause)
     .orderBy(desc(salesOrders.createdAt))
     .limit(pageSize)
     .offset((page - 1) * pageSize)
 
-  return { data, total: countRow?.cnt ?? 0 }
+  return { data: rows as SalesOrderWithCustomer[], total: countRow?.cnt ?? 0 }
 }

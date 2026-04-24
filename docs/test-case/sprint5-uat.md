@@ -384,6 +384,6 @@ INSERT INTO inventory_movements (flock_id, movement_type, source, source_type, s
 ```
 
 **Test user credentials (via Supabase Auth):**
-- Supervisor: `supervisor@lumich.test` / password123
-- Admin: `admin@lumich.test` / password123
-- Operator: `operator@lumich.test` / password123
+- Supervisor: `supervisor@lumich.test` / Password123
+- Admin: `admin@lumich.test` / Password123
+- Operator: `operator@lumich.test` / Password123

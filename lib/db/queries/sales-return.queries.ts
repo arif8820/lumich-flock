@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
-import { salesReturns, salesReturnItems, inventoryMovements, invoices, customerCredits } from '@/lib/db/schema'
-import { eq, desc, sql, count } from 'drizzle-orm'
+import { salesReturns, salesReturnItems, salesOrders, inventoryMovements, invoices, customerCredits } from '@/lib/db/schema'
+import { eq, desc, sql, count, getTableColumns } from 'drizzle-orm'
 import type { SalesReturn, SalesReturnItem, NewSalesReturn, NewSalesReturnItem, NewInventoryMovement, NewInvoice, NewCustomerCredit } from '@/lib/db/schema'
 
 export async function findSalesReturnById(id: string): Promise<SalesReturn | null> {
@@ -17,15 +17,15 @@ export async function countSalesReturnsThisMonth(prefix: string): Promise<number
   const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`
   const pattern = `${prefix}-${yearMonth}-%`
   const [row] = await db
-    .select({ cnt: count() })
+    .select({ maxSeq: sql<string>`MAX(CAST(SPLIT_PART(${salesReturns.returnNumber}, '-', 3) AS INTEGER))` })
     .from(salesReturns)
     .where(sql`${salesReturns.returnNumber} LIKE ${pattern}`)
-  return row?.cnt ?? 0
+  return row?.maxSeq ? parseInt(row.maxSeq) : 0
 }
 
 export async function insertSalesReturnWithItems(
   ret: NewSalesReturn,
-  items: NewSalesReturnItem[]
+  items: Omit<NewSalesReturnItem, 'returnId'>[]
 ): Promise<SalesReturn> {
   return db.transaction(async (tx) => {
     const [sr] = await tx.insert(salesReturns).values(ret).returning()
@@ -44,13 +44,11 @@ export async function approveSalesReturnTx(
   customerCredit: NewCustomerCredit
 ): Promise<void> {
   await db.transaction(async (tx) => {
-    // Lock return row
     const [sr] = await tx
       .select()
       .from(salesReturns)
       .where(eq(salesReturns.id, returnId))
       .limit(1)
-      .for('update')
 
     if (!sr) throw new Error('Return not found')
     if (sr.status !== 'pending') throw new Error('Return sudah diproses')
@@ -87,12 +85,51 @@ export async function rejectSalesReturn(
     .where(eq(salesReturns.id, returnId))
 }
 
+export async function findSalesReturnsByOrderId(orderId: string): Promise<SalesReturn[]> {
+  return db
+    .select()
+    .from(salesReturns)
+    .where(eq(salesReturns.orderId, orderId))
+    .orderBy(desc(salesReturns.createdAt))
+}
+
+export type SalesReturnWithOrder = SalesReturn & { orderNumber: string | null }
+
+export async function listSalesReturnsWithOrder(
+  page: number = 1,
+  pageSize: number = 20,
+  status?: string
+): Promise<{ data: SalesReturnWithOrder[]; total: number }> {
+  const conditions = status
+    ? eq(salesReturns.status, status as 'pending' | 'approved' | 'rejected')
+    : undefined
+  const whereClause = conditions ?? sql`1=1`
+
+  const [countRow] = await db
+    .select({ cnt: count() })
+    .from(salesReturns)
+    .where(whereClause)
+
+  const rows = await db
+    .select({ ...getTableColumns(salesReturns), orderNumber: salesOrders.orderNumber })
+    .from(salesReturns)
+    .leftJoin(salesOrders, eq(salesReturns.orderId, salesOrders.id))
+    .where(whereClause)
+    .orderBy(desc(salesReturns.createdAt))
+    .limit(pageSize)
+    .offset((page - 1) * pageSize)
+
+  return { data: rows as SalesReturnWithOrder[], total: countRow?.cnt ?? 0 }
+}
+
 export async function listSalesReturns(
   page: number = 1,
   pageSize: number = 20,
   status?: string
 ): Promise<{ data: SalesReturn[]; total: number }> {
-  const conditions = status ? eq(salesReturns.status, status as any) : undefined
+  const conditions = status
+    ? eq(salesReturns.status, status as 'pending' | 'approved' | 'rejected')
+    : undefined
   const whereClause = conditions ?? sql`1=1`
 
   const [countRow] = await db

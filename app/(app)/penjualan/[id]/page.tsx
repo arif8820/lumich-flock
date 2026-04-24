@@ -10,22 +10,61 @@ import {
   deleteDraftSOAction,
   fulfillSOAction,
 } from '@/lib/actions/sales-order.actions'
+import { findSalesReturnsByOrderId } from '@/lib/db/queries/sales-return.queries'
 import { SOStatusBadge } from '@/components/ui/so-status-badge'
 import { Button } from '@/components/ui/button'
 
+const itemTypeLabels: Record<string, string> = {
+  egg_grade_a: 'Telur Grade A',
+  egg_grade_b: 'Telur Grade B',
+  flock: 'Ayam',
+  other: 'Lainnya',
+}
+
+const returnStatusLabels: Record<string, string> = {
+  pending: 'Pending',
+  approved: 'Disetujui',
+  rejected: 'Ditolak',
+}
+
 export default async function SODetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ error?: string }>
 }) {
   const session = await getSession()
   if (!session || session.role === 'operator') redirect('/dashboard')
 
   const { id } = await params
+  const { error } = await searchParams
   const so = await findSalesOrderById(id)
   if (!so) redirect('/penjualan')
 
   const items = await findSalesOrderItems(id)
+  const returns = await findSalesReturnsByOrderId(id)
+
+  async function confirmAction() {
+    'use server'
+    const res = await confirmSOAction(id)
+    if (!res.success) redirect(`/penjualan/${id}?error=${encodeURIComponent(res.error ?? 'Gagal')}`)
+  }
+  async function cancelAction() {
+    'use server'
+    const res = await cancelSOAction(id)
+    if (!res.success) redirect(`/penjualan/${id}?error=${encodeURIComponent(res.error ?? 'Gagal')}`)
+  }
+  async function deleteAction() {
+    'use server'
+    const res = await deleteDraftSOAction(id)
+    if (!res.success) redirect(`/penjualan/${id}?error=${encodeURIComponent(res.error ?? 'Gagal')}`)
+  }
+  async function fulfillAction() {
+    'use server'
+    const res = await fulfillSOAction(id)
+    if (!res.success) redirect(`/penjualan/${id}?error=${encodeURIComponent(res.error ?? 'Gagal')}`)
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -37,6 +76,12 @@ export default async function SODetailPage({
           Kembali
         </Button>
       </div>
+
+      {error && (
+        <div role="alert" className="px-4 py-3 rounded-lg text-sm" style={{ background: '#fde8e8', color: '#c0392b' }}>
+          {decodeURIComponent(error)}
+        </div>
+      )}
 
       {/* SO Header */}
       <div className="border border-gray-200 rounded-lg p-6 space-y-4">
@@ -99,7 +144,7 @@ export default async function SODetailPage({
               {items.map((item, index) => (
                 <tr key={item.id} className="border-b border-gray-200">
                   <td className="px-4 py-3 text-sm">{index + 1}</td>
-                  <td className="px-4 py-3 text-sm">{item.itemType}</td>
+                  <td className="px-4 py-3 text-sm">{itemTypeLabels[item.itemType] ?? item.itemType}</td>
                   <td className="px-4 py-3 text-sm">{item.description || '-'}</td>
                   <td className="px-4 py-3 text-sm text-right">
                     {item.quantity} {item.unit}
@@ -144,15 +189,48 @@ export default async function SODetailPage({
         </div>
       </div>
 
+      {/* Sales Returns */}
+      {returns.length > 0 && (
+        <div>
+          <h2 className="text-[16px] font-semibold mb-4">Sales Return</h2>
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nomor Return</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {returns.map((ret) => (
+                  <tr key={ret.id} className="border-b border-gray-200 hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm font-medium">{ret.returnNumber}</td>
+                    <td className="px-4 py-3 text-sm">{new Date(ret.returnDate).toLocaleDateString('id-ID')}</td>
+                    <td className="px-4 py-3 text-sm">{returnStatusLabels[ret.status] ?? ret.status}</td>
+                    <td className="px-4 py-3 text-sm text-right">
+                      <Button variant="link" href={`/penjualan/return/${ret.id}`} size="sm">
+                        Detail
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Status Actions */}
       <div className="flex gap-2">
         {so.status === 'draft' && (
           <>
-            <form action={confirmSOAction.bind(null, id)}>
+            <form action={confirmAction}>
               <Button type="submit">Konfirmasi</Button>
             </form>
             {['supervisor', 'admin'].includes(session.role) && (
-              <form action={deleteDraftSOAction.bind(null, id)}>
+              <form action={deleteAction}>
                 <Button type="submit" variant="destructive">
                   Hapus Draft
                 </Button>
@@ -163,10 +241,10 @@ export default async function SODetailPage({
 
         {so.status === 'confirmed' && (
           <>
-            <form action={fulfillSOAction.bind(null, id)}>
+            <form action={fulfillAction}>
               <Button type="submit">Fulfill</Button>
             </form>
-            <form action={cancelSOAction.bind(null, id)}>
+            <form action={cancelAction}>
               <Button type="submit" variant="destructive">
                 Batalkan
               </Button>

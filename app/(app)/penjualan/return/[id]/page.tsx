@@ -17,6 +17,14 @@ const statusLabels: Record<'pending' | 'approved' | 'rejected', string> = {
   rejected: 'Ditolak',
 }
 
+const itemTypeLabels: Record<string, string> = {
+  egg_grade_a: 'Telur Grade A',
+  egg_grade_b: 'Telur Grade B',
+  flock: 'Ayam',
+  other: 'Lainnya',
+}
+
+// USED BY: [penjualan/page, return/[id]/page] — count: 2
 const statusColors: Record<'pending' | 'approved' | 'rejected', string> = {
   pending: 'var(--lf-blue)',
   approved: 'var(--lf-teal)',
@@ -25,18 +33,34 @@ const statusColors: Record<'pending' | 'approved' | 'rejected', string> = {
 
 export default async function ReturnDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ error?: string }>
 }) {
   const session = await getSession()
   if (!session || session.role === 'operator') redirect('/dashboard')
 
   const { id } = await params
+  const { error } = await searchParams
   const salesReturn = await findSalesReturnById(id)
   if (!salesReturn) redirect('/penjualan')
 
   const items = await findSalesReturnItems(id)
   const so = await findSalesOrderById(salesReturn.orderId)
+
+  async function approveAction() {
+    'use server'
+    const res = await approveSalesReturnAction(id)
+    if (!res.success) redirect(`/penjualan/return/${id}?error=${encodeURIComponent(res.error ?? 'Gagal')}`)
+    redirect(`/penjualan/return/${id}`)
+  }
+  async function rejectAction() {
+    'use server'
+    const res = await rejectSalesReturnAction(id)
+    if (!res.success) redirect(`/penjualan/return/${id}?error=${encodeURIComponent(res.error ?? 'Gagal')}`)
+    redirect(`/penjualan/return/${id}`)
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -48,6 +72,12 @@ export default async function ReturnDetailPage({
           Kembali
         </Button>
       </div>
+
+      {error && (
+        <div role="alert" className="px-4 py-3 rounded-lg text-sm" style={{ background: '#fde8e8', color: '#c0392b' }}>
+          {decodeURIComponent(error)}
+        </div>
+      )}
 
       {/* Return Header */}
       <div className="border border-gray-200 rounded-lg p-6 space-y-4">
@@ -86,10 +116,6 @@ export default async function ReturnDetailPage({
               {so?.orderNumber || salesReturn.orderId}
             </p>
           </div>
-          <div>
-            <label className="text-sm text-gray-500">Dikirim Oleh</label>
-            <p>{salesReturn.submittedByName}</p>
-          </div>
         </div>
 
         {salesReturn.notes && (
@@ -99,10 +125,10 @@ export default async function ReturnDetailPage({
           </div>
         )}
 
-        {salesReturn.status !== 'pending' && (
+        {salesReturn.status !== 'pending' && salesReturn.reviewedAt && (
           <div>
-            <label className="text-sm text-gray-500">Direview Oleh</label>
-            <p>{salesReturn.reviewedByName} pada {salesReturn.reviewedAt && new Date(salesReturn.reviewedAt).toLocaleString('id-ID')}</p>
+            <label className="text-sm text-gray-500">Direview Pada</label>
+            <p>{new Date(salesReturn.reviewedAt).toLocaleString('id-ID')}</p>
           </div>
         )}
       </div>
@@ -124,7 +150,7 @@ export default async function ReturnDetailPage({
               {items.map((item, index) => (
                 <tr key={item.id} className="border-b border-gray-200">
                   <td className="px-4 py-3 text-sm">{index + 1}</td>
-                  <td className="px-4 py-3 text-sm">{item.itemType}</td>
+                  <td className="px-4 py-3 text-sm">{itemTypeLabels[item.itemType] ?? item.itemType}</td>
                   <td className="px-4 py-3 text-sm text-right">{item.quantity}</td>
                   <td className="px-4 py-3 text-sm">{item.unit}</td>
                 </tr>
@@ -137,10 +163,10 @@ export default async function ReturnDetailPage({
       {/* Admin Actions - only for pending returns */}
       {session.role === 'admin' && salesReturn.status === 'pending' && (
         <div className="flex gap-2">
-          <form action={approveSalesReturnAction.bind(null, id)}>
+          <form action={approveAction}>
             <Button type="submit">Setujui</Button>
           </form>
-          <form action={rejectSalesReturnAction.bind(null, id)}>
+          <form action={rejectAction}>
             <Button type="submit" variant="destructive">
               Tolak
             </Button>

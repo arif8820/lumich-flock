@@ -36,7 +36,7 @@ export async function getAllStockBalances(): Promise<{ flockId: string; grade: '
     })
     .from(inventoryMovements)
     .groupBy(inventoryMovements.flockId, inventoryMovements.grade)
-  return rows.map((r) => ({ flockId: r.flockId, grade: r.grade as 'A' | 'B', balance: Number(r.balance ?? '0') }))
+  return rows.map((r) => ({ flockId: r.flockId ?? '', grade: r.grade as 'A' | 'B', balance: Number(r.balance ?? '0') }))
 }
 
 export async function insertStockAdjustmentWithMovement(

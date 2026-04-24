@@ -1,6 +1,7 @@
 'use server'
 
 import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth/get-session'
 import {
   createSalesReturn,
@@ -55,7 +56,8 @@ export async function createSalesReturnAction(formData: FormData): Promise<Actio
     return { success: false, error: 'Data item tidak valid' }
   }
 
-  let items: any[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let items: any[] // any: raw JSON from FormData, validated by zod immediately after
   try {
     items = JSON.parse(itemsJson)
   } catch {
@@ -76,13 +78,14 @@ export async function createSalesReturnAction(formData: FormData): Promise<Actio
 
   try {
     const salesReturn = await createSalesReturn(parsed.data, session!.id, session!.role)
+    revalidatePath('/penjualan/return')
     return { success: true, data: { id: salesReturn.id } }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Gagal membuat return' }
   }
 }
 
-export async function approveSalesReturnAction(returnId: string): Promise<ActionResult> {
+export async function approveSalesReturnAction(returnId: string): Promise<ActionResult<undefined>> {
   const guard = await requireAdmin()
   if (guard) return guard
 
@@ -90,13 +93,15 @@ export async function approveSalesReturnAction(returnId: string): Promise<Action
 
   try {
     await approveSalesReturn(returnId, session!.id, session!.role)
+    revalidatePath(`/penjualan/return/${returnId}`)
+    revalidatePath('/penjualan/return')
     return { success: true, data: undefined }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Gagal menyetujui return' }
   }
 }
 
-export async function rejectSalesReturnAction(returnId: string): Promise<ActionResult> {
+export async function rejectSalesReturnAction(returnId: string): Promise<ActionResult<undefined>> {
   const guard = await requireAdmin()
   if (guard) return guard
 
@@ -104,6 +109,8 @@ export async function rejectSalesReturnAction(returnId: string): Promise<ActionR
 
   try {
     await rejectSalesReturn(returnId, session!.id, session!.role)
+    revalidatePath(`/penjualan/return/${returnId}`)
+    revalidatePath('/penjualan/return')
     return { success: true, data: undefined }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Gagal menolak return' }

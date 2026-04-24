@@ -1,6 +1,7 @@
 'use server'
 
 import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth/get-session'
 import {
   createDraftSO,
@@ -54,7 +55,8 @@ export async function createDraftSOAction(formData: FormData): Promise<ActionRes
     return { success: false, error: 'Data item tidak valid' }
   }
 
-  let items: any[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let items: any[] // any: raw JSON from FormData, validated by zod immediately after
   try {
     items = JSON.parse(itemsJson)
   } catch {
@@ -83,7 +85,7 @@ export async function createDraftSOAction(formData: FormData): Promise<ActionRes
   }
 }
 
-export async function confirmSOAction(orderId: string): Promise<ActionResult> {
+export async function confirmSOAction(orderId: string): Promise<ActionResult<undefined>> {
   const guard = await requireSupervisorOrAdmin()
   if (guard) return guard
 
@@ -91,13 +93,15 @@ export async function confirmSOAction(orderId: string): Promise<ActionResult> {
 
   try {
     await confirmSO(orderId, session!.id, session!.role)
+    revalidatePath(`/penjualan/${orderId}`)
+    revalidatePath('/penjualan')
     return { success: true, data: undefined }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Gagal mengkonfirmasi SO' }
   }
 }
 
-export async function cancelSOAction(orderId: string): Promise<ActionResult> {
+export async function cancelSOAction(orderId: string): Promise<ActionResult<undefined>> {
   const guard = await requireSupervisorOrAdmin()
   if (guard) return guard
 
@@ -105,13 +109,15 @@ export async function cancelSOAction(orderId: string): Promise<ActionResult> {
 
   try {
     await cancelSO(orderId, session!.id, session!.role)
+    revalidatePath(`/penjualan/${orderId}`)
+    revalidatePath('/penjualan')
     return { success: true, data: undefined }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Gagal membatalkan SO' }
   }
 }
 
-export async function deleteDraftSOAction(orderId: string): Promise<ActionResult> {
+export async function deleteDraftSOAction(orderId: string): Promise<ActionResult<undefined>> {
   const guard = await requireSupervisorOrAdmin()
   if (guard) return guard
 
@@ -119,13 +125,14 @@ export async function deleteDraftSOAction(orderId: string): Promise<ActionResult
 
   try {
     await deleteDraftSO(orderId, session!.id, session!.role)
+    revalidatePath('/penjualan')
     return { success: true, data: undefined }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Gagal menghapus draft SO' }
   }
 }
 
-export async function fulfillSOAction(orderId: string): Promise<ActionResult> {
+export async function fulfillSOAction(orderId: string): Promise<ActionResult<undefined>> {
   const guard = await requireSupervisorOrAdmin()
   if (guard) return guard
 
@@ -133,6 +140,8 @@ export async function fulfillSOAction(orderId: string): Promise<ActionResult> {
 
   try {
     await fulfillSO(orderId, session!.id, session!.role)
+    revalidatePath(`/penjualan/${orderId}`)
+    revalidatePath('/penjualan')
     return { success: true, data: undefined }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Gagal memproses SO' }
