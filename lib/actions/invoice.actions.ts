@@ -73,19 +73,19 @@ export async function applyCreditAction(
   const guard = await requireAdmin()
   if (guard) return guard
 
-  const session = await getSession()
-
   const parsed = z
     .object({
-      invoiceId: z.string().uuid(),
-      creditId: z.string().uuid(),
-      amount: z.number().positive(),
+      invoiceId: z.string().uuid('ID invoice tidak valid'),
+      creditId: z.string().uuid('ID kredit tidak valid'),
+      amount: z.number().positive('Jumlah harus lebih dari 0'),
     })
     .safeParse({ invoiceId, creditId, amount })
 
   if (!parsed.success) {
-    return { success: false, error: 'Input tidak valid' }
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
   }
+
+  const session = await getSession()
 
   try {
     await applyCredit(invoiceId, creditId, amount, session!.id)
