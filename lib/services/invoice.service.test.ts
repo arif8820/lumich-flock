@@ -116,15 +116,20 @@ describe('invoice.service', () => {
     })
 
     it('overpayment detected → returns { overpayment: true, overpaymentAmount: 500 }', async () => {
+      // Capture the tx mock to assert on it later
+      let capturedTx: any
+      vi.mocked(db.transaction).mockImplementationOnce(async (fn) => {
+        capturedTx = {
+          insert: vi.fn(() => ({ values: vi.fn(() => Promise.resolve()) })),
+        }
+        return fn(capturedTx)
+      })
+
       vi.mocked(invoiceQueries.getInvoiceWithDetails).mockResolvedValue(mockInvoice as any)
       vi.mocked(paymentQueries.createPayment).mockResolvedValue({} as any)
       vi.mocked(paymentQueries.sumPaymentsByInvoice).mockResolvedValue(1_000_500)
       vi.mocked(invoiceQueries.updateInvoicePaidAmount).mockResolvedValue(undefined)
       vi.mocked(invoiceQueries.updateInvoiceStatus).mockResolvedValue(undefined)
-
-      // db.insert mock for the transaction
-      const insertValuesMock = vi.fn().mockResolvedValue(undefined)
-      vi.mocked(db.insert).mockReturnValue({ values: insertValuesMock } as any)
 
       const result = await recordPayment(
         'inv-1',
@@ -134,6 +139,8 @@ describe('invoice.service', () => {
 
       expect(result.overpayment).toBe(true)
       expect(result.overpaymentAmount).toBe(500)
+      // Verify tx.insert was called for customerCredits and notifications
+      expect(capturedTx.insert).toHaveBeenCalledTimes(2)
     })
 
     it('throws Invoice tidak ditemukan when invoice is null', async () => {
@@ -228,6 +235,58 @@ describe('invoice.service', () => {
 
       expect(result).toBe(mockRows)
       expect(invoiceQueries.getAgingReport).toHaveBeenCalledOnce()
+    })
+  })
+
+  describe('getInvoiceForPdf', () => {
+    it('returns invoice details with SO items when orderId exists', async () => {
+      const mockInvoiceWithOrder = {
+        id: 'inv-1',
+        invoiceNumber: 'INV-202604-0001',
+        orderId: 'so-1',
+        customerId: 'cust-1',
+        status: 'sent' as const,
+        totalAmount: '1000000',
+        paidAmount: '0',
+        customer: { id: 'cust-1', name: 'Toko A' },
+        orderNumber: 'SO-202604-0001',
+        payments: [],
+        availableCredits: [],
+      }
+      const mockItems = [
+        { id: 'item-1', orderId: 'so-1', itemType: 'egg_grade_a', quantity: 100, unit: 'butir' },
+      ]
+
+      vi.mocked(invoiceQueries.getInvoiceWithDetails).mockResolvedValue(mockInvoiceWithOrder as any)
+      vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue(mockItems as any)
+
+      const result = await getInvoiceForPdf('inv-1')
+
+      expect(result.items).toEqual(mockItems)
+      expect(salesOrderQueries.findSalesOrderItems).toHaveBeenCalledWith('so-1')
+    })
+
+    it('returns empty items array when orderId is null', async () => {
+      const mockInvoiceNoOrder = {
+        id: 'inv-1',
+        invoiceNumber: 'INV-202604-0001',
+        orderId: null,
+        customerId: 'cust-1',
+        status: 'sent' as const,
+        totalAmount: '1000000',
+        paidAmount: '0',
+        customer: { id: 'cust-1', name: 'Toko A' },
+        orderNumber: null,
+        payments: [],
+        availableCredits: [],
+      }
+
+      vi.mocked(invoiceQueries.getInvoiceWithDetails).mockResolvedValue(mockInvoiceNoOrder as any)
+
+      const result = await getInvoiceForPdf('inv-1')
+
+      expect(result.items).toEqual([])
+      expect(salesOrderQueries.findSalesOrderItems).not.toHaveBeenCalled()
     })
   })
 })
