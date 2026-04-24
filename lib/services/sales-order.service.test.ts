@@ -339,7 +339,7 @@ describe('sales-order.service', () => {
       vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(creditSO as any)
       vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue(mockSOItems as any)
       vi.mocked(inventoryQueries.getStockBalance).mockResolvedValue(5000)
-      vi.mocked(salesOrderQueries.getCustomerOutstandingCredit).mockResolvedValue('9500000')
+      vi.mocked(salesOrderQueries.getCustomerOutstandingCredit).mockResolvedValue(9500000)
       vi.mocked(customerQueries.findCustomerById).mockResolvedValue(mockCustomer as any)
 
       await expect(fulfillSO('so-1', 'user-1', 'supervisor')).rejects.toThrow(

@@ -1,6 +1,6 @@
 import { db, DrizzleTx } from '@/lib/db'
 import { invoices, customers, salesOrders, payments, customerCredits } from '@/lib/db/schema'
-import { eq, and, asc, desc, count, getTableColumns, sql } from 'drizzle-orm'
+import { eq, and, asc, desc, count, getTableColumns, sql, inArray } from 'drizzle-orm'
 import type { Invoice, Customer, Payment, CustomerCredit } from '@/lib/db/schema'
 
 export async function countInvoicesThisMonth(prefix: string): Promise<number> {
@@ -135,11 +135,11 @@ export async function updateInvoiceStatus(
 
 export async function updateInvoicePaidAmount(
   id: string,
-  paidAmount: string,
+  paidAmount: number,
   tx?: DrizzleTx
 ): Promise<void> {
   const executor = tx ?? db
-  await executor.update(invoices).set({ paidAmount }).where(eq(invoices.id, id))
+  await executor.update(invoices).set({ paidAmount: paidAmount.toString() }).where(eq(invoices.id, id))
 }
 
 export async function getOverdueInvoices(): Promise<InvoiceWithCustomer[]> {
@@ -154,7 +154,7 @@ export async function getOverdueInvoices(): Promise<InvoiceWithCustomer[]> {
     .leftJoin(salesOrders, eq(invoices.orderId, salesOrders.id))
     .where(
       and(
-        sql`${invoices.status} IN ('sent', 'partial')`,
+        inArray(invoices.status, ['sent', 'partial']),
         sql`${invoices.dueDate} < CURRENT_DATE`
       )
     )
@@ -174,7 +174,7 @@ export async function getAgingReport(): Promise<AgingRow[]> {
     .leftJoin(customers, eq(invoices.customerId, customers.id))
     .where(
       and(
-        sql`${invoices.status} IN ('sent', 'partial', 'overdue')`,
+        inArray(invoices.status, ['sent', 'partial', 'overdue']),
         sql`${invoices.dueDate} < CURRENT_DATE`
       )
     )

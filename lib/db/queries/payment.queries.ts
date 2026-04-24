@@ -6,7 +6,8 @@ import type { Payment, NewPayment } from '@/lib/db/schema'
 export async function createPayment(payment: NewPayment, tx?: DrizzleTx): Promise<Payment> {
   const executor = tx ?? db
   const [row] = await executor.insert(payments).values(payment).returning()
-  return row!
+  if (!row) throw new Error('Insert payment gagal')
+  return row
 }
 
 export async function listPaymentsByInvoice(invoiceId: string): Promise<Payment[]> {

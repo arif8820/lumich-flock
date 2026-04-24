@@ -1,6 +1,6 @@
 import { db, DrizzleTx } from '@/lib/db'
 import { customerCredits } from '@/lib/db/schema'
-import { eq, sql, desc } from 'drizzle-orm'
+import { eq, sql, desc, and } from 'drizzle-orm'
 import type { CustomerCredit } from '@/lib/db/schema'
 
 export async function listCreditsByCustomer(customerId: string): Promise<CustomerCredit[]> {
@@ -18,7 +18,10 @@ export async function getAvailableCredit(customerId: string): Promise<number> {
     })
     .from(customerCredits)
     .where(
-      sql`${customerCredits.customerId} = ${customerId} AND ${customerCredits.amount} > ${customerCredits.usedAmount}`
+      and(
+        eq(customerCredits.customerId, customerId),
+        sql`${customerCredits.amount} > ${customerCredits.usedAmount}`
+      )
     )
   return Number(row?.total ?? 0)
 }
