@@ -1,7 +1,7 @@
 import { db, DrizzleTx } from '@/lib/db'
 import { customerCredits } from '@/lib/db/schema'
 import { eq, sql, desc, and } from 'drizzle-orm'
-import type { CustomerCredit } from '@/lib/db/schema'
+import type { CustomerCredit, NewCustomerCredit } from '@/lib/db/schema'
 
 export async function listCreditsByCustomer(customerId: string): Promise<CustomerCredit[]> {
   return db
@@ -34,6 +34,14 @@ export async function findCreditById(id: string, tx?: DrizzleTx): Promise<Custom
     .where(eq(customerCredits.id, id))
     .limit(1)
   return row ?? null
+}
+
+export async function createCustomerCredit(
+  credit: NewCustomerCredit,
+  tx?: DrizzleTx
+): Promise<void> {
+  const executor = tx ?? db
+  await executor.insert(customerCredits).values(credit)
 }
 
 export async function updateCreditUsedAmount(

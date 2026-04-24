@@ -1,9 +1,9 @@
 import * as invoiceQueries from '@/lib/db/queries/invoice.queries'
 import * as paymentQueries from '@/lib/db/queries/payment.queries'
 import * as creditQueries from '@/lib/db/queries/customer-credit.queries'
+import * as notificationQueries from '@/lib/db/queries/notification.queries'
 import { findSalesOrderItems } from '@/lib/db/queries/sales-order.queries'
 import { db } from '@/lib/db'
-import { customerCredits, notifications } from '@/lib/db/schema'
 import type { InvoiceDetails, AgingRow } from '@/lib/db/queries/invoice.queries'
 import type { Invoice, SalesOrderItem } from '@/lib/db/schema'
 
@@ -28,8 +28,8 @@ export async function recordPayment(
   const invoice = await invoiceQueries.getInvoiceWithDetails(invoiceId)
   if (!invoice) throw new Error('Invoice tidak ditemukan')
 
-  if (invoice.status === 'paid' || invoice.status === 'cancelled') {
-    throw new Error('Invoice sudah lunas atau dibatalkan')
+  if (!['sent', 'partial', 'overdue'].includes(invoice.status)) {
+    throw new Error('Invoice tidak dapat dibayar pada status ini')
   }
 
   const result = await db.transaction(async (tx) => {
@@ -57,23 +57,29 @@ export async function recordPayment(
     if (newPaidAmount > totalAmount) {
       const overpaymentAmt = newPaidAmount - totalAmount
 
-      await tx.insert(customerCredits).values({
-        customerId: invoice.customer.id,
-        amount: overpaymentAmt.toString(),
-        sourceType: 'overpayment',
-        sourceInvoiceId: invoiceId,
-        usedAmount: '0',
-        notes: null,
-      })
+      await creditQueries.createCustomerCredit(
+        {
+          customerId: invoice.customer.id,
+          amount: overpaymentAmt.toString(),
+          sourceType: 'overpayment',
+          sourceInvoiceId: invoiceId,
+          usedAmount: '0',
+          notes: null,
+        },
+        tx
+      )
 
-      await tx.insert(notifications).values({
-        type: 'other',
-        title: 'Kelebihan Bayar',
-        body: `Invoice ${invoice.invoiceNumber} dibayar lebih Rp ${overpaymentAmt.toLocaleString('id-ID')}`,
-        targetRole: 'admin',
-        relatedEntityType: 'invoices',
-        relatedEntityId: invoiceId,
-      })
+      await notificationQueries.createNotification(
+        {
+          type: 'other',
+          title: 'Kelebihan Bayar',
+          body: `Invoice ${invoice.invoiceNumber} dibayar lebih Rp ${overpaymentAmt.toLocaleString('id-ID')}`,
+          targetRole: 'admin',
+          relatedEntityType: 'invoices',
+          relatedEntityId: invoiceId,
+        },
+        tx
+      )
 
       return { overpayment: true, overpaymentAmount: overpaymentAmt }
     }
@@ -93,12 +99,13 @@ export async function applyCredit(
   const invoice = await invoiceQueries.getInvoiceWithDetails(invoiceId)
   if (!invoice) throw new Error('Invoice tidak ditemukan')
 
-  if (invoice.status === 'paid' || invoice.status === 'cancelled') {
-    throw new Error('Invoice sudah lunas atau dibatalkan')
+  if (!['sent', 'partial', 'overdue'].includes(invoice.status)) {
+    throw new Error('Invoice tidak dapat dibayar pada status ini')
   }
 
   if (amount <= 0) throw new Error('Jumlah kredit tidak valid')
 
+  // Pre-validation outside transaction (fast fail)
   const credit = await creditQueries.findCreditById(creditId)
   if (!credit) throw new Error('Kredit tidak ditemukan')
 
@@ -106,6 +113,12 @@ export async function applyCredit(
   if (available < amount) throw new Error('Kredit tidak mencukupi')
 
   await db.transaction(async (tx) => {
+    // Re-check inside transaction to prevent TOCTOU race
+    const creditInTx = await creditQueries.findCreditById(creditId, tx)
+    if (!creditInTx) throw new Error('Kredit tidak ditemukan')
+    const availableInTx = Number(creditInTx.amount) - Number(creditInTx.usedAmount)
+    if (availableInTx < amount) throw new Error('Kredit tidak mencukupi')
+
     await paymentQueries.createPayment(
       {
         invoiceId,

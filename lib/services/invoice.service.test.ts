@@ -15,6 +15,11 @@ vi.mock('@/lib/db/queries/payment.queries', () => ({
 vi.mock('@/lib/db/queries/customer-credit.queries', () => ({
   findCreditById: vi.fn(),
   updateCreditUsedAmount: vi.fn(),
+  createCustomerCredit: vi.fn(),
+}))
+
+vi.mock('@/lib/db/queries/notification.queries', () => ({
+  createNotification: vi.fn(),
 }))
 
 vi.mock('@/lib/db/queries/sales-order.queries', () => ({
@@ -36,6 +41,7 @@ vi.mock('@/lib/db', () => ({
 import * as invoiceQueries from '@/lib/db/queries/invoice.queries'
 import * as paymentQueries from '@/lib/db/queries/payment.queries'
 import * as creditQueries from '@/lib/db/queries/customer-credit.queries'
+import * as notificationQueries from '@/lib/db/queries/notification.queries'
 import * as salesOrderQueries from '@/lib/db/queries/sales-order.queries'
 import { db } from '@/lib/db'
 import {
@@ -116,20 +122,13 @@ describe('invoice.service', () => {
     })
 
     it('overpayment detected → returns { overpayment: true, overpaymentAmount: 500 }', async () => {
-      // Capture the tx mock to assert on it later
-      let capturedTx: any
-      vi.mocked(db.transaction).mockImplementationOnce(async (fn) => {
-        capturedTx = {
-          insert: vi.fn(() => ({ values: vi.fn(() => Promise.resolve()) })),
-        }
-        return fn(capturedTx)
-      })
-
       vi.mocked(invoiceQueries.getInvoiceWithDetails).mockResolvedValue(mockInvoice as any)
       vi.mocked(paymentQueries.createPayment).mockResolvedValue({} as any)
       vi.mocked(paymentQueries.sumPaymentsByInvoice).mockResolvedValue(1_000_500)
       vi.mocked(invoiceQueries.updateInvoicePaidAmount).mockResolvedValue(undefined)
       vi.mocked(invoiceQueries.updateInvoiceStatus).mockResolvedValue(undefined)
+      vi.mocked(creditQueries.createCustomerCredit).mockResolvedValue(undefined)
+      vi.mocked(notificationQueries.createNotification).mockResolvedValue(undefined)
 
       const result = await recordPayment(
         'inv-1',
@@ -139,8 +138,9 @@ describe('invoice.service', () => {
 
       expect(result.overpayment).toBe(true)
       expect(result.overpaymentAmount).toBe(500)
-      // Verify tx.insert was called for customerCredits and notifications
-      expect(capturedTx.insert).toHaveBeenCalledTimes(2)
+      // Verify query-layer functions were called for customerCredit and notification
+      expect(creditQueries.createCustomerCredit).toHaveBeenCalledOnce()
+      expect(notificationQueries.createNotification).toHaveBeenCalledOnce()
     })
 
     it('throws Invoice tidak ditemukan when invoice is null', async () => {
@@ -151,22 +151,31 @@ describe('invoice.service', () => {
       ).rejects.toThrow('Invoice tidak ditemukan')
     })
 
-    it('throws Invoice sudah lunas atau dibatalkan when status is paid', async () => {
+    it('throws Invoice tidak dapat dibayar pada status ini when status is paid', async () => {
       const paidInvoice = { ...mockInvoice, status: 'paid' as const }
       vi.mocked(invoiceQueries.getInvoiceWithDetails).mockResolvedValue(paidInvoice as any)
 
       await expect(
         recordPayment('inv-1', { amount: 100_000, method: 'cash', paymentDate: new Date() }, 'user-1')
-      ).rejects.toThrow('Invoice sudah lunas atau dibatalkan')
+      ).rejects.toThrow('Invoice tidak dapat dibayar pada status ini')
     })
 
-    it('throws Invoice sudah lunas atau dibatalkan when status is cancelled', async () => {
+    it('throws Invoice tidak dapat dibayar pada status ini when status is cancelled', async () => {
       const cancelledInvoice = { ...mockInvoice, status: 'cancelled' as const }
       vi.mocked(invoiceQueries.getInvoiceWithDetails).mockResolvedValue(cancelledInvoice as any)
 
       await expect(
         recordPayment('inv-1', { amount: 100_000, method: 'cash', paymentDate: new Date() }, 'user-1')
-      ).rejects.toThrow('Invoice sudah lunas atau dibatalkan')
+      ).rejects.toThrow('Invoice tidak dapat dibayar pada status ini')
+    })
+
+    it('throws Invoice tidak dapat dibayar pada status ini when status is draft', async () => {
+      const draftInvoice = { ...mockInvoice, status: 'draft' as const }
+      vi.mocked(invoiceQueries.getInvoiceWithDetails).mockResolvedValue(draftInvoice as any)
+
+      await expect(
+        recordPayment('inv-1', { amount: 100_000, method: 'cash', paymentDate: new Date() }, 'user-1')
+      ).rejects.toThrow('Invoice tidak dapat dibayar pada status ini')
     })
   })
 
