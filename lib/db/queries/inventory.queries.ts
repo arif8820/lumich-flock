@@ -10,10 +10,20 @@ import type {
 export async function getStockBalance(flockId: string, grade: 'A' | 'B'): Promise<number> {
   const [row] = await db
     .select({
-      balance: sum(sql<number>`CASE WHEN ${inventoryMovements.movementType} = 'IN' THEN ${inventoryMovements.quantity} ELSE -${inventoryMovements.quantity} END`),
+      balance: sum(sql<number>`CASE WHEN ${inventoryMovements.movementType} = 'in' THEN ${inventoryMovements.quantity} ELSE -${inventoryMovements.quantity} END`),
     })
     .from(inventoryMovements)
     .where(and(eq(inventoryMovements.flockId, flockId), eq(inventoryMovements.grade, grade)))
+  return Number(row?.balance ?? '0')
+}
+
+export async function getStockBalanceByGrade(grade: 'A' | 'B'): Promise<number> {
+  const [row] = await db
+    .select({
+      balance: sum(sql<number>`CASE WHEN ${inventoryMovements.movementType} = 'in' THEN ${inventoryMovements.quantity} ELSE -${inventoryMovements.quantity} END`),
+    })
+    .from(inventoryMovements)
+    .where(eq(inventoryMovements.grade, grade))
   return Number(row?.balance ?? '0')
 }
 
@@ -22,13 +32,12 @@ export async function getAllStockBalances(): Promise<{ flockId: string; grade: '
     .select({
       flockId: inventoryMovements.flockId,
       grade: inventoryMovements.grade,
-      balance: sum(sql<number>`CASE WHEN ${inventoryMovements.movementType} = 'IN' THEN ${inventoryMovements.quantity} ELSE -${inventoryMovements.quantity} END`),
+      balance: sum(sql<number>`CASE WHEN ${inventoryMovements.movementType} = 'in' THEN ${inventoryMovements.quantity} ELSE -${inventoryMovements.quantity} END`),
     })
     .from(inventoryMovements)
     .groupBy(inventoryMovements.flockId, inventoryMovements.grade)
-  return rows.map((r) => ({ flockId: r.flockId, grade: r.grade as 'A' | 'B', balance: Number(r.balance ?? '0') }))
+  return rows.map((r) => ({ flockId: r.flockId ?? '', grade: r.grade as 'A' | 'B', balance: Number(r.balance ?? '0') }))
 }
-
 
 export async function insertStockAdjustmentWithMovement(
   adjustment: NewStockAdjustment,
@@ -36,7 +45,7 @@ export async function insertStockAdjustmentWithMovement(
 ): Promise<StockAdjustment> {
   return db.transaction(async (tx) => {
     const [adj] = await tx.insert(stockAdjustments).values(adjustment).returning()
-    await tx.insert(inventoryMovements).values({ ...movement, referenceId: adj!.id })
+    await tx.insert(inventoryMovements).values({ ...movement, sourceId: adj!.id })
     return adj!
   })
 }
@@ -87,22 +96,24 @@ export async function approveRegradeRequestTx(requestId: string, reviewedBy: str
 
     await tx.insert(inventoryMovements).values({
       flockId: request.flockId,
-      movementType: 'OUT',
+      movementType: 'out',
+      source: 'regrade',
+      sourceType: 'regrade_requests',
+      sourceId: requestId,
       grade: request.gradeFrom,
       quantity: request.quantity,
-      referenceType: 'regrade',
-      referenceId: requestId,
       movementDate: new Date(),
       createdBy: reviewedBy,
     })
 
     await tx.insert(inventoryMovements).values({
       flockId: request.flockId,
-      movementType: 'IN',
+      movementType: 'in',
+      source: 'regrade',
+      sourceType: 'regrade_requests',
+      sourceId: requestId,
       grade: request.gradeTo,
       quantity: request.quantity,
-      referenceType: 'regrade',
-      referenceId: requestId,
       movementDate: new Date(),
       createdBy: reviewedBy,
     })

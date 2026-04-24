@@ -15,6 +15,20 @@
       "when": 1776838259334,
       "tag": "0001_vengeful_master_mold",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1745395200000,
+      "tag": "0002_sprint5a_sales_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1745395200000,
+      "tag": "0003_sprint5b_finance_schema",
+      "breakpoints": true
     }
   ]
 }

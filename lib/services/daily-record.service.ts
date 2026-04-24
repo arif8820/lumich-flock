@@ -107,10 +107,10 @@ export async function createDailyRecord(
   if (input.eggsGradeA > 0) {
     movements.push({
       flockId: input.flockId,
-      movementType: 'IN',
+      movementType: 'in',
       grade: 'A',
       quantity: input.eggsGradeA,
-      referenceType: 'daily_record',
+      source: 'production', sourceType: 'daily_records',
       movementDate: input.recordDate,
       createdBy: userId,
     })
@@ -118,10 +118,10 @@ export async function createDailyRecord(
   if (input.eggsGradeB > 0) {
     movements.push({
       flockId: input.flockId,
-      movementType: 'IN',
+      movementType: 'in',
       grade: 'B',
       quantity: input.eggsGradeB,
-      referenceType: 'daily_record',
+      source: 'production', sourceType: 'daily_records',
       movementDate: input.recordDate,
       createdBy: userId,
     })

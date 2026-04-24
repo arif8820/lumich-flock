@@ -1,5 +1,5 @@
 import {
-  findAllCustomers,
+  listCustomers as findAllCustomers,
   findCustomerById,
   insertCustomer,
   updateCustomer,

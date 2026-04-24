@@ -32,16 +32,18 @@ export async function createStockAdjustment(
 ): Promise<StockAdjustment> {
   const balance = await _getStockBalance(input.flockId, input.grade)
   validateStockNotBelowZero(balance, input.quantity)
-  const movementType = input.quantity >= 0 ? 'IN' : 'OUT'
+  const movementType = input.quantity >= 0 ? 'in' : 'out'
   const qty = Math.abs(input.quantity)
   return insertStockAdjustmentWithMovement(
     { ...input, createdBy: userId },
     {
       flockId: input.flockId,
       movementType,
+      source: 'adjustment',
+      sourceType: 'stock_adjustments',
+      sourceId: null, // Will be set by insertStockAdjustmentWithMovement
       grade: input.grade,
       quantity: qty,
-      referenceType: 'stock_adjustment',
       movementDate: input.adjustmentDate,
       createdBy: userId,
     }
