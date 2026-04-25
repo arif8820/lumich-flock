@@ -5,7 +5,7 @@ export const appSettings = pgTable('app_settings', {
   key: text('key').primaryKey().notNull(),
   value: text('value').notNull(),
   updatedBy: uuid('updated_by').references(() => users.id),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdateFn(() => new Date()).notNull(),
 })
 
 export type AppSetting = typeof appSettings.$inferSelect
