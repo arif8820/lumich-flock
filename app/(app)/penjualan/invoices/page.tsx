@@ -82,7 +82,7 @@ export default async function InvoicesPage({
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Terbayar</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Aksi</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Detail</th>
             </tr>
           </thead>
           <tbody>

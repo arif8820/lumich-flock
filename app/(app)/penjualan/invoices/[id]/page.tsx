@@ -36,7 +36,7 @@ export default async function InvoiceDetailPage({
   if (!invoice) redirect('/penjualan/invoices')
 
   const isAdmin = session.role === 'admin'
-  const canReceivePayment = ['sent', 'partial', 'overdue'].includes(invoice.status)
+  const canReceivePayment = !['paid', 'cancelled'].includes(invoice.status)
   const outstanding = Number(invoice.totalAmount) - Number(invoice.paidAmount)
 
   // Inline server actions
@@ -241,7 +241,7 @@ export default async function InvoiceDetailPage({
       )}
 
       {/* Available credits (admin only) */}
-      {isAdmin && canReceivePayment && invoice.availableCredits.length > 0 && (
+      {isAdmin && invoice.status !== 'paid' && invoice.availableCredits.length > 0 && (
         <div>
           <h2 className="text-[16px] font-semibold mb-4">Kredit Tersedia</h2>
           <div className="border border-gray-200 rounded-lg overflow-hidden">
