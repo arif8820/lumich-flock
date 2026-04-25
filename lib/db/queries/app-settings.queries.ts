@@ -1,0 +1,22 @@
+import { db } from '@/lib/db'
+import { appSettings } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
+
+export async function getAppSetting(key: string): Promise<string | null> {
+  const [row] = await db
+    .select({ value: appSettings.value })
+    .from(appSettings)
+    .where(eq(appSettings.key, key))
+    .limit(1)
+  return row?.value ?? null
+}
+
+export async function upsertAppSetting(key: string, value: string, updatedBy: string): Promise<void> {
+  await db
+    .insert(appSettings)
+    .values({ key, value, updatedBy, updatedAt: new Date() })
+    .onConflictDoUpdate({
+      target: appSettings.key,
+      set: { value, updatedBy, updatedAt: new Date() },
+    })
+}
