@@ -440,7 +440,7 @@ export function InvoicePdfDocument({ invoice }: InvoicePdfProps) {
           <Text style={styles.bankDetails}>{BANK_DETAILS}</Text>
           {isCashReceipt ? (
             <View style={styles.stampArea}>
-              <Text style={styles.stampText}>Tanda Tangan &amp; Cap</Text>
+              <Text style={styles.stampText}>Tanda Tangan & Cap</Text>
             </View>
           ) : (
             <Text style={styles.bankDetails}>
