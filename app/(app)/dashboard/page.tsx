@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { getSession } from '@/lib/auth/get-session'
 import { redirect } from 'next/navigation'
 import { KpiCard } from '@/components/ui/kpi-card'
@@ -82,7 +83,7 @@ export default async function DashboardPage() {
         <div className="bg-white rounded-[16px] p-6 shadow-lf-sm border border-[var(--lf-border)]">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-medium text-[var(--lf-text-soft)] uppercase tracking-wide">5 Invoice Jatuh Tempo</p>
-            <a href="/laporan" className="text-xs font-medium" style={{ color: 'var(--lf-teal)' }}>Lihat semua</a>
+            <Link href="/laporan" className="text-xs font-medium" style={{ color: 'var(--lf-teal)' }}>Lihat semua</Link>
           </div>
           {top5.length === 0 ? (
             <p className="text-sm text-[var(--lf-text-soft)]">Tidak ada invoice jatuh tempo</p>

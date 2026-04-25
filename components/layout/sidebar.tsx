@@ -56,32 +56,32 @@ export function Sidebar({ user, currentPath }: { user: SessionUser; currentPath:
         {mainNav.map(({ href, icon: Icon, label }) => {
           const active = currentPath.startsWith(href)
           return (
-            <Link
-              key={href}
-              href={href}
-              className="flex items-center gap-2.5 px-[10px] py-[9px] rounded-[9px] mb-0.5 transition-colors text-[13px]"
-              style={{ background: active ? '#e3f0f9' : 'transparent', color: active ? '#3d7cb0' : '#5a6b5b', fontWeight: active ? 600 : 400 }}
-            >
-              <Icon size={16} strokeWidth={1.8} style={{ color: active ? '#7aadd4' : '#b0bab0', flexShrink: 0 }} />
-              {label}
-            </Link>
+            <div key={href}>
+              <Link
+                href={href}
+                className="flex items-center gap-2.5 px-[10px] py-[9px] rounded-[9px] mb-0.5 transition-colors text-[13px]"
+                style={{ background: active ? '#e3f0f9' : 'transparent', color: active ? '#3d7cb0' : '#5a6b5b', fontWeight: active ? 600 : 400 }}
+              >
+                <Icon size={16} strokeWidth={1.8} style={{ color: active ? '#7aadd4' : '#b0bab0', flexShrink: 0 }} />
+                {label}
+              </Link>
+              {/* Invoice sub-link under Penjualan — admin + supervisor only */}
+              {href === '/penjualan' && user.role !== 'operator' && (() => {
+                const invActive = currentPath.startsWith('/penjualan/invoices')
+                return (
+                  <Link
+                    href="/penjualan/invoices"
+                    className="flex items-center gap-2.5 pl-[28px] pr-[10px] py-[7px] rounded-[9px] mb-0.5 transition-colors text-[12px]"
+                    style={{ background: invActive ? '#e3f0f9' : 'transparent', color: invActive ? '#3d7cb0' : '#7a8b7a', fontWeight: invActive ? 600 : 400 }}
+                  >
+                    <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: invActive ? '#7aadd4' : '#b0bab0' }} />
+                    Invoice
+                  </Link>
+                )
+              })()}
+            </div>
           )
         })}
-
-        {/* Invoice sub-link under Penjualan — admin + supervisor only */}
-        {user.role !== 'operator' && (() => {
-          const active = currentPath.startsWith('/penjualan/invoices')
-          return (
-            <Link
-              href="/penjualan/invoices"
-              className="flex items-center gap-2.5 pl-[28px] pr-[10px] py-[7px] rounded-[9px] mb-0.5 transition-colors text-[12px]"
-              style={{ background: active ? '#e3f0f9' : 'transparent', color: active ? '#3d7cb0' : '#7a8b7a', fontWeight: active ? 600 : 400 }}
-            >
-              <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: active ? '#7aadd4' : '#b0bab0' }} />
-              Invoice
-            </Link>
-          )
-        })()}
 
         {/* Laporan Piutang — admin + supervisor only */}
         {user.role !== 'operator' && (() => {
