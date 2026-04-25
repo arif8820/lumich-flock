@@ -9,12 +9,14 @@ type ActionResult<T = undefined> =
   | { success: true; data: T }
   | { success: false; error: string }
 
-async function requireAdmin(): Promise<{ success: false; error: string } | null> {
+async function requireAdmin(): Promise<
+  { success: false; error: string; session?: never } | { success: true; session: NonNullable<Awaited<ReturnType<typeof getSession>>> }
+> {
   const session = await getSession()
   if (!session || session.role !== 'admin') {
     return { success: false, error: 'Akses ditolak' }
   }
-  return null
+  return { success: true, session }
 }
 
 const recordPaymentSchema = z.object({
@@ -28,8 +30,8 @@ const recordPaymentSchema = z.object({
 export async function recordPaymentAction(
   formData: FormData
 ): Promise<ActionResult<{ overpayment: boolean; overpaymentAmount?: number }>> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const auth = await requireAdmin()
+  if (!auth.success) return auth
 
   const parsed = recordPaymentSchema.safeParse({
     invoiceId: formData.get('invoiceId'),
@@ -43,8 +45,6 @@ export async function recordPaymentAction(
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
   }
 
-  const session = await getSession()
-
   try {
     const result = await recordPayment(
       parsed.data.invoiceId,
@@ -54,7 +54,7 @@ export async function recordPaymentAction(
         referenceNumber: parsed.data.referenceNumber,
         paymentDate: parsed.data.paymentDate,
       },
-      session!.id
+      auth.session.id
     )
     revalidatePath(`/penjualan/invoices/${parsed.data.invoiceId}`)
     revalidatePath('/penjualan/invoices')
@@ -70,8 +70,8 @@ export async function applyCreditAction(
   creditId: string,
   amount: number
 ): Promise<ActionResult> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const auth = await requireAdmin()
+  if (!auth.success) return auth
 
   const parsed = z
     .object({
@@ -85,10 +85,8 @@ export async function applyCreditAction(
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
   }
 
-  const session = await getSession()
-
   try {
-    await applyCredit(invoiceId, creditId, amount, session!.id)
+    await applyCredit(invoiceId, creditId, amount, auth.session.id)
     revalidatePath(`/penjualan/invoices/${invoiceId}`)
     return { success: true, data: undefined }
   } catch (error) {

@@ -45,7 +45,7 @@ export default async function InvoiceDetailPage({
     formData.set('invoiceId', id)
     const res = await recordPaymentAction(formData)
     if (!res.success) {
-      redirect(`/penjualan/invoices/${id}?error=${encodeURIComponent(res.error ?? 'Gagal')}`)
+      redirect(`/penjualan/invoices/${id}?error=${encodeURIComponent('Gagal mencatat pembayaran')}`)
     }
     redirect(`/penjualan/invoices/${id}?success=Pembayaran berhasil dicatat`)
   }
@@ -264,7 +264,7 @@ export default async function InvoiceDetailPage({
                     const amount = Number(formData.get('amount'))
                     const res = await applyCreditAction(id, credit.id, amount)
                     if (!res.success) {
-                      redirect(`/penjualan/invoices/${id}?error=${encodeURIComponent(res.error ?? 'Gagal')}`)
+                      redirect(`/penjualan/invoices/${id}?error=${encodeURIComponent('Gagal menerapkan kredit')}`)
                     }
                     redirect(`/penjualan/invoices/${id}?success=Kredit berhasil diterapkan`)
                   }

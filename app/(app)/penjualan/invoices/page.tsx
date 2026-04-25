@@ -124,7 +124,7 @@ export default async function InvoicesPage({
           {currentPage > 1 && (
             <Button
               variant="outline"
-              href={`/penjualan/invoices?status=${status || ''}&page=${currentPage - 1}`}
+              href={`/penjualan/invoices${status ? `?status=${status}&` : '?'}page=${currentPage - 1}`}
               size="sm"
             >
               Sebelumnya
@@ -133,7 +133,7 @@ export default async function InvoicesPage({
           {currentPage * PAGE_SIZE < result.total && (
             <Button
               variant="outline"
-              href={`/penjualan/invoices?status=${status || ''}&page=${currentPage + 1}`}
+              href={`/penjualan/invoices${status ? `?status=${status}&` : '?'}page=${currentPage + 1}`}
               size="sm"
             >
               Selanjutnya
