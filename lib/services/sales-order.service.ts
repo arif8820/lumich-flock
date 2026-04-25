@@ -196,8 +196,9 @@ export async function fulfillSO(orderId: string, userId: string, role: string) {
     }))
 
   // Build invoice
-  const invSeq = await countInvoicesThisMonth('INV')
-  const invoiceNumber = generateOrderNumber('INV', invSeq)
+  const prefix = so.paymentMethod === 'cash' ? 'RCP' : 'INV'
+  const invSeq = await countInvoicesThisMonth(prefix)
+  const invoiceNumber = generateOrderNumber(prefix, invSeq)
   const today = new Date()
   const dueDate = new Date(today)
   dueDate.setDate(dueDate.getDate() + (customer.paymentTerms || 0))
