@@ -30,7 +30,12 @@ export default async function LaporanPage() {
   const session = await getSession()
   if (!session || session.role === 'operator') redirect('/dashboard')
 
-  const agingData = await getAgingData()
+  let agingData: Awaited<ReturnType<typeof getAgingData>> = []
+  try {
+    agingData = await getAgingData()
+  } catch {
+    // DB error — render empty state
+  }
 
   const bucket07 = agingData.filter((r) => r.bucket === '0-7').reduce((s, r) => s + r.outstanding, 0)
   const bucket814 = agingData.filter((r) => r.bucket === '8-14').reduce((s, r) => s + r.outstanding, 0)
@@ -52,7 +57,7 @@ export default async function LaporanPage() {
             Aging piutang pelanggan berdasarkan hari keterlambatan
           </p>
         </div>
-        {session.role === 'admin' && (
+        {(session.role === 'admin' || session.role === 'supervisor') && (
           <a
             href="/api/laporan/aging-csv"
             className="inline-flex items-center px-4 py-2 rounded-[10px] text-sm font-medium transition-colors"

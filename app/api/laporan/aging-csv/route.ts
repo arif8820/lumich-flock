@@ -30,7 +30,7 @@ export async function GET(): Promise<Response> {
     const issueDate = new Date(row.issueDate).toLocaleDateString('id-ID')
     const dueDate = new Date(row.dueDate).toLocaleDateString('id-ID')
     return [
-      `"${row.invoiceNumber}"`,
+      `"${row.invoiceNumber.replace(/"/g, '""')}"`,
       `"${row.customerName.replace(/"/g, '""')}"`,
       `"${issueDate}"`,
       `"${dueDate}"`,
