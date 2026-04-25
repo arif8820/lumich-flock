@@ -175,7 +175,8 @@ export async function getAgingReport(): Promise<AgingRow[]> {
     .where(
       and(
         inArray(invoices.status, ['sent', 'partial', 'overdue']),
-        sql`${invoices.dueDate} < CURRENT_DATE`
+        sql`${invoices.dueDate} < CURRENT_DATE`,
+        sql`CAST(${invoices.totalAmount} AS NUMERIC) > 0`
       )
     )
     .orderBy(desc(sql`CURRENT_DATE - ${invoices.dueDate}`))
