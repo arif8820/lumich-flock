@@ -8,6 +8,7 @@ export const customers = pgTable('customers', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   type: customerTypeEnum('type'),
+  email: text('email'),
   phone: text('phone'),
   address: text('address'),
   creditLimit: numeric('credit_limit', { precision: 15, scale: 2 }).default('0').notNull(),
