@@ -12,11 +12,12 @@ export async function getAppSetting(key: string): Promise<string | null> {
 }
 
 export async function upsertAppSetting(key: string, value: string, updatedBy: string): Promise<void> {
+  const now = new Date()
   await db
     .insert(appSettings)
-    .values({ key, value, updatedBy, updatedAt: new Date() })
+    .values({ key, value, updatedBy, updatedAt: now })
     .onConflictDoUpdate({
       target: appSettings.key,
-      set: { value, updatedBy, updatedAt: new Date() },
+      set: { value, updatedBy, updatedAt: now },
     })
 }
