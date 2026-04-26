@@ -3,7 +3,9 @@
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth/get-session'
-import { recordPayment, applyCredit } from '@/lib/services/invoice.service'
+import { recordPayment, applyCredit, getInvoiceForPdf, markInvoiceSent } from '@/lib/services/invoice.service'
+import { sendInvoiceEmail } from '@/lib/services/email.service'
+import { InvoicePdfDocument } from '@/components/pdf/invoice-pdf-document'
 
 type ActionResult<T = undefined> =
   | { success: true; data: T }
@@ -91,5 +93,37 @@ export async function applyCreditAction(
     return { success: true, data: undefined }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Gagal menerapkan kredit' }
+  }
+}
+
+export async function sendInvoiceEmailAction(invoiceId: string): Promise<ActionResult> {
+  const auth = await requireAdmin()
+  if (!auth.success) return auth
+
+  try {
+    const invoice = await getInvoiceForPdf(invoiceId)
+
+    if (!invoice.customer.email) {
+      return { success: false, error: 'Pelanggan tidak memiliki email' }
+    }
+
+    const { renderToBuffer } = await import('@react-pdf/renderer')
+    const React = await import('react')
+    // any: renderToBuffer expects ReactElement<DocumentProps> but InvoicePdfDocument
+    // returns a <Document> wrapper — the runtime shape is correct, cast is safe.
+    const element = React.createElement(InvoicePdfDocument, { invoice })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pdfBuffer = await renderToBuffer(element as any)
+
+    await sendInvoiceEmail(invoice.customer.email, invoice, pdfBuffer as Buffer)
+
+    if (invoice.status === 'draft') {
+      await markInvoiceSent(invoiceId)
+    }
+
+    revalidatePath(`/penjualan/invoices/${invoiceId}`)
+    return { success: true, data: undefined }
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Gagal mengirim email' }
   }
 }

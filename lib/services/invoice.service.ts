@@ -161,3 +161,7 @@ export async function getInvoiceForPdf(
 
   return { ...invoice, items }
 }
+
+export async function markInvoiceSent(id: string): Promise<void> {
+  await invoiceQueries.updateInvoiceStatus(id, 'sent')
+}
