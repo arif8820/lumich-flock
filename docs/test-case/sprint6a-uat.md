@@ -407,3 +407,8 @@
 | REG-01 | SO fulfillment regression | ⬜ |
 | REG-02 | Sales return credit note regression | ⬜ |
 | REG-03 | Stock balance unaffected by payments | ⬜ |
+
+**Test user credentials (via Supabase Auth):**
+- Supervisor: `supervisor@lumich.test` / Password123
+- Admin: `admin@lumich.test` / Password123
+- Operator: `operator@lumich.test` / Password123

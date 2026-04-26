@@ -22,8 +22,14 @@ vi.mock('@/lib/db/queries/sales-return.queries', () => ({
   listSalesReturns: vi.fn(),
 }))
 
+vi.mock('@/lib/db/queries/invoice.queries', () => ({
+  countInvoicesThisMonth: vi.fn(),
+  findInvoiceByOrderId: vi.fn(),
+}))
+
 import * as salesOrderQueries from '@/lib/db/queries/sales-order.queries'
 import * as salesReturnQueries from '@/lib/db/queries/sales-return.queries'
+import * as invoiceQueries from '@/lib/db/queries/invoice.queries'
 import {
   createSalesReturn,
   approveSalesReturn,
