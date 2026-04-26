@@ -84,6 +84,7 @@ export async function sendInvoiceEmail(
         {
           filename: `${invoice.invoiceNumber}.pdf`,
           content: pdfBuffer,
+          contentType: 'application/pdf',
         },
       ],
     })
