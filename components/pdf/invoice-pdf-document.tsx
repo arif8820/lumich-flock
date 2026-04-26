@@ -1,7 +1,7 @@
-// client: react-pdf renderer requires JSX for Document/Page/View/Text components
+// react-pdf: server-only — rendered via renderToBuffer() in the PDF API route
 import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import type { InvoiceDetails } from '@/lib/db/queries/invoice.queries'
-import type { SalesOrderItem } from '@/lib/db/schema'
+import type { Invoice, SalesOrderItem } from '@/lib/db/schema'
 
 // ---------- types ----------
 
@@ -15,7 +15,7 @@ const LF_BLUE = '#4a7fa5'
 const LF_TEAL = '#4a9e96'
 const BANK_DETAILS = 'Bank BCA — No. Rek: 123-456-789 — a.n. LumichFarm'
 
-function getTitleByType(type: 'sales_invoice' | 'cash_receipt' | 'credit_note'): string {
+function getTitleByType(type: Invoice['type']): string {
   switch (type) {
     case 'cash_receipt':
       return 'KWITANSI'
