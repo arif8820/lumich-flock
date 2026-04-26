@@ -13,3 +13,5 @@ const client = postgres(connectionUrl, {
 })
 
 export const db = drizzle(client, { schema })
+
+export type DrizzleTx = Parameters<Parameters<(typeof db)['transaction']>[0]>[0]

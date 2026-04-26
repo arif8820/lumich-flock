@@ -29,9 +29,14 @@ vi.mock('@/lib/db/queries/inventory.queries', () => ({
   approveRegradeRequestTx: vi.fn(),
 }))
 
+vi.mock('@/lib/db/queries/invoice.queries', () => ({
+  countInvoicesThisMonth: vi.fn().mockResolvedValue(0),
+}))
+
 import * as customerQueries from '@/lib/db/queries/customer.queries'
 import * as salesOrderQueries from '@/lib/db/queries/sales-order.queries'
 import * as inventoryQueries from '@/lib/db/queries/inventory.queries'
+import * as invoiceQueries from '@/lib/db/queries/invoice.queries'
 import {
   createDraftSO,
   confirmSO,
@@ -316,10 +321,11 @@ describe('sales-order.service', () => {
     it('fulfills SO with sufficient stock (cash)', async () => {
       vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockConfirmedSO as any)
       vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue(mockSOItems as any)
-      vi.mocked(inventoryQueries.getStockBalance).mockResolvedValue(5000)
+      vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(5000)
+      vi.mocked(customerQueries.findCustomerById).mockResolvedValue(mockCustomer as any)
       vi.mocked(salesOrderQueries.fulfillSOTx).mockResolvedValue(undefined)
 
-      const result = await fulfillSO('so-1', 'user-1', 'supervisor')
+      await fulfillSO('so-1', 'user-1', 'supervisor')
 
       expect(salesOrderQueries.fulfillSOTx).toHaveBeenCalled()
     })
@@ -327,7 +333,7 @@ describe('sales-order.service', () => {
     it('throws when stock insufficient', async () => {
       vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockConfirmedSO as any)
       vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue(mockSOItems as any)
-      vi.mocked(inventoryQueries.getStockBalance).mockResolvedValue(500)
+      vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(500)
 
       await expect(fulfillSO('so-1', 'user-1', 'supervisor')).rejects.toThrow(
         'Stok tidak mencukupi saat transaksi diproses'
@@ -338,8 +344,8 @@ describe('sales-order.service', () => {
       const creditSO = { ...mockConfirmedSO, paymentMethod: 'credit' as const }
       vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(creditSO as any)
       vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue(mockSOItems as any)
-      vi.mocked(inventoryQueries.getStockBalance).mockResolvedValue(5000)
-      vi.mocked(salesOrderQueries.getCustomerOutstandingCredit).mockResolvedValue('9500000')
+      vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(5000)
+      vi.mocked(salesOrderQueries.getCustomerOutstandingCredit).mockResolvedValue(9500000)
       vi.mocked(customerQueries.findCustomerById).mockResolvedValue(mockCustomer as any)
 
       await expect(fulfillSO('so-1', 'user-1', 'supervisor')).rejects.toThrow(
@@ -358,6 +364,36 @@ describe('sales-order.service', () => {
       await expect(fulfillSO('so-1', 'user-1', 'supervisor')).rejects.toThrow(
         'Status SO tidak valid untuk operasi ini'
       )
+    })
+
+    it('cash SO: invoice number starts with RCP-', async () => {
+      vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockConfirmedSO as any)
+      vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue(mockSOItems as any)
+      vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(5000)
+      vi.mocked(customerQueries.findCustomerById).mockResolvedValue(mockCustomer as any)
+      vi.mocked(invoiceQueries.countInvoicesThisMonth).mockResolvedValue(0)
+      vi.mocked(salesOrderQueries.fulfillSOTx).mockResolvedValue(undefined)
+
+      await fulfillSO('so-1', 'user-1', 'supervisor')
+
+      const invoiceArg = vi.mocked(salesOrderQueries.fulfillSOTx).mock.calls[0][3]
+      expect((invoiceArg as any).invoiceNumber).toMatch(/^RCP-/)
+    })
+
+    it('credit SO: invoice number starts with INV-', async () => {
+      const creditSO = { ...mockConfirmedSO, paymentMethod: 'credit' as const }
+      vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(creditSO as any)
+      vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue(mockSOItems as any)
+      vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(5000)
+      vi.mocked(salesOrderQueries.getCustomerOutstandingCredit).mockResolvedValue(0)
+      vi.mocked(customerQueries.findCustomerById).mockResolvedValue(mockCustomer as any)
+      vi.mocked(invoiceQueries.countInvoicesThisMonth).mockResolvedValue(0)
+      vi.mocked(salesOrderQueries.fulfillSOTx).mockResolvedValue(undefined)
+
+      await fulfillSO('so-1', 'user-1', 'supervisor')
+
+      const invoiceArg = vi.mocked(salesOrderQueries.fulfillSOTx).mock.calls[0][3]
+      expect((invoiceArg as any).invoiceNumber).toMatch(/^INV-/)
     })
   })
 })
