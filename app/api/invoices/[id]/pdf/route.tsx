@@ -3,8 +3,7 @@ export const runtime = 'nodejs' // REQUIRED — react-pdf fails on edge runtime
 import { renderToBuffer } from '@react-pdf/renderer'
 import { getSession } from '@/lib/auth/get-session'
 import { createSupabaseServerClient } from '@/lib/auth/server'
-import { getInvoiceForPdf } from '@/lib/services/invoice.service'
-import { updateInvoicePdfInfo } from '@/lib/db/queries/invoice.queries'
+import { getInvoiceForPdf, savePdfMetadata } from '@/lib/services/invoice.service'
 import { InvoicePdfDocument } from '@/components/pdf/invoice-pdf-document'
 
 const PDF_MAX_AGE_MS = 7 * 24 * 3600 * 1000
@@ -16,7 +15,7 @@ export async function GET(
   // 1. Auth check
   const session = await getSession()
   if (!session) {
-    return new Response('Unauthorized', { status: 401 })
+    return new Response('Tidak diizinkan', { status: 401 })
   }
 
   // 2. Extract id
@@ -34,10 +33,10 @@ export async function GET(
     return new Response('Terjadi kesalahan server', { status: 500 })
   }
 
-  // 4. Cache check — redirect to existing signed URL if still valid
-  if (invoice.pdfUrl && invoice.pdfGeneratedAt && invoice.updatedAt) {
+  // 4. Cache check — redirect to existing signed URL if still valid (age < 7 days)
+  if (invoice.pdfUrl && invoice.pdfGeneratedAt) {
     const age = Date.now() - invoice.pdfGeneratedAt.getTime()
-    if (age < PDF_MAX_AGE_MS && invoice.pdfGeneratedAt > invoice.updatedAt) {
+    if (age < PDF_MAX_AGE_MS) {
       return Response.redirect(invoice.pdfUrl, 302)
     }
   }
@@ -69,7 +68,7 @@ export async function GET(
 
     // 8. Persist PDF metadata on invoice record
     const now = new Date()
-    await updateInvoicePdfInfo(id, signedData.signedUrl, now)
+    await savePdfMetadata(id, signedData.signedUrl, now)
 
     // 9. Return PDF bytes — convert Buffer to Uint8Array for Web Response compatibility
     return new Response(new Uint8Array(pdfBuffer), {

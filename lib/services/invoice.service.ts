@@ -147,6 +147,10 @@ export async function getAgingData(): Promise<AgingRow[]> {
   return invoiceQueries.getAgingReport()
 }
 
+export async function savePdfMetadata(id: string, pdfUrl: string, pdfGeneratedAt: Date): Promise<void> {
+  await invoiceQueries.updateInvoicePdfInfo(id, pdfUrl, pdfGeneratedAt)
+}
+
 export async function getInvoiceForPdf(
   id: string
 ): Promise<InvoiceDetails & { items: SalesOrderItem[] }> {
