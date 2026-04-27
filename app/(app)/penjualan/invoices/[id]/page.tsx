@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSession } from '@/lib/auth/get-session'
 import { getInvoiceDetails } from '@/lib/services/invoice.service'
-import { recordPaymentAction, applyCreditAction } from '@/lib/actions/invoice.actions'
+import { recordPaymentAction, applyCreditAction, sendInvoiceEmailAction } from '@/lib/actions/invoice.actions'
+import { getAppSetting } from '@/lib/services/app-settings.service'
 import { InvoiceStatusBadge } from '@/components/ui/invoice-status-badge'
 import { Button } from '@/components/ui/button'
 
@@ -39,6 +40,21 @@ export default async function InvoiceDetailPage({
   const canReceivePayment = !['paid', 'cancelled'].includes(invoice.status)
   const outstanding = Number(invoice.totalAmount) - Number(invoice.paidAmount)
 
+  // WA share setup (admin only)
+  const waTemplate = isAdmin ? (await getAppSetting('wa_invoice_template') ?? '') : ''
+  const waMessage = waTemplate
+    .replace('{customerName}', invoice.customer.name)
+    .replace('{invoiceNumber}', invoice.invoiceNumber)
+    .replace('{totalAmount}', Number(invoice.totalAmount).toLocaleString('id-ID'))
+    .replace('{dueDate}', new Date(invoice.dueDate).toLocaleDateString('id-ID'))
+    .replace('{pdfUrl}', invoice.pdfUrl ?? 'belum tersedia')
+  const waUrl = (() => {
+    if (!isAdmin || !waTemplate || !invoice.customer.phone) return null
+    const stripped = invoice.customer.phone.replace(/\D/g, '')
+    const waPhone = stripped.startsWith('0') ? '62' + stripped.slice(1) : stripped
+    return `https://wa.me/${waPhone}?text=${encodeURIComponent(waMessage)}`
+  })()
+
   // Inline server actions
   async function handleRecordPayment(formData: FormData) {
     'use server'
@@ -50,6 +66,15 @@ export default async function InvoiceDetailPage({
     redirect(`/penjualan/invoices/${id}?success=Pembayaran berhasil dicatat`)
   }
 
+  async function handleSendEmail() {
+    'use server'
+    const res = await sendInvoiceEmailAction(id)
+    if (!res.success) {
+      redirect(`/penjualan/invoices/${id}?error=${encodeURIComponent(res.error ?? 'Gagal mengirim email')}`)
+    }
+    redirect(`/penjualan/invoices/${id}?success=Email+berhasil+dikirim`)
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -57,9 +82,45 @@ export default async function InvoiceDetailPage({
         <h1 className="text-[18px] font-bold" style={{ color: '#2d3a2e', letterSpacing: '-0.3px' }}>
           Detail Invoice
         </h1>
-        <Button variant="outline" href="/penjualan/invoices">
-          Kembali
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Download PDF button */}
+          <a
+            href={`/api/invoices/${id}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center px-4 py-2 text-sm font-medium shadow-lf-btn"
+            style={{ backgroundColor: '#e8f0fe', color: '#3d7cb0', borderRadius: '10px' }}
+          >
+            Unduh PDF
+          </a>
+          {/* WA share button — admin only, requires customer phone */}
+          {isAdmin && waUrl && (
+            <a
+              href={waUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center px-4 py-2 text-sm font-medium shadow-lf-btn"
+              style={{ backgroundColor: '#25D366', color: '#fff', borderRadius: '10px' }}
+            >
+              Kirim WA
+            </a>
+          )}
+          {/* Email send button — admin only, requires customer email */}
+          {isAdmin && invoice.customer.email && (
+            <form action={handleSendEmail}>
+              <button
+                type="submit"
+                className="inline-flex items-center px-4 py-2 text-sm font-medium shadow-lf-btn"
+                style={{ backgroundColor: 'var(--lf-blue)', color: '#fff', borderRadius: '10px' }}
+              >
+                Kirim Email
+              </button>
+            </form>
+          )}
+          <Button variant="outline" href="/penjualan/invoices">
+            Kembali
+          </Button>
+        </div>
       </div>
 
       {/* Alerts */}

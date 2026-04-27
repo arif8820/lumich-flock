@@ -9,7 +9,7 @@ if (!connectionUrl) {
 
 const client = postgres(connectionUrl, {
   prepare: false, // required for Supabase Transaction pooler
-  max: 1,         // cap connections; free-tier pooler hits limit quickly in dev
+  max: 1,         // Session mode pooler: keep to 1 to avoid exhausting free-tier pool
 })
 
 export const db = drizzle(client, { schema })

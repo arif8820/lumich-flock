@@ -147,6 +147,10 @@ export async function getAgingData(): Promise<AgingRow[]> {
   return invoiceQueries.getAgingReport()
 }
 
+export async function savePdfMetadata(id: string, pdfUrl: string, pdfGeneratedAt: Date): Promise<void> {
+  await invoiceQueries.updateInvoicePdfInfo(id, pdfUrl, pdfGeneratedAt)
+}
+
 export async function getInvoiceForPdf(
   id: string
 ): Promise<InvoiceDetails & { items: SalesOrderItem[] }> {
@@ -156,4 +160,11 @@ export async function getInvoiceForPdf(
     invoice.orderId == null ? [] : await findSalesOrderItems(invoice.orderId)
 
   return { ...invoice, items }
+}
+
+export async function markInvoiceSent(id: string): Promise<void> {
+  const invoice = await invoiceQueries.getInvoiceWithDetails(id)
+  if (!invoice) throw new Error('Invoice tidak ditemukan')
+  if (invoice.status !== 'draft') return
+  await invoiceQueries.updateInvoiceStatus(id, 'sent')
 }

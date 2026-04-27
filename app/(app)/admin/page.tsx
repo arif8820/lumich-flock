@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Users, Home, ShoppingBag, Settings } from 'lucide-react'
+import { Users, Home, ShoppingBag, Settings, MessageSquare } from 'lucide-react'
 
 const MENU = [
   {
@@ -25,6 +25,12 @@ const MENU = [
     icon: Settings,
     label: 'Fase Flock',
     desc: 'Konfigurasi fase pertumbuhan ayam',
+  },
+  {
+    href: '/admin/settings/wa-template',
+    icon: MessageSquare,
+    label: 'Template WhatsApp',
+    desc: 'Konfigurasi pesan WhatsApp untuk invoice',
   },
 ]
 

@@ -20,6 +20,8 @@ export const invoices = pgTable('invoices', {
   totalAmount: numeric('total_amount', { precision: 15, scale: 2 }).notNull(),
   paidAmount: numeric('paid_amount', { precision: 15, scale: 2 }).default('0').notNull(),
   status: invoiceStatusEnum('status').notNull(),
+  pdfUrl: text('pdf_url'),
+  pdfGeneratedAt: timestamp('pdf_generated_at', { withTimezone: true }),
   notes: text('notes'),
   createdBy: uuid('created_by').references(() => users.id),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
