@@ -3,7 +3,7 @@
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth/get-session'
-import { upsertAppSetting } from '@/lib/db/queries/app-settings.queries'
+import { saveAppSetting } from '@/lib/services/app-settings.service'
 
 type ActionResult = { success: true } | { success: false; error: string }
 
@@ -19,7 +19,7 @@ export async function saveWaTemplateAction(formData: FormData): Promise<ActionRe
   if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
 
   try {
-    await upsertAppSetting('wa_invoice_template', parsed.data.template, session.id)
+    await saveAppSetting('wa_invoice_template', parsed.data.template, session.id)
     revalidatePath('/admin/settings/wa-template')
     return { success: true }
   } catch (err) {

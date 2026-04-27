@@ -13,7 +13,8 @@ export type InvoicePdfProps = {
 
 const LF_BLUE = '#4a7fa5'
 const LF_TEAL = '#4a9e96'
-const BANK_DETAILS = 'Bank BCA — No. Rek: 123-456-789 — a.n. LumichFarm'
+// TODO: configure via app_settings 'bank_details' key in a future sprint
+const BANK_DETAILS = ''
 
 function getTitleByType(type: Invoice['type']): string {
   switch (type) {
@@ -437,7 +438,7 @@ export function InvoicePdfDocument({ invoice }: InvoicePdfProps) {
 
         {/* Footer */}
         <View style={styles.footer} fixed>
-          <Text style={styles.bankDetails}>{BANK_DETAILS}</Text>
+          {BANK_DETAILS && <Text style={styles.bankDetails}>{BANK_DETAILS}</Text>}
           {isCashReceipt ? (
             <View style={styles.stampArea}>
               <Text style={styles.stampText}>Tanda Tangan & Cap</Text>

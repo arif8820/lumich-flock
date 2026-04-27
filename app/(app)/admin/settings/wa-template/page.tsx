@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/get-session'
-import { getAppSetting } from '@/lib/db/queries/app-settings.queries'
+import { getAppSetting } from '@/lib/services/app-settings.service'
 import { saveWaTemplateAction } from '@/lib/actions/app-settings.actions'
 
 const DEFAULT_TEMPLATE = `Halo {customerName},

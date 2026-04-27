@@ -6,7 +6,7 @@ import { createSupabaseServerClient } from '@/lib/auth/server'
 import { getInvoiceForPdf, savePdfMetadata } from '@/lib/services/invoice.service'
 import { InvoicePdfDocument } from '@/components/pdf/invoice-pdf-document'
 
-const PDF_MAX_AGE_MS = 7 * 24 * 3600 * 1000
+const PDF_MAX_AGE_MS = 6 * 24 * 3600 * 1000
 
 export async function GET(
   _req: Request,

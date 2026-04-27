@@ -2,7 +2,7 @@ import { db } from '@/lib/db'
 import { appSettings } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 
-// USED BY: [wa-template/page, invoices/[id]/page] — count: 2
+// USED BY: [app-settings.service] — count: 1
 export async function getAppSetting(key: string): Promise<string | null> {
   const [row] = await db
     .select({ value: appSettings.value })

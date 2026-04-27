@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { getSession } from '@/lib/auth/get-session'
 import { getInvoiceDetails } from '@/lib/services/invoice.service'
 import { recordPaymentAction, applyCreditAction, sendInvoiceEmailAction } from '@/lib/actions/invoice.actions'
-import { getAppSetting } from '@/lib/db/queries/app-settings.queries'
+import { getAppSetting } from '@/lib/services/app-settings.service'
 import { InvoiceStatusBadge } from '@/components/ui/invoice-status-badge'
 import { Button } from '@/components/ui/button'
 
