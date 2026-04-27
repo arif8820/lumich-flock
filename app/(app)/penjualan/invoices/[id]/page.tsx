@@ -48,9 +48,12 @@ export default async function InvoiceDetailPage({
     .replace('{totalAmount}', Number(invoice.totalAmount).toLocaleString('id-ID'))
     .replace('{dueDate}', new Date(invoice.dueDate).toLocaleDateString('id-ID'))
     .replace('{pdfUrl}', invoice.pdfUrl ?? 'belum tersedia')
-  const waUrl = isAdmin && invoice.customer.phone
-    ? `https://wa.me/${invoice.customer.phone.replace(/\D/g, '')}?text=${encodeURIComponent(waMessage)}`
-    : null
+  const waUrl = (() => {
+    if (!isAdmin || !waTemplate || !invoice.customer.phone) return null
+    const stripped = invoice.customer.phone.replace(/\D/g, '')
+    const waPhone = stripped.startsWith('0') ? '62' + stripped.slice(1) : stripped
+    return `https://wa.me/${waPhone}?text=${encodeURIComponent(waMessage)}`
+  })()
 
   // Inline server actions
   async function handleRecordPayment(formData: FormData) {
@@ -86,7 +89,7 @@ export default async function InvoiceDetailPage({
               href={waUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center px-4 py-2 text-sm font-medium"
+              className="inline-flex items-center px-4 py-2 text-sm font-medium shadow-lf-btn"
               style={{ backgroundColor: '#25D366', color: '#fff', borderRadius: '10px' }}
             >
               Kirim WA
@@ -97,7 +100,7 @@ export default async function InvoiceDetailPage({
             <form action={handleSendEmail}>
               <button
                 type="submit"
-                className="inline-flex items-center px-4 py-2 text-sm font-medium"
+                className="inline-flex items-center px-4 py-2 text-sm font-medium shadow-lf-btn"
                 style={{ backgroundColor: 'var(--lf-blue)', color: '#fff', borderRadius: '10px' }}
               >
                 Kirim Email
