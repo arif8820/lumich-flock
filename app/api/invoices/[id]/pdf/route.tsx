@@ -2,7 +2,7 @@ export const runtime = 'nodejs' // REQUIRED — react-pdf fails on edge runtime
 
 import { renderToBuffer } from '@react-pdf/renderer'
 import { getSession } from '@/lib/auth/get-session'
-import { createSupabaseServerClient } from '@/lib/auth/server'
+import { createSupabaseServiceClient } from '@/lib/auth/server'
 import { getInvoiceForPdf, savePdfMetadata } from '@/lib/services/invoice.service'
 import { InvoicePdfDocument } from '@/components/pdf/invoice-pdf-document'
 
@@ -46,8 +46,8 @@ export async function GET(
     // 5. Render PDF to buffer
     const pdfBuffer = await renderToBuffer(<InvoicePdfDocument invoice={invoice} />)
 
-    // 6. Upload to Supabase Storage
-    const supabase = await createSupabaseServerClient()
+    // 6. Upload to Supabase Storage (service role to bypass RLS)
+    const supabase = createSupabaseServiceClient()
     const storagePath = `invoices/${invoice.id}.pdf`
     const { error: uploadError } = await supabase.storage
       .from('invoices')

@@ -83,6 +83,16 @@ export default async function InvoiceDetailPage({
           Detail Invoice
         </h1>
         <div className="flex items-center gap-2">
+          {/* Download PDF button */}
+          <a
+            href={`/api/invoices/${id}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center px-4 py-2 text-sm font-medium shadow-lf-btn"
+            style={{ backgroundColor: '#e8f0fe', color: '#3d7cb0', borderRadius: '10px' }}
+          >
+            Unduh PDF
+          </a>
           {/* WA share button — admin only, requires customer phone */}
           {isAdmin && waUrl && (
             <a
