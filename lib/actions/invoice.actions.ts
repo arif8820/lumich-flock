@@ -100,6 +100,9 @@ export async function sendInvoiceEmailAction(invoiceId: string): Promise<ActionR
   const auth = await requireAdmin()
   if (!auth.success) return auth
 
+  const parsed = z.string().uuid('ID invoice tidak valid').safeParse(invoiceId)
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
+
   try {
     const invoice = await getInvoiceForPdf(invoiceId)
 
@@ -122,6 +125,7 @@ export async function sendInvoiceEmailAction(invoiceId: string): Promise<ActionR
     }
 
     revalidatePath(`/penjualan/invoices/${invoiceId}`)
+    revalidatePath('/penjualan/invoices')
     return { success: true, data: undefined }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Gagal mengirim email' }

@@ -163,5 +163,8 @@ export async function getInvoiceForPdf(
 }
 
 export async function markInvoiceSent(id: string): Promise<void> {
+  const invoice = await invoiceQueries.getInvoiceWithDetails(id)
+  if (!invoice) throw new Error('Invoice tidak ditemukan')
+  if (invoice.status !== 'draft') return
   await invoiceQueries.updateInvoiceStatus(id, 'sent')
 }

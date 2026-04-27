@@ -12,6 +12,9 @@ export async function sendInvoiceEmail(
   invoice: InvoiceDetails & { items: SalesOrderItem[] },
   pdfBuffer: Buffer
 ): Promise<void> {
+  const emailFrom = process.env.EMAIL_FROM
+  if (!emailFrom) throw new Error('EMAIL_FROM env var tidak dikonfigurasi')
+
   const resend = getResend()
 
   const totalFormatted = Number(invoice.totalAmount).toLocaleString('id-ID', {
@@ -76,7 +79,7 @@ export async function sendInvoiceEmail(
 
   try {
     await resend.emails.send({
-      from: process.env.EMAIL_FROM!,
+      from: emailFrom,
       to,
       subject,
       html,
