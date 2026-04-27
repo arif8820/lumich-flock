@@ -1,6 +1,7 @@
 'use server'
 
 import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth/get-session'
 import { upsertAppSetting } from '@/lib/db/queries/app-settings.queries'
 
@@ -19,6 +20,7 @@ export async function saveWaTemplateAction(formData: FormData): Promise<ActionRe
 
   try {
     await upsertAppSetting('wa_invoice_template', parsed.data.template, session.id)
+    revalidatePath('/admin/settings/wa-template')
     return { success: true }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
