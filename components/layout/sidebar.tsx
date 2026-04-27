@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { LayoutDashboard, Egg, Package, DollarSign, Bird, Settings, LogOut, BarChart2 } from 'lucide-react'
 import type { SessionUser } from '@/lib/auth/get-session'
+import type { Notification } from '@/lib/services/notification.service'
+import { NotificationBell } from '@/components/ui/notification-bell'
 
 const mainNav = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -19,7 +21,19 @@ function getRoleLabel(role: string) {
   return map[role] ?? role
 }
 
-export function Sidebar({ user, currentPath }: { user: SessionUser; currentPath: string }) {
+export function Sidebar({
+  user,
+  currentPath,
+  unreadCount,
+  notifications,
+  readNotificationIds,
+}: {
+  user: SessionUser
+  currentPath: string
+  unreadCount: number
+  notifications: Notification[]
+  readNotificationIds: string[]
+}) {
   return (
     <aside className="hidden md:flex w-[220px] flex-shrink-0 flex-col bg-white h-screen sticky top-0" style={{ borderRight: '1px solid #e0e8df' }}>
       {/* Brand */}
@@ -30,10 +44,15 @@ export function Sidebar({ user, currentPath }: { user: SessionUser; currentPath:
         >
           <Bird size={20} color="white" strokeWidth={1.8} />
         </div>
-        <div>
+        <div className="flex-1 min-w-0">
           <p className="text-[13px] font-bold leading-tight" style={{ color: '#2d3a2e' }}>LumichFlock</p>
           <p className="text-[11px]" style={{ color: '#8fa08f' }}>ERP Peternakan</p>
         </div>
+        <NotificationBell
+          initialUnread={unreadCount}
+          initialNotifications={notifications}
+          readIds={readNotificationIds}
+        />
       </div>
 
       {/* Farm info box */}

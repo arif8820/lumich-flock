@@ -75,9 +75,12 @@ describe('sales-order.service', () => {
       status: 'active' as const,
       creditLimit: '10000000',
       paymentTerms: 30,
+      email: null,
       phone: null,
       address: null,
       notes: null,
+      isImported: false,
+      importedBy: null,
       createdBy: 'admin-id',
       createdAt: new Date(),
       updatedAt: null,
@@ -376,7 +379,7 @@ describe('sales-order.service', () => {
 
       await fulfillSO('so-1', 'user-1', 'supervisor')
 
-      const invoiceArg = vi.mocked(salesOrderQueries.fulfillSOTx).mock.calls[0][3]
+      const invoiceArg = vi.mocked(salesOrderQueries.fulfillSOTx).mock.calls[0]![3]
       expect((invoiceArg as any).invoiceNumber).toMatch(/^RCP-/)
     })
 
@@ -392,7 +395,7 @@ describe('sales-order.service', () => {
 
       await fulfillSO('so-1', 'user-1', 'supervisor')
 
-      const invoiceArg = vi.mocked(salesOrderQueries.fulfillSOTx).mock.calls[0][3]
+      const invoiceArg = vi.mocked(salesOrderQueries.fulfillSOTx).mock.calls[0]![3]
       expect((invoiceArg as any).invoiceNumber).toMatch(/^INV-/)
     })
   })

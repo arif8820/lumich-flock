@@ -15,6 +15,8 @@ export const dailyRecords = pgTable('daily_records', {
   avgWeightKg: numeric('avg_weight_kg', { precision: 10, scale: 3 }),
   feedKg: numeric('feed_kg', { precision: 10, scale: 3 }),
   isLateInput: boolean('is_late_input').notNull().default(false),
+  isImported: boolean('is_imported').notNull().default(false),
+  importedBy: uuid('imported_by').references(() => users.id),
   createdBy: uuid('created_by').references(() => users.id),
   updatedBy: uuid('updated_by').references(() => users.id),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
