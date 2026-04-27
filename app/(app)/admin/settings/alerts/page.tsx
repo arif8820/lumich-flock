@@ -31,6 +31,13 @@ const SETTINGS = [
     placeholder: '1',
     unit: 'hari',
   },
+  {
+    key: 'alert_stock_max_threshold',
+    label: 'Batas Stok Maksimal (butir)',
+    description: 'Alert jika total stok melebihi batas ini. Default: 10000',
+    placeholder: '10000',
+    unit: 'butir',
+  },
 ]
 
 export default async function AlertSettingsPage({

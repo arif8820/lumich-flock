@@ -18,6 +18,7 @@ import { getAppSetting } from '@/lib/db/queries/app-settings.queries'
 import { findActiveCooldown, upsertCooldown } from '@/lib/db/queries/alert-cooldown.queries'
 import { createNotification } from '@/lib/db/queries/notification.queries'
 import { getPhaseForWeeks } from '@/lib/services/flock-phase.service'
+import { getStockBalanceByGrade } from '@/lib/db/queries/inventory.queries'
 import type { NewNotification } from '@/lib/db/schema'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -253,6 +254,33 @@ async function checkOverdueInvoiceAlerts(overdueDelayDays: number): Promise<void
   }
 }
 
+/**
+ * Stock overstock alert — fires if total stock (grade A + B) > threshold.
+ * Cooldown: 24h (fixed entity id '00000000-0000-0000-0000-000000000001').
+ */
+async function checkStockAlerts(threshold: number): Promise<void> {
+  const balanceA = await getStockBalanceByGrade('A')
+  const balanceB = await getStockBalanceByGrade('B')
+  const totalBalance = balanceA + balanceB
+
+  if (totalBalance <= threshold) return
+
+  const alertType = 'stock_warning'
+  const fixedEntityId = '00000000-0000-0000-0000-000000000001'
+  const cooldown = await findActiveCooldown(alertType, fixedEntityId, 24)
+  if (cooldown) return
+
+  await db.transaction(async (tx) => {
+    await createNotification({
+      type: 'stock_warning',
+      title: 'Stok Terlalu Tinggi',
+      body: `Total stok saat ini ${totalBalance} butir melebihi batas ${threshold} butir`,
+      targetRole: 'all',
+    }, tx)
+    await upsertCooldown(alertType, 'stock', fixedEntityId, tx)
+  })
+}
+
 // ─── main entry ───────────────────────────────────────────────────────────────
 
 /**
@@ -266,11 +294,12 @@ export async function runDailyAlerts(): Promise<{
   fcr: number
   overdueInvoice: number
 }> {
-  const [fcrThreshold, depletionThreshold, hdpDropThreshold, overdueDelayDays] = await Promise.all([
+  const [fcrThreshold, depletionThreshold, hdpDropThreshold, overdueDelayDays, stockMaxThreshold] = await Promise.all([
     getNumericSetting('alert_fcr_threshold', 2.5),
     getNumericSetting('alert_depletion_pct', 0.5),
     getNumericSetting('alert_hdp_drop_pct', 5),
     getNumericSetting('alert_overdue_delay_days', 1),
+    getNumericSetting('alert_stock_max_threshold', 10000),
   ])
 
   // Run sequentially to avoid DB contention
@@ -285,6 +314,7 @@ export async function runDailyAlerts(): Promise<{
   await checkDepletionAlerts(depletionThreshold)
   await checkFcrAlerts(fcrThreshold)
   await checkOverdueInvoiceAlerts(overdueDelayDays)
+  await checkStockAlerts(stockMaxThreshold)
 
   // Return approximate counts (good enough for logging)
   return {

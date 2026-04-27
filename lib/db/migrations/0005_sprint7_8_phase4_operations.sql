@@ -52,6 +52,8 @@ INSERT INTO "app_settings" ("key","value","updated_at") VALUES
   ('alert_hdp_drop_pct',      '5',    NOW()),
   ('alert_overdue_delay_days','1',    NOW())
 ON CONFLICT (key) DO NOTHING;
+
+INSERT INTO "app_settings" ("key", "value") VALUES ('alert_stock_max_threshold', '10000') ON CONFLICT ("key") DO NOTHING;
 --> statement-breakpoint
 
 -- ============================================
