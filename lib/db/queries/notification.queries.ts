@@ -83,3 +83,12 @@ export async function markAllReadForUser(
   const values = visibleNotifications.map((n) => ({ notificationId: n.id, userId }))
   await db.insert(notificationReads).values(values).onConflictDoNothing()
 }
+
+export async function getReadNotificationIdsForUser(
+  userId: string
+): Promise<{ notificationId: string }[]> {
+  return db
+    .select({ notificationId: notificationReads.notificationId })
+    .from(notificationReads)
+    .where(eq(notificationReads.userId, userId))
+}

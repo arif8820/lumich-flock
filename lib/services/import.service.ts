@@ -17,7 +17,9 @@ import {
   dailyRecords,
   customers,
   inventoryMovements,
+  coops,
 } from '@/lib/db/schema'
+import { eq, and, sql } from 'drizzle-orm'
 import type { NewFlock, NewDailyRecord, NewCustomer, NewInventoryMovement } from '@/lib/db/schema'
 
 // ─── CSV parsing helpers ──────────────────────────────────────────────────────
@@ -76,20 +78,26 @@ export type FlockImportRow = Omit<NewFlock, 'isImported' | 'importedBy'>
 /**
  * Expected CSV columns: coop_id, name, arrival_date, initial_count, breed (opt), notes (opt)
  */
-export function parseFlockscsv(csvText: string): ParseResult<FlockImportRow> {
+export async function parseFlockscsv(csvText: string): Promise<ParseResult<FlockImportRow>> {
   const rows = parseCsv(csvText)
   const [, ...dataRows] = rows // skip header
 
   const valid: ParsedRow<FlockImportRow>[] = []
   const errors: ParseError[] = []
 
-  dataRows.forEach((cols, idx) => {
+  for (const [idx, cols] of dataRows.entries()) {
     const rowNum = idx + 2
     const rowErrors: string[] = []
 
     const [coopId, name, arrivalDateStr, initialCountStr, breed, notes] = cols
 
-    if (!coopId) rowErrors.push(`Baris ${rowNum}: coop_id wajib diisi`)
+    if (!coopId) {
+      rowErrors.push(`Baris ${rowNum}: coop_id wajib diisi`)
+    } else {
+      // FK validation: coopId must exist in coops table
+      const [coopRow] = await db.select({ id: coops.id }).from(coops).where(eq(coops.id, coopId)).limit(1)
+      if (!coopRow) rowErrors.push(`Baris ${rowNum}: coop_id "${coopId}" tidak ditemukan`)
+    }
     if (!name) rowErrors.push(`Baris ${rowNum}: name wajib diisi`)
 
     const { date: arrivalDate, error: dateErr } = parseDate(arrivalDateStr ?? '', 'arrival_date', rowNum)
@@ -101,7 +109,7 @@ export function parseFlockscsv(csvText: string): ParseResult<FlockImportRow> {
 
     if (rowErrors.length > 0) {
       errors.push({ rowNum, errors: rowErrors })
-      return
+      continue
     }
 
     valid.push({
@@ -115,7 +123,7 @@ export function parseFlockscsv(csvText: string): ParseResult<FlockImportRow> {
         notes: notes || null,
       },
     })
-  })
+  }
 
   return { valid, errors }
 }
@@ -129,22 +137,39 @@ export type DailyRecordImportRow = Omit<NewDailyRecord, 'isImported' | 'imported
  * flock_id, record_date, deaths, culled, eggs_grade_a, eggs_grade_b,
  * eggs_cracked, eggs_abnormal, avg_weight_kg (opt), feed_kg (opt)
  */
-export function parseDailyRecordsCsv(csvText: string): ParseResult<DailyRecordImportRow> {
+export async function parseDailyRecordsCsv(csvText: string): Promise<ParseResult<DailyRecordImportRow>> {
   const rows = parseCsv(csvText)
   const [, ...dataRows] = rows
 
   const valid: ParsedRow<DailyRecordImportRow>[] = []
   const errors: ParseError[] = []
 
-  dataRows.forEach((cols, idx) => {
+  for (const [idx, cols] of dataRows.entries()) {
     const rowNum = idx + 2
     const rowErrors: string[] = []
 
     const [flockId, recordDateStr, deathsStr, culledStr, eggsAStr, eggsBStr, crackedStr, abnormalStr, avgWtStr, feedStr] = cols
 
-    if (!flockId) rowErrors.push(`Baris ${rowNum}: flock_id wajib diisi`)
+    if (!flockId) {
+      rowErrors.push(`Baris ${rowNum}: flock_id wajib diisi`)
+    } else {
+      // FK validation: flockId must exist in flocks table
+      const [flockRow] = await db.select({ id: flocks.id }).from(flocks).where(eq(flocks.id, flockId)).limit(1)
+      if (!flockRow) rowErrors.push(`Baris ${rowNum}: flock_id "${flockId}" tidak ditemukan`)
+    }
+
     const { date: recordDate, error: dateErr } = parseDate(recordDateStr ?? '', 'record_date', rowNum)
     if (dateErr) rowErrors.push(dateErr)
+
+    // Duplicate check: (flockId, recordDate) must not already exist
+    if (flockId && recordDate && rowErrors.length === 0) {
+      const [dup] = await db
+        .select({ id: dailyRecords.id })
+        .from(dailyRecords)
+        .where(and(eq(dailyRecords.flockId, flockId), eq(dailyRecords.recordDate, recordDate)))
+        .limit(1)
+      if (dup) rowErrors.push(`Baris ${rowNum}: data untuk flock_id "${flockId}" pada tanggal ini sudah ada`)
+    }
 
     const { num: deaths, error: e1 } = parseInt2(deathsStr ?? '', 'deaths', rowNum)
     if (e1) rowErrors.push(e1)
@@ -163,7 +188,7 @@ export function parseDailyRecordsCsv(csvText: string): ParseResult<DailyRecordIm
 
     if (rowErrors.length > 0) {
       errors.push({ rowNum, errors: rowErrors })
-      return
+      continue
     }
 
     valid.push({
@@ -182,7 +207,7 @@ export function parseDailyRecordsCsv(csvText: string): ParseResult<DailyRecordIm
         isLateInput: false,
       },
     })
-  })
+  }
 
   return { valid, errors }
 }
@@ -248,14 +273,17 @@ export type OpeningStockImportRow = Omit<NewInventoryMovement, 'isImported' | 'i
 /**
  * Expected CSV columns: flock_id, grade (A|B), quantity, movement_date
  */
-export function parseOpeningStockCsv(csvText: string): ParseResult<OpeningStockImportRow> {
+export async function parseOpeningStockCsv(csvText: string): Promise<ParseResult<OpeningStockImportRow>> {
   const rows = parseCsv(csvText)
   const [, ...dataRows] = rows
 
   const valid: ParsedRow<OpeningStockImportRow>[] = []
   const errors: ParseError[] = []
 
-  dataRows.forEach((cols, idx) => {
+  // Check once if any import entries already exist for each cutover date encountered
+  const checkedDates = new Set<string>()
+
+  for (const [idx, cols] of dataRows.entries()) {
     const rowNum = idx + 2
     const rowErrors: string[] = []
 
@@ -269,9 +297,26 @@ export function parseOpeningStockCsv(csvText: string): ParseResult<OpeningStockI
     const { date: movementDate, error: dErr } = parseDate(movementDateStr ?? '', 'movement_date', rowNum)
     if (dErr) rowErrors.push(dErr)
 
+    // Check for existing import entries on the same cutover_date
+    if (movementDate && !checkedDates.has(movementDate.toISOString())) {
+      checkedDates.add(movementDate.toISOString())
+      const [existing] = await db
+        .select({ count: sql<string>`COUNT(*)` })
+        .from(inventoryMovements)
+        .where(
+          and(
+            eq(inventoryMovements.source, 'import'),
+            eq(inventoryMovements.movementDate, movementDate)
+          )
+        )
+      if (Number(existing?.count ?? 0) > 0) {
+        rowErrors.push(`Baris ${rowNum}: import untuk tanggal "${movementDateStr}" sudah ada`)
+      }
+    }
+
     if (rowErrors.length > 0) {
       errors.push({ rowNum, errors: rowErrors })
-      return
+      continue
     }
 
     valid.push({
@@ -286,7 +331,7 @@ export function parseOpeningStockCsv(csvText: string): ParseResult<OpeningStockI
         movementDate: movementDate!,
       },
     })
-  })
+  }
 
   return { valid, errors }
 }

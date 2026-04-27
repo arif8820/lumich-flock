@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/get-session'
-import { getAppSetting, upsertAppSetting } from '@/lib/db/queries/app-settings.queries'
+import { getAppSetting } from '@/lib/services/app-settings.service'
+import { updateAlertSettings } from '@/lib/actions/app-settings.actions'
 
 const SETTINGS = [
   {
@@ -58,22 +59,6 @@ export default async function AlertSettingsPage({
   )
   const settingMap = Object.fromEntries(values.map((v) => [v.key, v.value]))
 
-  async function handleSave(formData: FormData) {
-    'use server'
-    const sess = await getSession()
-    if (!sess || sess.role !== 'admin') redirect('/dashboard')
-
-    try {
-      for (const s of SETTINGS) {
-        const val = formData.get(s.key) as string
-        if (val) await upsertAppSetting(s.key, val, sess.id)
-      }
-    } catch {
-      redirect('/admin/settings/alerts?error=Gagal+menyimpan+pengaturan')
-    }
-    redirect('/admin/settings/alerts?success=1')
-  }
-
   return (
     <div className="p-6 space-y-6" style={{ maxWidth: 640 }}>
       <div>
@@ -97,7 +82,7 @@ export default async function AlertSettingsPage({
       )}
 
       <div className="bg-white rounded-2xl border p-6" style={{ borderColor: 'var(--lf-border)' }}>
-        <form action={handleSave} className="space-y-6">
+        <form action={updateAlertSettings} className="space-y-6">
           {SETTINGS.map((s) => (
             <div key={s.key}>
               <label className="block text-sm font-medium mb-1" style={{ color: '#2d3a2e' }}>

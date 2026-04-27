@@ -69,7 +69,7 @@ export async function createStockAdjustmentAction(
   }
 
   try {
-    const result = await createStockAdjustment(parsed.data, session.id)
+    const result = await createStockAdjustment(parsed.data, session.id, session.role)
     return { success: true, data: { id: result.id } }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal menyimpan penyesuaian stok' }

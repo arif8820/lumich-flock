@@ -4,6 +4,7 @@ import {
   countUnreadForUser,
   markNotificationRead,
   markAllReadForUser,
+  getReadNotificationIdsForUser,
 } from '@/lib/db/queries/notification.queries'
 import type { Notification, NewNotification } from '@/lib/db/schema'
 
@@ -41,4 +42,9 @@ export async function pushNotification(
   data: NewNotification
 ): Promise<Notification> {
   return createNotification(data)
+}
+
+export async function getReadNotificationIds(userId: string): Promise<string[]> {
+  const rows = await getReadNotificationIdsForUser(userId)
+  return rows.map((r) => r.notificationId)
 }

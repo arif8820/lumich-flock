@@ -8,13 +8,12 @@ import { db } from '@/lib/db'
 import {
   flocks,
   dailyRecords,
-  notifications,
-  alertCooldowns,
   invoices,
   inventoryMovements,
 } from '@/lib/db/schema'
 import { eq, isNull, desc, and, lte, sql, inArray } from 'drizzle-orm'
-import { getAppSetting } from '@/lib/db/queries/app-settings.queries'
+// sql is used in checkDepletionAlerts aggregation
+import { getAppSetting } from '@/lib/services/app-settings.service'
 import { findActiveCooldown, upsertCooldown } from '@/lib/db/queries/alert-cooldown.queries'
 import { createNotification } from '@/lib/db/queries/notification.queries'
 import { getPhaseForWeeks } from '@/lib/services/flock-phase.service'
@@ -93,9 +92,22 @@ async function checkHdpDropAlerts(hdpDropThreshold: number): Promise<void> {
     if (recent.length < 2) continue
 
     const [today, yesterday] = recent as typeof recent
-    const popToday = Math.max(1, flock.initialCount)
-    const hdpToday = ((today!.eggsGradeA + today!.eggsGradeB) / popToday) * 100
-    const hdpYesterday = ((yesterday!.eggsGradeA + yesterday!.eggsGradeB) / popToday) * 100
+
+    // Use live population (initialCount - cumulative deaths - culls) as denominator
+    const depResult = await db
+      .select({
+        totalDeaths: sql<string>`COALESCE(SUM(${dailyRecords.deaths}), 0)`,
+        totalCulled: sql<string>`COALESCE(SUM(${dailyRecords.culled}), 0)`,
+      })
+      .from(dailyRecords)
+      .where(eq(dailyRecords.flockId, flock.id))
+
+    const totalDepletion =
+      Number(depResult[0]?.totalDeaths ?? 0) + Number(depResult[0]?.totalCulled ?? 0)
+    const livePop = Math.max(1, flock.initialCount - totalDepletion)
+
+    const hdpToday = ((today!.eggsGradeA + today!.eggsGradeB) / livePop) * 100
+    const hdpYesterday = ((yesterday!.eggsGradeA + yesterday!.eggsGradeB) / livePop) * 100
 
     if (hdpYesterday <= 0) continue
     const dropPct = ((hdpYesterday - hdpToday) / hdpYesterday) * 100
@@ -287,13 +299,7 @@ async function checkStockAlerts(threshold: number): Promise<void> {
  * runDailyAlerts — called by the pg_cron webhook API route.
  * Evaluates all alert conditions in sequence.
  */
-export async function runDailyAlerts(): Promise<{
-  phaseChange: number
-  hdpDrop: number
-  depletion: number
-  fcr: number
-  overdueInvoice: number
-}> {
+export async function runDailyAlerts(): Promise<void> {
   const [fcrThreshold, depletionThreshold, hdpDropThreshold, overdueDelayDays, stockMaxThreshold] = await Promise.all([
     getNumericSetting('alert_fcr_threshold', 2.5),
     getNumericSetting('alert_depletion_pct', 0.5),
@@ -303,25 +309,10 @@ export async function runDailyAlerts(): Promise<{
   ])
 
   // Run sequentially to avoid DB contention
-  const before = await db
-    .select({ count: sql<string>`COUNT(*)` })
-    .from(notifications)
-
-  const countBefore = Number(before[0]?.count ?? 0)
-
   await checkPhaseChangeAlerts()
   await checkHdpDropAlerts(hdpDropThreshold)
   await checkDepletionAlerts(depletionThreshold)
   await checkFcrAlerts(fcrThreshold)
   await checkOverdueInvoiceAlerts(overdueDelayDays)
   await checkStockAlerts(stockMaxThreshold)
-
-  // Return approximate counts (good enough for logging)
-  return {
-    phaseChange: 0,
-    hdpDrop: 0,
-    depletion: 0,
-    fcr: 0,
-    overdueInvoice: 0,
-  }
 }

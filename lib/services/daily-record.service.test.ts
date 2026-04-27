@@ -8,13 +8,31 @@ vi.mock('@/lib/db/queries/daily-record.queries', () => ({
 
 vi.mock('@/lib/db/queries/flock.queries', () => ({
   findAllActiveFlocks: vi.fn(),
+  findFlockById: vi.fn(),
 }))
 
 vi.mock('@/lib/db/queries/user-coop-assignment.queries', () => ({
   findAssignedCoopIds: vi.fn(),
 }))
 
+vi.mock('@/lib/services/lock-period.service', () => ({
+  assertCanEdit: vi.fn(), // no-op by default
+}))
+
+vi.mock('@/lib/db', () => ({
+  db: {
+    select: vi.fn().mockReturnThis(),
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockResolvedValue([]),
+    update: vi.fn().mockReturnThis(),
+    set: vi.fn().mockReturnThis(),
+    returning: vi.fn().mockResolvedValue([{ id: 'dr-1' }]),
+  },
+}))
+
 import * as queries from '@/lib/db/queries/daily-record.queries'
+import * as flockQueries from '@/lib/db/queries/flock.queries'
 import {
   validateBackdate,
   computeIsLateInput,
@@ -110,7 +128,12 @@ describe('daily-record.service — pure functions', () => {
   })
 
   describe('createDailyRecord', () => {
-    beforeEach(() => vi.clearAllMocks())
+    beforeEach(() => {
+      vi.clearAllMocks()
+      // Default: flock exists, no depletion
+      vi.mocked(flockQueries.findFlockById).mockResolvedValue({ id: 'f1', initialCount: 5000 } as any) // any: partial mock
+      vi.mocked(queries.getTotalDepletionByFlock).mockResolvedValue({ deaths: 0, culled: 0 })
+    })
 
     it('throws when record already exists for that date', async () => {
       vi.mocked(queries.findDailyRecord).mockResolvedValue({ id: 'existing' } as any) // any: partial mock

@@ -1,7 +1,7 @@
 import { db, DrizzleTx } from '@/lib/db'
 import { correctionRecords, users } from '@/lib/db/schema'
 import type { CorrectionRecord, NewCorrectionRecord } from '@/lib/db/schema'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, and } from 'drizzle-orm'
 
 // USED BY: [lock-period.service] — count: 1
 
@@ -37,7 +37,10 @@ export async function findCorrectionsByEntity(
     .from(correctionRecords)
     .leftJoin(users, eq(correctionRecords.correctedBy, users.id))
     .where(
-      eq(correctionRecords.entityId, entityId)
+      and(
+        eq(correctionRecords.entityType, entityType),
+        eq(correctionRecords.entityId, entityId)
+      )
     )
     .orderBy(desc(correctionRecords.correctedAt))
   return rows

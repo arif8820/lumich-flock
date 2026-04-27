@@ -2,8 +2,32 @@
 
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/get-session'
 import { saveAppSetting } from '@/lib/services/app-settings.service'
+
+const ALERT_SETTING_KEYS = [
+  'alert_fcr_threshold',
+  'alert_depletion_pct',
+  'alert_hdp_drop_pct',
+  'alert_overdue_delay_days',
+  'alert_stock_max_threshold',
+] as const
+
+export async function updateAlertSettings(formData: FormData): Promise<void> {
+  const session = await getSession()
+  if (!session || session.role !== 'admin') redirect('/dashboard')
+
+  try {
+    for (const key of ALERT_SETTING_KEYS) {
+      const val = formData.get(key) as string
+      if (val) await saveAppSetting(key, val, session.id)
+    }
+  } catch {
+    redirect('/admin/settings/alerts?error=Gagal+menyimpan+pengaturan')
+  }
+  redirect('/admin/settings/alerts?success=1')
+}
 
 type ActionResult = { success: true } | { success: false; error: string }
 

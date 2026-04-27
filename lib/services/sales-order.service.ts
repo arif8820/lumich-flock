@@ -3,6 +3,7 @@ import * as salesOrderQueries from '@/lib/db/queries/sales-order.queries'
 import * as inventoryQueries from '@/lib/db/queries/inventory.queries'
 import * as invoiceQueries from '@/lib/db/queries/invoice.queries'
 import { generateOrderNumber } from '@/lib/utils/order-number'
+import { assertCanEdit } from '@/lib/services/lock-period.service'
 import type { NewSalesOrder, NewSalesOrderItem, NewInventoryMovement, NewInvoice } from '@/lib/db/schema'
 
 const { findCustomerById } = customerQueries
@@ -115,6 +116,9 @@ export async function confirmSO(orderId: string, userId: string, role: string) {
   if (!so) throw new Error('SO tidak ditemukan')
   if (so.status !== 'draft') throw new Error('Status SO tidak valid untuk operasi ini')
 
+  // Lock period check — use orderDate as the record date
+  assertCanEdit(new Date(so.orderDate), role as 'operator' | 'supervisor' | 'admin')
+
   await updateSalesOrderStatus(orderId, 'confirmed', userId)
   return so
 }
@@ -127,6 +131,9 @@ export async function cancelSO(orderId: string, userId: string, role: string) {
   const so = await findSalesOrderById(orderId)
   if (!so) throw new Error('SO tidak ditemukan')
   if (so.status !== 'confirmed') throw new Error('Status SO tidak valid untuk operasi ini')
+
+  // Lock period check — use orderDate as the record date
+  assertCanEdit(new Date(so.orderDate), role as 'operator' | 'supervisor' | 'admin')
 
   await updateSalesOrderStatus(orderId, 'cancelled', userId)
   return so

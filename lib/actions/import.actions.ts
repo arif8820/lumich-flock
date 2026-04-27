@@ -26,10 +26,10 @@ export async function parseCsvAction(
 
   try {
     let result
-    if (entity === 'flocks') result = parseFlockscsv(csvText)
-    else if (entity === 'daily_records') result = parseDailyRecordsCsv(csvText)
+    if (entity === 'flocks') result = await parseFlockscsv(csvText)
+    else if (entity === 'daily_records') result = await parseDailyRecordsCsv(csvText)
     else if (entity === 'customers') result = parseCustomersCsv(csvText)
-    else result = parseOpeningStockCsv(csvText)
+    else result = await parseOpeningStockCsv(csvText)
 
     return {
       success: true,
