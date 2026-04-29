@@ -15,12 +15,19 @@ export async function middleware(request: NextRequest) {
     request.method === 'POST' &&
     (request.nextUrl.pathname === '/login' || request.nextUrl.pathname.startsWith('/api/auth/'))
   ) {
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1'
-    const { success } = await ratelimit.limit(ip)
+    const ip =
+      request.headers.get('x-real-ip') ??
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+      '127.0.0.1'
+    const { success, reset } = await ratelimit.limit(ip)
     if (!success) {
+      const retryAfterSecs = Math.ceil((reset - Date.now()) / 1000)
       return NextResponse.json(
         { error: 'Terlalu banyak percobaan, coba lagi dalam 1 menit' },
-        { status: 429 }
+        {
+          status: 429,
+          headers: { 'Retry-After': String(retryAfterSecs) },
+        }
       )
     }
   }
