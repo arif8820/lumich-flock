@@ -1,4 +1,4 @@
-import { pgTable, uuid, integer, date, timestamp, text, pgEnum } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, integer, date, timestamp, text, pgEnum, boolean } from 'drizzle-orm/pg-core'
 import { flocks } from './flocks'
 import { users } from './users'
 
@@ -17,6 +17,8 @@ export const inventoryMovements = pgTable('inventory_movements', {
   quantity: integer('quantity').notNull(),
   note: text('note'),
   movementDate: date('movement_date', { mode: 'date' }).notNull(),
+  isImported: boolean('is_imported').notNull().default(false),
+  importedBy: uuid('imported_by').references(() => users.id),
   createdBy: uuid('created_by').references(() => users.id),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })

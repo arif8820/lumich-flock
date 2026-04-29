@@ -44,8 +44,7 @@ export function LoginForm() {
         setError('Email atau password salah')
         return
       }
-      router.push('/dashboard')
-      router.refresh()
+      window.location.href = '/dashboard'
     } finally {
       setLoading(false)
     }

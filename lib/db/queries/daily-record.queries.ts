@@ -3,6 +3,11 @@ import { dailyRecords, inventoryMovements } from '@/lib/db/schema'
 import { eq, and, desc, sum } from 'drizzle-orm'
 import type { DailyRecord, NewDailyRecord, NewInventoryMovement } from '@/lib/db/schema'
 
+export async function findDailyRecordById(id: string): Promise<DailyRecord | null> {
+  const [record] = await db.select().from(dailyRecords).where(eq(dailyRecords.id, id)).limit(1)
+  return record ?? null
+}
+
 export async function findDailyRecord(flockId: string, recordDate: Date): Promise<DailyRecord | null> {
   const [record] = await db
     .select()

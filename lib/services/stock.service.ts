@@ -7,7 +7,10 @@ import {
   updateRegradeRequestStatus,
   approveRegradeRequestTx,
 } from '@/lib/db/queries/inventory.queries'
+import { assertCanEdit } from '@/lib/services/lock-period.service'
 import type { StockAdjustment, RegradeRequest } from '@/lib/db/schema'
+
+type Role = 'operator' | 'supervisor' | 'admin'
 
 export async function getStockBalance(flockId: string, grade: 'A' | 'B'): Promise<number> {
   return _getStockBalance(flockId, grade)
@@ -28,8 +31,13 @@ type AdjustmentInput = {
 
 export async function createStockAdjustment(
   input: AdjustmentInput,
-  userId: string
+  userId: string,
+  role: Role = 'admin',
+  now: Date = new Date()
 ): Promise<StockAdjustment> {
+  // Lock period check — adjustmentDate is treated as the record date
+  assertCanEdit(input.adjustmentDate, role, now)
+
   const balance = await _getStockBalance(input.flockId, input.grade)
   validateStockNotBelowZero(balance, input.quantity)
   const movementType = input.quantity >= 0 ? 'in' : 'out'
