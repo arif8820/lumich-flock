@@ -1,6 +1,7 @@
 'use client' // client: needs useState + onClick for dropdown + real-time updates
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Bell, Check, CheckCheck } from 'lucide-react'
 import {
   getNotificationsAction,
@@ -37,18 +38,24 @@ export function NotificationBell({ initialUnread, initialNotifications, readIds:
   const [readIds, setReadIds] = useState<Set<string>>(new Set(initialReadIds))
   const [unread, setUnread] = useState(initialUnread)
   const [isPending, startTransition] = useTransition()
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null)
+  const bellRef = useRef<HTMLButtonElement>(null)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
 
   const unreadCount = notifications.filter((n) => !readIds.has(n.id)).length
 
   function handleToggle() {
-    setOpen((v) => !v)
-    if (!open) {
-      // Refresh notifications when opening
+    if (!open && bellRef.current) {
+      const rect = bellRef.current.getBoundingClientRect()
+      setDropdownPos({ top: rect.bottom + 8, left: rect.right - 340 })
       startTransition(async () => {
         const res = await getNotificationsAction()
         if (res.success) setNotifications(res.data)
       })
     }
+    setOpen((v) => !v)
   }
 
   function handleRead(id: string) {
@@ -71,6 +78,7 @@ export function NotificationBell({ initialUnread, initialNotifications, readIds:
   return (
     <div className="relative">
       <button
+        ref={bellRef}
         onClick={handleToggle}
         className="relative flex items-center justify-center w-9 h-9 rounded-[10px] transition-colors"
         style={{ background: open ? '#e3f0f9' : 'transparent' }}
@@ -87,15 +95,15 @@ export function NotificationBell({ initialUnread, initialNotifications, readIds:
         )}
       </button>
 
-      {open && (
+      {open && mounted && dropdownPos && createPortal(
         <>
           {/* Backdrop */}
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
 
           {/* Dropdown */}
           <div
-            className="absolute right-0 top-11 z-50 w-[340px] rounded-2xl shadow-lf-md border overflow-hidden"
-            style={{ background: '#fff', borderColor: '#e0e8df' }}
+            className="fixed z-50 w-[340px] rounded-2xl shadow-lf-md border overflow-hidden"
+            style={{ background: '#fff', borderColor: '#e0e8df', top: dropdownPos.top, left: Math.max(8, dropdownPos.left) }}
           >
             {/* Header */}
             <div
@@ -173,7 +181,8 @@ export function NotificationBell({ initialUnread, initialNotifications, readIds:
               )}
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   )
