@@ -2,23 +2,18 @@
 
 import { z } from 'zod'
 import { getSession } from '@/lib/auth/get-session'
+import { requireAdmin } from '@/lib/auth/guards'
 import { createCoop, getAllCoops, updateCoop, deactivateCoop, activateCoop } from '@/lib/services/coop.service'
 
 const coopSchema = z.object({
-  name: z.string().min(1, 'Nama kandang wajib diisi'),
+  name: z.string().min(1, 'Nama kandang wajib diisi').max(500).trim(),
   capacity: z.coerce.number().int().positive().optional(),
-  notes: z.string().optional(),
+  notes: z.string().max(500).trim().optional(),
 })
 
 type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: false; error: string }
-
-async function requireAdmin(): Promise<{ success: false; error: string } | null> {
-  const session = await getSession()
-  if (!session || session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
-  return null
-}
 
 export async function createCoopAction(formData: FormData): Promise<ActionResult<{ id: string }>> {
   const guard = await requireAdmin()
