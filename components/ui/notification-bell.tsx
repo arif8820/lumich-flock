@@ -42,6 +42,7 @@ export function NotificationBell({ initialUnread, initialNotifications, readIds:
   const bellRef = useRef<HTMLButtonElement>(null)
   const [mounted, setMounted] = useState(false)
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: sets mounted flag once on client for SSR hydration guard
   useEffect(() => { setMounted(true) }, [])
 
   const unreadCount = notifications.filter((n) => !readIds.has(n.id)).length
