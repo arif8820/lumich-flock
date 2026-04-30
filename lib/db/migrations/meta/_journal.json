@@ -29,6 +29,20 @@
       "when": 1745395200000,
       "tag": "0003_sprint5b_finance_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1745913600000,
+      "tag": "0004_sprint6b_billing_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1746000000000,
+      "tag": "0005_sprint7_8_phase4_operations",
+      "breakpoints": true
     }
   ]
 }

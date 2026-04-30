@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Users, Home, ShoppingBag, Settings } from 'lucide-react'
+import { Users, Home, ShoppingBag, Settings, MessageSquare, Bell, Upload } from 'lucide-react'
 
 const MENU = [
   {
@@ -25,6 +25,24 @@ const MENU = [
     icon: Settings,
     label: 'Fase Flock',
     desc: 'Konfigurasi fase pertumbuhan ayam',
+  },
+  {
+    href: '/admin/settings/wa-template',
+    icon: MessageSquare,
+    label: 'Template WhatsApp',
+    desc: 'Konfigurasi pesan WhatsApp untuk invoice',
+  },
+  {
+    href: '/admin/settings/alerts',
+    icon: Bell,
+    label: 'Konfigurasi Alert',
+    desc: 'Atur ambang batas FCR, depletion, HDP, dan invoice overdue',
+  },
+  {
+    href: '/admin/import',
+    icon: Upload,
+    label: 'Import CSV',
+    desc: 'Import massal flock, produksi, pelanggan, stok awal',
   },
 ]
 

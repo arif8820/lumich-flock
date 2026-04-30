@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+vi.mock('@/lib/services/lock-period.service', () => ({
+  assertCanEdit: vi.fn(), // no-op by default
+}))
+
 vi.mock('@/lib/db/queries/inventory.queries', () => ({
   getStockBalance: vi.fn(),
   insertStockAdjustmentWithMovement: vi.fn(),

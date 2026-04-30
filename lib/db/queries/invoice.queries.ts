@@ -163,6 +163,10 @@ export async function getOverdueInvoices(): Promise<InvoiceWithCustomer[]> {
   return rows as InvoiceWithCustomer[]
 }
 
+export async function updateInvoicePdfInfo(id: string, pdfUrl: string, pdfGeneratedAt: Date): Promise<void> {
+  await db.update(invoices).set({ pdfUrl, pdfGeneratedAt }).where(eq(invoices.id, id))
+}
+
 export async function getAgingReport(): Promise<AgingRow[]> {
   const rows = await db
     .select({

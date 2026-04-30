@@ -128,7 +128,7 @@ describe('invoice.service', () => {
       vi.mocked(invoiceQueries.updateInvoicePaidAmount).mockResolvedValue(undefined)
       vi.mocked(invoiceQueries.updateInvoiceStatus).mockResolvedValue(undefined)
       vi.mocked(creditQueries.createCustomerCredit).mockResolvedValue(undefined)
-      vi.mocked(notificationQueries.createNotification).mockResolvedValue(undefined)
+      vi.mocked(notificationQueries.createNotification).mockResolvedValue(undefined as any) // any: mock doesn't need full Notification shape
 
       const result = await recordPayment(
         'inv-1',
