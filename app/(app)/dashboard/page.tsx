@@ -63,8 +63,8 @@ export default async function DashboardPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--lf-border)]">
-              {recentRecords.map((r) => (
-                <tr key={r.date} className="py-2">
+              {recentRecords.map((r, i) => (
+                <tr key={i} className="py-2">
                   <td className="py-2 text-[var(--lf-text-dark)]">
                     {r.date}
                     {r.isLate && (
