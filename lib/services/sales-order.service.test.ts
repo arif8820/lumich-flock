@@ -218,10 +218,34 @@ describe('sales-order.service', () => {
 
     it('confirms draft SO', async () => {
       vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockDraftSO as any)
+      vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue([] as any)
+      vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(1000)
 
       const result = await confirmSO('so-1', 'user-1', 'supervisor')
 
       expect(salesOrderQueries.updateSalesOrderStatus).toHaveBeenCalledWith('so-1', 'confirmed', 'user-1')
+    })
+
+    it('throws when Grade A stock is insufficient', async () => {
+      vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockDraftSO as any)
+      vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue([
+        { itemType: 'egg_grade_a', quantity: 1000 },
+      ] as any)
+      vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(500)
+
+      await expect(confirmSO('so-1', 'user-1', 'supervisor')).rejects.toThrow('Stok tidak mencukupi')
+      await expect(confirmSO('so-1', 'user-1', 'supervisor')).rejects.toThrow('Grade A')
+    })
+
+    it('throws when Grade B stock is insufficient', async () => {
+      vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockDraftSO as any)
+      vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue([
+        { itemType: 'egg_grade_b', quantity: 2000 },
+      ] as any)
+      vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(300)
+
+      await expect(confirmSO('so-1', 'user-1', 'supervisor')).rejects.toThrow('Stok tidak mencukupi')
+      await expect(confirmSO('so-1', 'user-1', 'supervisor')).rejects.toThrow('Grade B')
     })
 
     it('throws when SO is not draft', async () => {
