@@ -119,6 +119,18 @@ export async function confirmSO(orderId: string, userId: string, role: string) {
   // Lock period check — use orderDate as the record date
   assertCanEdit(new Date(so.orderDate), role as 'operator' | 'supervisor' | 'admin')
 
+  // Stock availability check before confirming
+  const items = await findSalesOrderItems(orderId)
+  for (const item of items) {
+    if (item.itemType === 'egg_grade_a' || item.itemType === 'egg_grade_b') {
+      const grade = item.itemType === 'egg_grade_a' ? 'A' : 'B'
+      const available = await getStockBalanceByGrade(grade)
+      if (available < item.quantity) {
+        throw new Error(`Stok tidak mencukupi: Grade ${grade} tersedia ${available} butir, dibutuhkan ${item.quantity} butir`)
+      }
+    }
+  }
+
   await updateSalesOrderStatus(orderId, 'confirmed', userId)
   return so
 }
