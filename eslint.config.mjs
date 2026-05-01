@@ -18,6 +18,11 @@ const eslintConfig = defineConfig([
     "design/**",
   ]),
   {
+    rules: {
+      "@typescript-eslint/no-unused-vars": ["warn", { varsIgnorePattern: "^_", argsIgnorePattern: "^_" }],
+    },
+  },
+  {
     files: ["**/*.test.ts", "**/*.test.tsx"],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",

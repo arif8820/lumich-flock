@@ -249,12 +249,76 @@ import { getSession } from '@/lib/auth/get-session'
 import { getAllFlockPhases } from '@/lib/services/flock-phase.service'
 ````
 
+## File: app/(app)/admin/kandang/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { getAllCoops } from '@/lib/services/coop.service'
+import { CoopManagementClient } from '@/components/forms/coop-management-client'
+⋮----
+export default async function KandangPage()
+````
+
 ## File: app/(app)/admin/layout.tsx
 ````typescript
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/get-session'
 ⋮----
 export default async function AdminLayout(
+````
+
+## File: app/(app)/admin/pelanggan/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { getAllCustomers } from '@/lib/services/customer.service'
+import { CustomerManagementClient } from '@/components/forms/customer-management-client'
+⋮----
+export default async function PelangganPage()
+````
+
+## File: app/(app)/admin/users/[id]/kandang/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { getSession } from '@/lib/auth/get-session'
+import { getUserById } from '@/lib/services/user.service'
+import { getAllCoops } from '@/lib/services/coop.service'
+import { findAssignmentsByUser } from '@/lib/db/queries/user-coop-assignment.queries'
+import { CoopAssignmentPanel } from '@/components/forms/coop-assignment-panel'
+⋮----
+export default async function UserKandangPage(
+````
+
+## File: app/(app)/admin/users/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { getAllUsers } from '@/lib/services/user.service'
+import { UserManagementClient } from '@/components/forms/user-management-client'
+⋮----
+export default async function UsersPage()
+````
+
+## File: app/(app)/flock/new/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { getSession } from '@/lib/auth/get-session'
+import { getAllCoops } from '@/lib/services/coop.service'
+import { CreateFlockForm } from '@/components/forms/create-flock-form'
+⋮----
+export default async function NewFlockPage()
+````
+
+## File: app/(app)/flock/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { getAllActiveFlocks } from '@/lib/services/flock.service'
+import { FlockListClient } from '@/components/forms/flock-list-client'
+⋮----
+export default async function FlockPage()
 ````
 
 ## File: app/(app)/produksi/input/page.tsx
@@ -416,6 +480,30 @@ async function handleRemove(coopId: string)
 onClick=
 ````
 
+## File: components/forms/coop-management-client.tsx
+````typescript
+// client: interactive coop table with create form, inline edit, activate/deactivate
+⋮----
+import React, { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { CreateCoopForm } from './create-coop-form'
+import { EditCoopForm } from './edit-coop-form'
+import { activateCoopAction, deactivateCoopAction } from '@/lib/actions/coop.actions'
+import type { Coop } from '@/lib/db/schema'
+⋮----
+interface Props {
+  coops: Coop[]
+}
+⋮----
+async function handleToggleActive(coop: Coop)
+⋮----
+onSuccess=
+⋮----
+onClick=
+⋮----
+onCancel=
+````
+
 ## File: components/forms/create-coop-form.tsx
 ````typescript
 // client: form state, submit handler
@@ -484,6 +572,94 @@ interface Props {
 }
 ⋮----
 async function onSubmit(e: React.FormEvent)
+````
+
+## File: components/forms/customer-management-client.tsx
+````typescript
+// client: interactive customer table with create form, inline edit, activate/deactivate
+⋮----
+import React, { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { CreateCustomerForm } from './create-customer-form'
+import { EditCustomerForm } from './edit-customer-form'
+import { activateCustomerAction, deactivateCustomerAction } from '@/lib/actions/customer.actions'
+import type { Customer } from '@/lib/db/schema'
+⋮----
+interface Props {
+  customers: Customer[]
+}
+⋮----
+async function handleToggleActive(customer: Customer)
+⋮----
+onSuccess=
+⋮----
+onClick=
+⋮----
+onCancel=
+````
+
+## File: components/forms/daily-input-form.tsx
+````typescript
+// client: live auto-calc with useMemo + sessionStorage persistence
+⋮----
+import { useState, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
+import { createDailyRecordAction } from '@/lib/actions/daily-record.actions'
+import type { FlockOption } from '@/lib/services/daily-record.service'
+⋮----
+// USED BY: [daily-record.service, daily-input-form] — count: 2
+function calcHDP(a: number, b: number, pop: number)
+// USED BY: [daily-record.service, daily-input-form] — count: 2
+function calcFeedPerBird(feedKg: number, pop: number)
+// USED BY: [daily-record.service, daily-input-form] — count: 2
+function calcFCR(feedKg: number, a: number, b: number)
+⋮----
+type Props = {
+  flocks: FlockOption[]
+  userRole: 'operator' | 'supervisor' | 'admin'
+}
+⋮----
+type FormValues = {
+  flockId: string
+  recordDate: string
+  deaths: string
+  culled: string
+  eggsGradeA: string
+  eggsGradeB: string
+  eggsCracked: string
+  eggsAbnormal: string
+  avgWeightKg: string
+  feedKg: string
+}
+⋮----
+function todayUTC(): string
+⋮----
+function minDate(role: 'operator' | 'supervisor' | 'admin'): string
+⋮----
+function empty(flockId: string): FormValues
+⋮----
+/* eslint-disable react-hooks/set-state-in-effect */
+⋮----
+} catch { /* ignore */ }
+/* eslint-enable react-hooks/set-state-in-effect */
+⋮----
+function field(k: keyof FormValues)
+⋮----
+async function submitForm()
+⋮----
+function onSubmit(e: React.FormEvent<HTMLFormElement>)
+⋮----
+{/* Flock + Date */}
+⋮----
+max=
+⋮----
+{/* Depletion */}
+⋮----
+{/* Eggs */}
+⋮----
+{/* Feed + Weight */}
+⋮----
+{/* Auto-calc */}
 ````
 
 ## File: components/forms/edit-coop-form.tsx
@@ -988,12 +1164,40 @@ export async function insertUser(data: NewUser): Promise<User>
 export async function updateUser(id: string, data: Partial<NewUser>): Promise<User | null>
 ````
 
+## File: lib/db/schema/alert-cooldowns.ts
+````typescript
+import { pgTable, uuid, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+⋮----
+export type AlertCooldown = typeof alertCooldowns.$inferSelect
+export type NewAlertCooldown = typeof alertCooldowns.$inferInsert
+````
+
 ## File: lib/db/schema/coops.ts
 ````typescript
 import { pgTable, uuid, text, integer, timestamp, pgEnum } from 'drizzle-orm/pg-core'
 ⋮----
 export type Coop = typeof coops.$inferSelect
 export type NewCoop = typeof coops.$inferInsert
+````
+
+## File: lib/db/schema/correction-records.ts
+````typescript
+import { pgTable, uuid, text, timestamp, pgEnum } from 'drizzle-orm/pg-core'
+import { users } from './users'
+⋮----
+export type CorrectionRecord = typeof correctionRecords.$inferSelect
+export type NewCorrectionRecord = typeof correctionRecords.$inferInsert
+````
+
+## File: lib/db/schema/customer-credits.ts
+````typescript
+import { pgTable, uuid, numeric, text, timestamp, pgEnum } from 'drizzle-orm/pg-core'
+import { customers } from './customers'
+import { payments } from './payments'
+import { invoices } from './invoices'
+⋮----
+export type CustomerCredit = typeof customerCredits.$inferSelect
+export type NewCustomerCredit = typeof customerCredits.$inferInsert
 ````
 
 ## File: lib/db/schema/flock-phases.ts
@@ -1013,6 +1217,34 @@ export type InventorySnapshot = typeof inventorySnapshots.$inferSelect
 export type NewInventorySnapshot = typeof inventorySnapshots.$inferInsert
 ````
 
+## File: lib/db/schema/notification-reads.ts
+````typescript
+import { pgTable, uuid, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import { notifications } from './notifications'
+import { users } from './users'
+⋮----
+export type NotificationRead = typeof notificationReads.$inferSelect
+export type NewNotificationRead = typeof notificationReads.$inferInsert
+````
+
+## File: lib/db/schema/notifications.ts
+````typescript
+import { pgTable, uuid, text, timestamp, pgEnum } from 'drizzle-orm/pg-core'
+⋮----
+export type Notification = typeof notifications.$inferSelect
+export type NewNotification = typeof notifications.$inferInsert
+````
+
+## File: lib/db/schema/payments.ts
+````typescript
+import { pgTable, uuid, text, numeric, date, timestamp, pgEnum } from 'drizzle-orm/pg-core'
+import { invoices } from './invoices'
+import { users } from './users'
+⋮----
+export type Payment = typeof payments.$inferSelect
+export type NewPayment = typeof payments.$inferInsert
+````
+
 ## File: lib/db/schema/regrade-requests.ts
 ````typescript
 import { pgTable, uuid, integer, date, timestamp, text } from 'drizzle-orm/pg-core'
@@ -1023,6 +1255,36 @@ quantity: integer('quantity').notNull(), // always positive
 ⋮----
 export type RegradeRequest = typeof regradeRequests.$inferSelect
 export type NewRegradeRequest = typeof regradeRequests.$inferInsert
+````
+
+## File: lib/db/schema/sales-order-items.ts
+````typescript
+import { pgTable, uuid, text, integer, numeric, pgEnum } from 'drizzle-orm/pg-core'
+import { salesOrders } from './sales-orders'
+⋮----
+export type SalesOrderItem = typeof salesOrderItems.$inferSelect
+export type NewSalesOrderItem = typeof salesOrderItems.$inferInsert
+````
+
+## File: lib/db/schema/sales-return-items.ts
+````typescript
+import { pgTable, uuid, integer } from 'drizzle-orm/pg-core'
+import { salesReturns } from './sales-returns'
+import { salesItemTypeEnum, salesUnitEnum } from './sales-order-items'
+⋮----
+export type SalesReturnItem = typeof salesReturnItems.$inferSelect
+export type NewSalesReturnItem = typeof salesReturnItems.$inferInsert
+````
+
+## File: lib/db/schema/sales-returns.ts
+````typescript
+import { pgTable, uuid, text, date, timestamp, pgEnum } from 'drizzle-orm/pg-core'
+import { salesOrders } from './sales-orders'
+import { customers } from './customers'
+import { users } from './users'
+⋮----
+export type SalesReturn = typeof salesReturns.$inferSelect
+export type NewSalesReturn = typeof salesReturns.$inferInsert
 ````
 
 ## File: lib/db/schema/stock-adjustments.ts
@@ -1348,53 +1610,6 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 ````
 
-## File: repomix.config.json
-````json
-{
-  "$schema": "https://repomix.com/schemas/latest/schema.json",
-  "input": {
-    "maxFileSize": 52428800
-  },
-  "output": {
-    "filePath": "./repomix/repomix-main.md",
-    "style": "markdown",
-    "parsableStyle": false,
-    "fileSummary": true,
-    "directoryStructure": true,
-    "files": true,
-    "removeComments": false,
-    "removeEmptyLines": false,
-    "compress": false,
-    "topFilesLength": 5,
-    "showLineNumbers": false,
-    "truncateBase64": false,
-    "copyToClipboard": false,
-    "includeFullDirectoryStructure": false,
-    "tokenCountTree": false,
-    "git": {
-      "sortByChanges": true,
-      "sortByChangesMaxCommits": 100,
-      "includeDiffs": false,
-      "includeLogs": false,
-      "includeLogsCount": 50
-    }
-  },
-  "include": [],
-  "ignore": {
-    "useGitignore": true,
-    "useDotIgnore": true,
-    "useDefaultPatterns": true,
-    "customPatterns": []
-  },
-  "security": {
-    "enableSecurityCheck": true
-  },
-  "tokenCount": {
-    "encoding": "o200k_base"
-  }
-}
-````
-
 ## File: tsconfig.json
 ````json
 {
@@ -1503,7 +1718,8 @@ next-env.d.ts
 design/
 
 # superpowers
-docs/superpowers/*
+docs/superpowers/*PORT=5555
+nohup.out
 ````
 
 ## File: app/(app)/admin/import/import-panel.tsx
@@ -1551,70 +1767,6 @@ import { getSession } from '@/lib/auth/get-session'
 import { ImportPanel } from './import-panel'
 ⋮----
 export default async function ImportPage()
-````
-
-## File: app/(app)/admin/kandang/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { getAllCoops } from '@/lib/services/coop.service'
-import { CoopManagementClient } from '@/components/forms/coop-management-client'
-⋮----
-export default async function KandangPage()
-````
-
-## File: app/(app)/admin/pelanggan/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { getAllCustomers } from '@/lib/services/customer.service'
-import { CustomerManagementClient } from '@/components/forms/customer-management-client'
-⋮----
-export default async function PelangganPage()
-````
-
-## File: app/(app)/admin/users/[id]/kandang/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { getSession } from '@/lib/auth/get-session'
-import { getUserById } from '@/lib/services/user.service'
-import { getAllCoops } from '@/lib/services/coop.service'
-import { findAssignmentsByUser } from '@/lib/db/queries/user-coop-assignment.queries'
-import { CoopAssignmentPanel } from '@/components/forms/coop-assignment-panel'
-⋮----
-export default async function UserKandangPage(
-````
-
-## File: app/(app)/admin/users/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { getAllUsers } from '@/lib/services/user.service'
-import { UserManagementClient } from '@/components/forms/user-management-client'
-⋮----
-export default async function UsersPage()
-````
-
-## File: app/(app)/flock/new/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { getSession } from '@/lib/auth/get-session'
-import { getAllCoops } from '@/lib/services/coop.service'
-import { CreateFlockForm } from '@/components/forms/create-flock-form'
-⋮----
-export default async function NewFlockPage()
-````
-
-## File: app/(app)/flock/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { getAllActiveFlocks } from '@/lib/services/flock.service'
-import { FlockListClient } from '@/components/forms/flock-list-client'
-⋮----
-export default async function FlockPage()
 ````
 
 ## File: app/(app)/produksi/[id]/edit/edit-form.tsx
@@ -1682,30 +1834,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>)
-````
-
-## File: components/forms/coop-management-client.tsx
-````typescript
-// client: interactive coop table with create form, inline edit, activate/deactivate
-⋮----
-import React, { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { CreateCoopForm } from './create-coop-form'
-import { EditCoopForm } from './edit-coop-form'
-import { activateCoopAction, deactivateCoopAction } from '@/lib/actions/coop.actions'
-import type { Coop } from '@/lib/db/schema'
-⋮----
-interface Props {
-  coops: Coop[]
-}
-⋮----
-async function handleToggleActive(coop: Coop)
-⋮----
-onSuccess=
-⋮----
-onClick=
-⋮----
-onCancel=
 ````
 
 ## File: components/forms/create-return-client.tsx
@@ -1798,79 +1926,6 @@ const handleSubmit = async (e: React.FormEvent) =>
 ⋮----
 onPriceChange=
 onDiscountChange=
-````
-
-## File: components/forms/customer-management-client.tsx
-````typescript
-// client: interactive customer table with create form, inline edit, activate/deactivate
-⋮----
-import React, { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { CreateCustomerForm } from './create-customer-form'
-import { EditCustomerForm } from './edit-customer-form'
-import { activateCustomerAction, deactivateCustomerAction } from '@/lib/actions/customer.actions'
-import type { Customer } from '@/lib/db/schema'
-⋮----
-interface Props {
-  customers: Customer[]
-}
-⋮----
-async function handleToggleActive(customer: Customer)
-⋮----
-onSuccess=
-⋮----
-onClick=
-⋮----
-onCancel=
-````
-
-## File: components/forms/login-form.tsx
-````typescript
-// client: needs form state, submit handler, and eye toggle
-⋮----
-import { useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createBrowserClient } from '@supabase/ssr'
-import { Eye, EyeOff } from 'lucide-react'
-⋮----
-async function handleSubmit(e: React.FormEvent)
-⋮----
-{/* Email */}
-⋮----
-onBlur=
-⋮----
-{/* Password */}
-⋮----
-{/* Forgot password */}
-⋮----
-{/* Error */}
-⋮----
-{/* Submit */}
-````
-
-## File: components/layout/app-shell.tsx
-````typescript
-'use client' // client: needs usePathname for active nav state
-⋮----
-import { usePathname } from 'next/navigation'
-import { Sidebar } from './sidebar'
-import { BottomNav } from './bottom-nav'
-import type { SessionUser } from '@/lib/auth/get-session'
-import type { Notification } from '@/lib/services/notification.service'
-⋮----
-export function AppShell({
-  user,
-  children,
-  unreadCount,
-  notifications,
-  readNotificationIds,
-}: {
-  user: SessionUser
-  children: React.ReactNode
-  unreadCount: number
-  notifications: Notification[]
-  readNotificationIds: string[]
-})
 ````
 
 ## File: components/ui/button.tsx
@@ -2158,34 +2213,6 @@ export type StockSummaryRow = {
 export async function getStockSummary(): Promise<StockSummaryRow>
 ````
 
-## File: lib/db/schema/alert-cooldowns.ts
-````typescript
-import { pgTable, uuid, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
-⋮----
-export type AlertCooldown = typeof alertCooldowns.$inferSelect
-export type NewAlertCooldown = typeof alertCooldowns.$inferInsert
-````
-
-## File: lib/db/schema/correction-records.ts
-````typescript
-import { pgTable, uuid, text, timestamp, pgEnum } from 'drizzle-orm/pg-core'
-import { users } from './users'
-⋮----
-export type CorrectionRecord = typeof correctionRecords.$inferSelect
-export type NewCorrectionRecord = typeof correctionRecords.$inferInsert
-````
-
-## File: lib/db/schema/customer-credits.ts
-````typescript
-import { pgTable, uuid, numeric, text, timestamp, pgEnum } from 'drizzle-orm/pg-core'
-import { customers } from './customers'
-import { payments } from './payments'
-import { invoices } from './invoices'
-⋮----
-export type CustomerCredit = typeof customerCredits.$inferSelect
-export type NewCustomerCredit = typeof customerCredits.$inferInsert
-````
-
 ## File: lib/db/schema/daily-records.ts
 ````typescript
 import { pgTable, uuid, integer, date, timestamp, boolean, numeric, uniqueIndex } from 'drizzle-orm/pg-core'
@@ -2206,62 +2233,41 @@ export type Flock = typeof flocks.$inferSelect
 export type NewFlock = typeof flocks.$inferInsert
 ````
 
-## File: lib/db/schema/notification-reads.ts
+## File: lib/db/schema/index.ts
 ````typescript
-import { pgTable, uuid, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
-import { notifications } from './notifications'
+
+````
+
+## File: lib/db/schema/inventory-movements.ts
+````typescript
+import { pgTable, uuid, integer, date, timestamp, text, pgEnum, boolean } from 'drizzle-orm/pg-core'
+import { flocks } from './flocks'
 import { users } from './users'
 ⋮----
-export type NotificationRead = typeof notificationReads.$inferSelect
-export type NewNotificationRead = typeof notificationReads.$inferInsert
+export type InventoryMovement = typeof inventoryMovements.$inferSelect
+export type NewInventoryMovement = typeof inventoryMovements.$inferInsert
 ````
 
-## File: lib/db/schema/notifications.ts
-````typescript
-import { pgTable, uuid, text, timestamp, pgEnum } from 'drizzle-orm/pg-core'
-⋮----
-export type Notification = typeof notifications.$inferSelect
-export type NewNotification = typeof notifications.$inferInsert
-````
-
-## File: lib/db/schema/payments.ts
+## File: lib/db/schema/invoices.ts
 ````typescript
 import { pgTable, uuid, text, numeric, date, timestamp, pgEnum } from 'drizzle-orm/pg-core'
-import { invoices } from './invoices'
-import { users } from './users'
-⋮----
-export type Payment = typeof payments.$inferSelect
-export type NewPayment = typeof payments.$inferInsert
-````
-
-## File: lib/db/schema/sales-order-items.ts
-````typescript
-import { pgTable, uuid, text, integer, numeric, pgEnum } from 'drizzle-orm/pg-core'
 import { salesOrders } from './sales-orders'
-⋮----
-export type SalesOrderItem = typeof salesOrderItems.$inferSelect
-export type NewSalesOrderItem = typeof salesOrderItems.$inferInsert
-````
-
-## File: lib/db/schema/sales-return-items.ts
-````typescript
-import { pgTable, uuid, integer } from 'drizzle-orm/pg-core'
 import { salesReturns } from './sales-returns'
-import { salesItemTypeEnum, salesUnitEnum } from './sales-order-items'
-⋮----
-export type SalesReturnItem = typeof salesReturnItems.$inferSelect
-export type NewSalesReturnItem = typeof salesReturnItems.$inferInsert
-````
-
-## File: lib/db/schema/sales-returns.ts
-````typescript
-import { pgTable, uuid, text, date, timestamp, pgEnum } from 'drizzle-orm/pg-core'
-import { salesOrders } from './sales-orders'
 import { customers } from './customers'
 import { users } from './users'
 ⋮----
-export type SalesReturn = typeof salesReturns.$inferSelect
-export type NewSalesReturn = typeof salesReturns.$inferInsert
+export type Invoice = typeof invoices.$inferSelect
+export type NewInvoice = typeof invoices.$inferInsert
+````
+
+## File: lib/db/schema/sales-orders.ts
+````typescript
+import { pgTable, uuid, text, numeric, date, timestamp, pgEnum } from 'drizzle-orm/pg-core'
+import { customers } from './customers'
+import { users } from './users'
+⋮----
+export type SalesOrder = typeof salesOrders.$inferSelect
+export type NewSalesOrder = typeof salesOrders.$inferInsert
 ````
 
 ## File: lib/db/seed-sales.ts
@@ -2483,6 +2489,53 @@ export function generateOrderNumber(
 import { defineConfig } from '@playwright/test';
 ````
 
+## File: repomix.config.json
+````json
+{
+  "$schema": "https://repomix.com/schemas/latest/schema.json",
+  "input": {
+    "maxFileSize": 52428800
+  },
+  "output": {
+    "filePath": "./repomix/repomix-main.md",
+    "style": "markdown",
+    "parsableStyle": false,
+    "fileSummary": true,
+    "directoryStructure": true,
+    "files": true,
+    "removeComments": false,
+    "removeEmptyLines": false,
+    "compress": false,
+    "topFilesLength": 5,
+    "showLineNumbers": false,
+    "truncateBase64": false,
+    "copyToClipboard": false,
+    "includeFullDirectoryStructure": false,
+    "tokenCountTree": false,
+    "git": {
+      "sortByChanges": true,
+      "sortByChangesMaxCommits": 100,
+      "includeDiffs": false,
+      "includeLogs": false,
+      "includeLogsCount": 50
+    }
+  },
+  "include": [],
+  "ignore": {
+    "useGitignore": true,
+    "useDotIgnore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": []
+  },
+  "security": {
+    "enableSecurityCheck": true
+  },
+  "tokenCount": {
+    "encoding": "o200k_base"
+  }
+}
+````
+
 ## File: scripts/benchmark.ts
 ````typescript
 import { chromium } from 'playwright'
@@ -2501,6 +2554,12 @@ async function main()
 // The goal is to verify the server responds fast, not that the full authenticated page renders.
 ⋮----
 // Output JSON for easy parsing
+````
+
+## File: app/(app)/admin/page.tsx
+````typescript
+import Link from 'next/link'
+import { Users, Home, ShoppingBag, Settings, MessageSquare, Bell, Upload } from 'lucide-react'
 ````
 
 ## File: app/(app)/admin/settings/wa-template/page.tsx
@@ -2549,20 +2608,6 @@ function getDaysOverdueStyle(bucket: string): React.CSSProperties
 <td className="px-4 py-3 text-sm text-right" style=
 ⋮----
 <td className="px-4 py-3 text-sm" style=
-````
-
-## File: app/(app)/layout.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { AppShell } from '@/components/layout/app-shell'
-import {
-  getNotificationsForRole,
-  getUnreadCount,
-  getReadNotificationIds,
-} from '@/lib/services/notification.service'
-⋮----
-export default async function AppLayout(
 ````
 
 ## File: app/(app)/penjualan/[id]/page.tsx
@@ -2713,68 +2758,50 @@ function escapeField(value: string): string
 export async function GET(request: Request): Promise<Response>
 ````
 
-## File: components/forms/daily-input-form.tsx
+## File: components/forms/login-form.tsx
 ````typescript
-// client: live auto-calc with useMemo + sessionStorage persistence
+// client: needs form state, submit handler, and eye toggle
 ⋮----
-import { useState, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
-import { createDailyRecordAction } from '@/lib/actions/daily-record.actions'
-import type { FlockOption } from '@/lib/services/daily-record.service'
+import { useMemo, useState } from 'react'
+import { createBrowserClient } from '@supabase/ssr'
+import { Eye, EyeOff } from 'lucide-react'
 ⋮----
-// USED BY: [daily-record.service, daily-input-form] — count: 2
-function calcHDP(a: number, b: number, pop: number)
-// USED BY: [daily-record.service, daily-input-form] — count: 2
-function calcFeedPerBird(feedKg: number, pop: number)
-// USED BY: [daily-record.service, daily-input-form] — count: 2
-function calcFCR(feedKg: number, a: number, b: number)
+async function handleSubmit(e: React.FormEvent)
 ⋮----
-type Props = {
-  flocks: FlockOption[]
-  userRole: 'operator' | 'supervisor' | 'admin'
-}
+{/* Email */}
 ⋮----
-type FormValues = {
-  flockId: string
-  recordDate: string
-  deaths: string
-  culled: string
-  eggsGradeA: string
-  eggsGradeB: string
-  eggsCracked: string
-  eggsAbnormal: string
-  avgWeightKg: string
-  feedKg: string
-}
+onBlur=
 ⋮----
-function todayUTC(): string
+{/* Password */}
 ⋮----
-function minDate(role: 'operator' | 'supervisor' | 'admin'): string
+{/* Forgot password */}
 ⋮----
-function empty(flockId: string): FormValues
+{/* Error */}
 ⋮----
-/* eslint-disable react-hooks/set-state-in-effect */
+{/* Submit */}
+````
+
+## File: components/layout/app-shell.tsx
+````typescript
+'use client' // client: needs usePathname for active nav state
 ⋮----
-} catch { /* ignore */ }
-/* eslint-enable react-hooks/set-state-in-effect */
+import { usePathname } from 'next/navigation'
+import { Sidebar } from './sidebar'
+import { BottomNav } from './bottom-nav'
+import type { SessionUser } from '@/lib/auth/get-session'
+import type { Notification } from '@/lib/services/notification.service'
 ⋮----
-function field(k: keyof FormValues)
-⋮----
-async function submitForm()
-⋮----
-function onSubmit(e: React.FormEvent<HTMLFormElement>)
-⋮----
-{/* Flock + Date */}
-⋮----
-max=
-⋮----
-{/* Depletion */}
-⋮----
-{/* Eggs */}
-⋮----
-{/* Feed + Weight */}
-⋮----
-{/* Auto-calc */}
+export function AppShell({
+  user,
+  children,
+  notifications,
+  readNotificationIds,
+}: {
+  user: SessionUser
+  children: React.ReactNode
+  notifications: Notification[]
+  readNotificationIds: string[]
+})
 ````
 
 ## File: components/ui/so-item-row.tsx
@@ -2905,41 +2932,13 @@ export type AppSetting = typeof appSettings.$inferSelect
 export type NewAppSetting = typeof appSettings.$inferInsert
 ````
 
-## File: lib/db/schema/index.ts
+## File: lib/db/schema/customers.ts
 ````typescript
-
-````
-
-## File: lib/db/schema/inventory-movements.ts
-````typescript
-import { pgTable, uuid, integer, date, timestamp, text, pgEnum, boolean } from 'drizzle-orm/pg-core'
-import { flocks } from './flocks'
+import { pgTable, uuid, text, integer, numeric, timestamp, pgEnum, boolean } from 'drizzle-orm/pg-core'
 import { users } from './users'
 ⋮----
-export type InventoryMovement = typeof inventoryMovements.$inferSelect
-export type NewInventoryMovement = typeof inventoryMovements.$inferInsert
-````
-
-## File: lib/db/schema/invoices.ts
-````typescript
-import { pgTable, uuid, text, numeric, date, timestamp, pgEnum } from 'drizzle-orm/pg-core'
-import { salesOrders } from './sales-orders'
-import { salesReturns } from './sales-returns'
-import { customers } from './customers'
-import { users } from './users'
-⋮----
-export type Invoice = typeof invoices.$inferSelect
-export type NewInvoice = typeof invoices.$inferInsert
-````
-
-## File: lib/db/schema/sales-orders.ts
-````typescript
-import { pgTable, uuid, text, numeric, date, timestamp, pgEnum } from 'drizzle-orm/pg-core'
-import { customers } from './customers'
-import { users } from './users'
-⋮----
-export type SalesOrder = typeof salesOrders.$inferSelect
-export type NewSalesOrder = typeof salesOrders.$inferInsert
+export type Customer = typeof customers.$inferSelect
+export type NewCustomer = typeof customers.$inferInsert
 ````
 
 ## File: lib/services/import.service.test.ts
@@ -2970,139 +2969,6 @@ function setWhereMock(fn: () => Promise<unknown[]>)
 const getResult = () =>
 ⋮----
 // Restore chain after clearAllMocks
-````
-
-## File: lib/services/import.service.ts
-````typescript
-/**
- * Import Service — Sprint 8
- * CSV import for: flocks, daily_records, customers, opening stock.
- *
- * Flow:
- *   1. parse(csvText, entity)  → { valid, errors }   (no DB write)
- *   2. importRows(valid, entity, adminId)             (DB write in transaction)
- *
- * All imported records: is_imported = true, imported_by = adminId.
- * System errors → full rollback, no partial save.
- * Valid rows imported, error rows skipped after user confirmation.
- */
-⋮----
-import { db } from '@/lib/db'
-import {
-  flocks,
-  dailyRecords,
-  customers,
-  inventoryMovements,
-  coops,
-} from '@/lib/db/schema'
-import { eq, and, sql } from 'drizzle-orm'
-import type { NewFlock, NewDailyRecord, NewCustomer, NewInventoryMovement } from '@/lib/db/schema'
-⋮----
-// ─── CSV parsing helpers ──────────────────────────────────────────────────────
-⋮----
-function parseDate(val: string, field: string, rowNum: number):
-⋮----
-function parseInt2(val: string, field: string, rowNum: number, required = true):
-⋮----
-function parseFloat2(val: string, field: string, rowNum: number, required = false):
-⋮----
-export type ParsedRow<T> = {
-  rowNum: number
-  data: T
-}
-⋮----
-export type ParseError = {
-  rowNum: number
-  errors: string[]
-}
-⋮----
-export type ParseResult<T> = {
-  valid: ParsedRow<T>[]
-  errors: ParseError[]
-}
-⋮----
-function parseCsv(text: string): string[][]
-⋮----
-// ─── Flock import ─────────────────────────────────────────────────────────────
-⋮----
-export type FlockImportRow = Omit<NewFlock, 'isImported' | 'importedBy'>
-⋮----
-/**
- * Expected CSV columns: coop_id, name, arrival_date, initial_count, breed (opt), notes (opt)
- */
-export async function parseFlockscsv(csvText: string): Promise<ParseResult<FlockImportRow>>
-⋮----
-const [, ...dataRows] = rows // skip header
-⋮----
-// FK validation: coopId must exist in coops table
-⋮----
-// ─── DailyRecord import ───────────────────────────────────────────────────────
-⋮----
-export type DailyRecordImportRow = Omit<NewDailyRecord, 'isImported' | 'importedBy'>
-⋮----
-/**
- * Expected CSV columns:
- * flock_id, record_date, deaths, culled, eggs_grade_a, eggs_grade_b,
- * eggs_cracked, eggs_abnormal, avg_weight_kg (opt), feed_kg (opt)
- */
-export async function parseDailyRecordsCsv(csvText: string): Promise<ParseResult<DailyRecordImportRow>>
-⋮----
-// FK validation: flockId must exist in flocks table
-⋮----
-// Duplicate check: (flockId, recordDate) must not already exist
-⋮----
-// ─── Customer import ──────────────────────────────────────────────────────────
-⋮----
-export type CustomerImportRow = Omit<NewCustomer, 'isImported' | 'importedBy'>
-⋮----
-/**
- * Expected CSV columns:
- * name, type (retail|wholesale|distributor), phone (opt), address (opt),
- * credit_limit (opt), payment_terms (opt)
- */
-export function parseCustomersCsv(csvText: string): ParseResult<CustomerImportRow>
-⋮----
-// ─── Opening stock import ─────────────────────────────────────────────────────
-⋮----
-export type OpeningStockImportRow = Omit<NewInventoryMovement, 'isImported' | 'importedBy'>
-⋮----
-/**
- * Expected CSV columns: flock_id, grade (A|B), quantity, movement_date
- */
-export async function parseOpeningStockCsv(csvText: string): Promise<ParseResult<OpeningStockImportRow>>
-⋮----
-// Check once if any import entries already exist for each cutover date encountered
-⋮----
-// Check for existing import entries on the same cutover_date
-⋮----
-// ─── DB write ─────────────────────────────────────────────────────────────────
-⋮----
-export type ImportEntity = 'flocks' | 'daily_records' | 'customers' | 'opening_stock'
-⋮----
-export type ImportResult = {
-  inserted: number
-  skipped: number
-}
-⋮----
-/**
- * Writes valid parsed rows to DB inside a single transaction.
- * Any system error → full rollback.
- * admin-only: sets is_imported = true, imported_by = adminId.
- */
-export async function commitImport(
-  entity: ImportEntity,
-  // any: dynamic row types across 4 entity types
-  // any: row data varies by entity
-  rows: ParsedRow<Record<string, unknown>>[],
-  adminId: string
-): Promise<ImportResult>
-⋮----
-// any: dynamic row types across 4 entity types
-// any: row data varies by entity
-⋮----
-// ─── CSV templates ───────────────────────────────────────────────────────────
-⋮----
-export function getCsvTemplate(entity: ImportEntity): string
 ````
 
 ## File: lib/services/notification.service.ts
@@ -3330,6 +3196,19 @@ function parseSafeDate(str: string, fallback: Date): Date
 {/* Production Table */}
 ````
 
+## File: app/(app)/layout.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { AppShell } from '@/components/layout/app-shell'
+import {
+  getNotificationsForRole,
+  getReadNotificationIds,
+} from '@/lib/services/notification.service'
+⋮----
+export default async function AppLayout(
+````
+
 ## File: app/(app)/penjualan/invoices/page.tsx
 ````typescript
 import { redirect } from 'next/navigation'
@@ -3362,72 +3241,6 @@ type Props = {
 function handleFromChange(value: string)
 ⋮----
 function handleToChange(value: string)
-````
-
-## File: components/layout/sidebar.tsx
-````typescript
-import Link from 'next/link'
-import { LayoutDashboard, Egg, Package, DollarSign, Bird, Settings, LogOut, BarChart2 } from 'lucide-react'
-import type { SessionUser } from '@/lib/auth/get-session'
-import type { Notification } from '@/lib/services/notification.service'
-import { NotificationBell } from '@/components/ui/notification-bell'
-⋮----
-function getInitials(name: string)
-⋮----
-function getRoleLabel(role: string)
-⋮----
-{/* Brand */}
-⋮----
-{/* Farm info box */}
-⋮----
-{/* Nav */}
-⋮----
-{/* Invoice sub-link under Penjualan — admin + supervisor only */}
-⋮----
-{/* Laporan Piutang — admin + supervisor only */}
-⋮----
-{/* User card */}
-⋮----
-{/* Logout via GET route that calls supabase.auth.signOut() and redirects to /login */}
-````
-
-## File: components/ui/notification-bell.tsx
-````typescript
-'use client' // client: needs useState + onClick for dropdown + real-time updates
-⋮----
-import { useState, useTransition, useEffect, useRef } from 'react'
-import { createPortal } from 'react-dom'
-import { Bell, Check, CheckCheck } from 'lucide-react'
-import {
-  getNotificationsAction,
-  markNotificationReadAction,
-  markAllNotificationsReadAction,
-} from '@/lib/actions/notification.actions'
-import type { Notification } from '@/lib/services/notification.service'
-⋮----
-type Props = {
-  initialUnread: number
-  initialNotifications: Notification[]
-  readIds: string[]
-}
-⋮----
-// eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: sets mounted flag once on client for SSR hydration guard
-⋮----
-function handleToggle()
-⋮----
-function handleRead(id: string)
-⋮----
-function handleReadAll()
-⋮----
-{/* Backdrop */}
-⋮----
-{/* Dropdown */}
-⋮----
-{/* Header */}
-⋮----
-{/* List */}
-⋮----
-onClick=
 ````
 
 ## File: lib/actions/import.actions.ts
@@ -3748,103 +3561,6 @@ export async function listSalesReturns(
 ): Promise<
 ````
 
-## File: lib/db/schema/customers.ts
-````typescript
-import { pgTable, uuid, text, integer, numeric, timestamp, pgEnum, boolean } from 'drizzle-orm/pg-core'
-import { users } from './users'
-⋮----
-export type Customer = typeof customers.$inferSelect
-export type NewCustomer = typeof customers.$inferInsert
-````
-
-## File: lib/services/alert.service.ts
-````typescript
-/**
- * Alert Service — Sprint 7
- * Evaluates all alert conditions and creates notifications with dedup cooldowns.
- * Called by the pg_cron webhook at 06:00 WIB (23:00 UTC).
- */
-⋮----
-import { db } from '@/lib/db'
-import {
-  flocks,
-  dailyRecords,
-  invoices,
-  inventoryMovements,
-} from '@/lib/db/schema'
-import { eq, isNull, desc, and, lte, sql, inArray } from 'drizzle-orm'
-// sql is used in checkDepletionAlerts aggregation
-import { getAppSetting } from '@/lib/services/app-settings.service'
-import { findActiveCooldown, upsertCooldown } from '@/lib/db/queries/alert-cooldown.queries'
-import { createNotification } from '@/lib/db/queries/notification.queries'
-import { getPhaseForWeeks } from '@/lib/services/flock-phase.service'
-import { getStockBalanceByGrade } from '@/lib/db/queries/inventory.queries'
-import type { NewNotification } from '@/lib/db/schema'
-⋮----
-// ─── helpers ──────────────────────────────────────────────────────────────────
-⋮----
-function daysSince(date: Date): number
-⋮----
-function weeksOld(arrivalDate: Date): number
-⋮----
-async function getNumericSetting(key: string, fallback: number): Promise<number>
-⋮----
-// ─── alert conditions ─────────────────────────────────────────────────────────
-⋮----
-/**
- * Phase change alert — fires once per phase per flock, no repeat.
- * Dedup key: alert_cooldowns with alertType = 'phase_change:<phaseName>'
- */
-async function checkPhaseChangeAlerts(): Promise<void>
-⋮----
-// Cooldown = unlimited (never fire same phase again for same flock)
-⋮----
-/**
- * HDP drop alert — fires if today's HDP dropped > threshold% vs yesterday.
- * Cooldown: 24h per flock.
- */
-async function checkHdpDropAlerts(hdpDropThreshold: number): Promise<void>
-⋮----
-// Use live population (initialCount - cumulative deaths - culls) as denominator
-⋮----
-/**
- * Daily depletion alert — fires if deaths+culled > threshold% of population.
- * Cooldown: 24h per flock.
- */
-async function checkDepletionAlerts(depletionThreshold: number): Promise<void>
-⋮----
-// Compute current population
-⋮----
-/**
- * FCR alert — fires if FCR > threshold.
- * Cooldown: 24h per flock.
- */
-async function checkFcrAlerts(fcrThreshold: number): Promise<void>
-⋮----
-/**
- * Invoice overdue alert — fires every day an invoice is overdue (no cooldown).
- */
-async function checkOverdueInvoiceAlerts(overdueDelayDays: number): Promise<void>
-⋮----
-// No cooldown — fires daily
-⋮----
-/**
- * Stock overstock alert — fires if total stock (grade A + B) > threshold.
- * Cooldown: 24h (fixed entity id '00000000-0000-0000-0000-000000000001').
- */
-async function checkStockAlerts(threshold: number): Promise<void>
-⋮----
-// ─── main entry ───────────────────────────────────────────────────────────────
-⋮----
-/**
- * runDailyAlerts — called by the pg_cron webhook API route.
- * Evaluates all alert conditions in sequence.
- */
-export async function runDailyAlerts(): Promise<void>
-⋮----
-// Run sequentially to avoid DB contention
-````
-
 ## File: lib/services/daily-record.service.test.ts
 ````typescript
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -3900,6 +3616,139 @@ export async function sendInvoiceEmail(
   invoice: InvoiceDetails & { items: SalesOrderItem[] },
   pdfBuffer: Buffer
 ): Promise<void>
+````
+
+## File: lib/services/import.service.ts
+````typescript
+/**
+ * Import Service — Sprint 8
+ * CSV import for: flocks, daily_records, customers, opening stock.
+ *
+ * Flow:
+ *   1. parse(csvText, entity)  → { valid, errors }   (no DB write)
+ *   2. importRows(valid, entity, adminId)             (DB write in transaction)
+ *
+ * All imported records: is_imported = true, imported_by = adminId.
+ * System errors → full rollback, no partial save.
+ * Valid rows imported, error rows skipped after user confirmation.
+ */
+⋮----
+import { db } from '@/lib/db'
+import {
+  flocks,
+  dailyRecords,
+  customers,
+  inventoryMovements,
+  coops,
+} from '@/lib/db/schema'
+import { eq, and, sql } from 'drizzle-orm'
+import type { NewFlock, NewDailyRecord, NewCustomer, NewInventoryMovement } from '@/lib/db/schema'
+⋮----
+// ─── CSV parsing helpers ──────────────────────────────────────────────────────
+⋮----
+function parseDate(val: string, field: string, rowNum: number):
+⋮----
+function parseInt2(val: string, field: string, rowNum: number, required = true):
+⋮----
+function parseFloat2(val: string, field: string, rowNum: number):
+⋮----
+export type ParsedRow<T> = {
+  rowNum: number
+  data: T
+}
+⋮----
+export type ParseError = {
+  rowNum: number
+  errors: string[]
+}
+⋮----
+export type ParseResult<T> = {
+  valid: ParsedRow<T>[]
+  errors: ParseError[]
+}
+⋮----
+function parseCsv(text: string): string[][]
+⋮----
+// ─── Flock import ─────────────────────────────────────────────────────────────
+⋮----
+export type FlockImportRow = Omit<NewFlock, 'isImported' | 'importedBy'>
+⋮----
+/**
+ * Expected CSV columns: coop_id, name, arrival_date, initial_count, breed (opt), notes (opt)
+ */
+export async function parseFlockscsv(csvText: string): Promise<ParseResult<FlockImportRow>>
+⋮----
+const [, ...dataRows] = rows // skip header
+⋮----
+// FK validation: coopId must exist in coops table
+⋮----
+// ─── DailyRecord import ───────────────────────────────────────────────────────
+⋮----
+export type DailyRecordImportRow = Omit<NewDailyRecord, 'isImported' | 'importedBy'>
+⋮----
+/**
+ * Expected CSV columns:
+ * flock_id, record_date, deaths, culled, eggs_grade_a, eggs_grade_b,
+ * eggs_cracked, eggs_abnormal, avg_weight_kg (opt), feed_kg (opt)
+ */
+export async function parseDailyRecordsCsv(csvText: string): Promise<ParseResult<DailyRecordImportRow>>
+⋮----
+// FK validation: flockId must exist in flocks table
+⋮----
+// Duplicate check: (flockId, recordDate) must not already exist
+⋮----
+// ─── Customer import ──────────────────────────────────────────────────────────
+⋮----
+export type CustomerImportRow = Omit<NewCustomer, 'isImported' | 'importedBy'>
+⋮----
+/**
+ * Expected CSV columns:
+ * name, type (retail|wholesale|distributor), phone (opt), address (opt),
+ * credit_limit (opt), payment_terms (opt)
+ */
+export function parseCustomersCsv(csvText: string): ParseResult<CustomerImportRow>
+⋮----
+// ─── Opening stock import ─────────────────────────────────────────────────────
+⋮----
+export type OpeningStockImportRow = Omit<NewInventoryMovement, 'isImported' | 'importedBy'>
+⋮----
+/**
+ * Expected CSV columns: flock_id, grade (A|B), quantity, movement_date
+ */
+export async function parseOpeningStockCsv(csvText: string): Promise<ParseResult<OpeningStockImportRow>>
+⋮----
+// Check once if any import entries already exist for each cutover date encountered
+⋮----
+// Check for existing import entries on the same cutover_date
+⋮----
+// ─── DB write ─────────────────────────────────────────────────────────────────
+⋮----
+export type ImportEntity = 'flocks' | 'daily_records' | 'customers' | 'opening_stock'
+⋮----
+export type ImportResult = {
+  inserted: number
+  skipped: number
+}
+⋮----
+/**
+ * Writes valid parsed rows to DB inside a single transaction.
+ * Any system error → full rollback.
+ * admin-only: sets is_imported = true, imported_by = adminId.
+ */
+export async function commitImport(
+  entity: ImportEntity,
+  // any: dynamic row types across 4 entity types
+  // any: row data varies by entity
+  rows: ParsedRow<Record<string, unknown>>[],
+  adminId: string
+): Promise<ImportResult>
+⋮----
+// any: dynamic row types across 4 entity types
+// any: row data varies by entity
+⋮----
+// ─── CSV templates ───────────────────────────────────────────────────────────
+⋮----
+export function getCsvTemplate(entity: ImportEntity): string
 ````
 
 ## File: middleware.ts
@@ -3987,12 +3836,6 @@ setAll(cookiesToSet)
 }
 ````
 
-## File: app/(app)/admin/page.tsx
-````typescript
-import Link from 'next/link'
-import { Users, Home, ShoppingBag, Settings, MessageSquare, Bell, Upload } from 'lucide-react'
-````
-
 ## File: app/(app)/dashboard/page.tsx
 ````typescript
 import Link from 'next/link'
@@ -4049,6 +3892,33 @@ export async function GET(
 // 8. Persist PDF metadata on invoice record
 ⋮----
 // 9. Return PDF bytes — convert Buffer to Uint8Array for Web Response compatibility
+````
+
+## File: components/layout/sidebar.tsx
+````typescript
+import Link from 'next/link'
+import { LayoutDashboard, Egg, Package, DollarSign, Bird, Settings, LogOut, BarChart2 } from 'lucide-react'
+import type { SessionUser } from '@/lib/auth/get-session'
+import type { Notification } from '@/lib/services/notification.service'
+import { NotificationBell } from '@/components/ui/notification-bell'
+⋮----
+function getInitials(name: string)
+⋮----
+function getRoleLabel(role: string)
+⋮----
+{/* Brand */}
+⋮----
+{/* Farm info box */}
+⋮----
+{/* Nav */}
+⋮----
+{/* Invoice sub-link under Penjualan — admin + supervisor only */}
+⋮----
+{/* Laporan Piutang — admin + supervisor only */}
+⋮----
+{/* User card */}
+⋮----
+{/* Logout via GET route that calls supabase.auth.signOut() and redirects to /login */}
 ````
 
 ## File: components/pdf/invoice-pdf-document.tsx
@@ -4121,6 +3991,42 @@ const ppnPercent = 0 // MVP: PPN = 0%
 {/* Notes (optional) */}
 ⋮----
 Dicetak:
+````
+
+## File: components/ui/notification-bell.tsx
+````typescript
+'use client' // client: needs useState + onClick for dropdown + real-time updates
+⋮----
+import { useState, useTransition, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import { Bell, Check, CheckCheck } from 'lucide-react'
+import {
+  getNotificationsAction,
+  markNotificationReadAction,
+  markAllNotificationsReadAction,
+} from '@/lib/actions/notification.actions'
+import type { Notification } from '@/lib/services/notification.service'
+⋮----
+type Props = {
+  initialNotifications: Notification[]
+  readIds: string[]
+}
+⋮----
+function handleToggle()
+⋮----
+function handleRead(id: string)
+⋮----
+function handleReadAll()
+⋮----
+{/* Backdrop */}
+⋮----
+{/* Dropdown */}
+⋮----
+{/* Header */}
+⋮----
+{/* List */}
+⋮----
+onClick=
 ````
 
 ## File: lib/actions/app-settings.actions.ts
@@ -4212,24 +4118,90 @@ export async function getAppSetting(key: string): Promise<string | null>
 export async function upsertAppSetting(key: string, value: string, updatedBy: string): Promise<void>
 ````
 
-## File: lib/services/invoice.service.test.ts
+## File: lib/services/alert.service.ts
 ````typescript
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-⋮----
-// Mock db.transaction to immediately invoke callback with a mock tx that has insert
+/**
+ * Alert Service — Sprint 7
+ * Evaluates all alert conditions and creates notifications with dedup cooldowns.
+ * Called by the pg_cron webhook at 06:00 WIB (23:00 UTC).
+ */
 ⋮----
 import { db } from '@/lib/db'
 import {
-  getInvoiceDetails,
-  recordPayment,
-  applyCredit,
-  getAgingData,
-  getInvoiceForPdf,
-} from './invoice.service'
+  flocks,
+  dailyRecords,
+  invoices,
+} from '@/lib/db/schema'
+import { eq, isNull, desc, and, lte, sql, inArray } from 'drizzle-orm'
+// sql is used in checkDepletionAlerts aggregation
+import { getAppSetting } from '@/lib/services/app-settings.service'
+import { findActiveCooldown, upsertCooldown } from '@/lib/db/queries/alert-cooldown.queries'
+import { createNotification } from '@/lib/db/queries/notification.queries'
+import { getPhaseForWeeks } from '@/lib/services/flock-phase.service'
+import { getStockBalanceByGrade } from '@/lib/db/queries/inventory.queries'
 ⋮----
-vi.mocked(notificationQueries.createNotification).mockResolvedValue(undefined as any) // any: mock doesn't need full Notification shape
+// ─── helpers ──────────────────────────────────────────────────────────────────
 ⋮----
-// Verify query-layer functions were called for customerCredit and notification
+function daysSince(date: Date): number
+⋮----
+function weeksOld(arrivalDate: Date): number
+⋮----
+async function getNumericSetting(key: string, fallback: number): Promise<number>
+⋮----
+// ─── alert conditions ─────────────────────────────────────────────────────────
+⋮----
+/**
+ * Phase change alert — fires once per phase per flock, no repeat.
+ * Dedup key: alert_cooldowns with alertType = 'phase_change:<phaseName>'
+ */
+async function checkPhaseChangeAlerts(): Promise<void>
+⋮----
+// Cooldown = unlimited (never fire same phase again for same flock)
+⋮----
+/**
+ * HDP drop alert — fires if today's HDP dropped > threshold% vs yesterday.
+ * Cooldown: 24h per flock.
+ */
+async function checkHdpDropAlerts(hdpDropThreshold: number): Promise<void>
+⋮----
+// Use live population (initialCount - cumulative deaths - culls) as denominator
+⋮----
+/**
+ * Daily depletion alert — fires if deaths+culled > threshold% of population.
+ * Cooldown: 24h per flock.
+ */
+async function checkDepletionAlerts(depletionThreshold: number): Promise<void>
+⋮----
+// Compute current population
+⋮----
+/**
+ * FCR alert — fires if FCR > threshold.
+ * Cooldown: 24h per flock.
+ */
+async function checkFcrAlerts(fcrThreshold: number): Promise<void>
+⋮----
+/**
+ * Invoice overdue alert — fires every day an invoice is overdue (no cooldown).
+ */
+async function checkOverdueInvoiceAlerts(overdueDelayDays: number): Promise<void>
+⋮----
+// No cooldown — fires daily
+⋮----
+/**
+ * Stock overstock alert — fires if total stock (grade A + B) > threshold.
+ * Cooldown: 24h (fixed entity id '00000000-0000-0000-0000-000000000001').
+ */
+async function checkStockAlerts(threshold: number): Promise<void>
+⋮----
+// ─── main entry ───────────────────────────────────────────────────────────────
+⋮----
+/**
+ * runDailyAlerts — called by the pg_cron webhook API route.
+ * Evaluates all alert conditions in sequence.
+ */
+export async function runDailyAlerts(): Promise<void>
+⋮----
+// Run sequentially to avoid DB contention
 ````
 
 ## File: lib/services/daily-record.service.ts
@@ -4348,6 +4320,26 @@ export async function getProductionReportData(
 // PERF: N+1 per flock-date row; batch if > 10 flocks per report
 ⋮----
 // Unweighted mean across all flock-day rows; does not account for different flock sizes
+````
+
+## File: lib/services/invoice.service.test.ts
+````typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+⋮----
+// Mock db.transaction to immediately invoke callback with a mock tx that has insert
+⋮----
+import { db } from '@/lib/db'
+import {
+  getInvoiceDetails,
+  recordPayment,
+  applyCredit,
+  getAgingData,
+  getInvoiceForPdf,
+} from './invoice.service'
+⋮----
+vi.mocked(notificationQueries.createNotification).mockResolvedValue(undefined as any) // any: mock doesn't need full Notification shape
+⋮----
+// Verify query-layer functions were called for customerCredit and notification
 ````
 
 ## File: lib/services/invoice.service.ts

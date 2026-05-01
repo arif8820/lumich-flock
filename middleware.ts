@@ -1,10 +1,13 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { Ratelimit } from '@upstash/ratelimit'
-import { Redis } from '@upstash/redis'
+import { Redis } from '@upstash/redis/cloudflare'
 
 const ratelimit = new Ratelimit({
-  redis: Redis.fromEnv(),
+  redis: new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL!,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+  }),
   limiter: Ratelimit.slidingWindow(10, '60 s'),
   analytics: false,
 })
