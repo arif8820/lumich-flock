@@ -13,7 +13,7 @@ import { eq } from 'drizzle-orm'
 import { assertCanEdit } from '@/lib/services/lock-period.service'
 import type { DailyRecord, NewDailyRecord, NewInventoryMovement } from '@/lib/db/schema'
 
-type Role = 'operator' | 'supervisor' | 'admin'
+export type Role = 'operator' | 'supervisor' | 'admin'
 
 export function validateBackdate(recordDate: Date, now: Date, role: Role): void {
   if (recordDate > now) throw new Error('Tidak dapat input untuk tanggal masa depan')
@@ -223,7 +223,7 @@ export type ProductionReportResult = {
 export async function getProductionReportData(
   from: Date,
   to: Date,
-  role: string
+  role: Role
 ): Promise<ProductionReportResult> {
   if (role === 'operator') throw new Error('Akses ditolak')
 
@@ -236,9 +236,7 @@ export async function getProductionReportData(
         row.flockId,
         row.recordDate
       )
-      const activePopulation = computeActivePopulation(row.flockInitialCount, [
-        { deaths: cumDeaths, culled: cumCulled },
-      ])
+      const activePopulation = Math.max(0, row.flockInitialCount - cumDeaths - cumCulled)
       const feedKgNum = Number(row.feedKg ?? 0)
       const hdp = computeHDP(row.eggsGradeA, row.eggsGradeB, activePopulation)
       const fcr = computeFCR(feedKgNum, row.eggsGradeA, row.eggsGradeB)
@@ -264,6 +262,7 @@ export async function getProductionReportData(
   const totalEggs = enriched.reduce((s, r) => s + r.totalEggs, 0)
   const totalFeedKg = enriched.reduce((s, r) => s + r.feedKg, 0)
   const totalDeaths = enriched.reduce((s, r) => s + r.deaths, 0)
+  // Unweighted mean across all flock-day rows; does not account for different flock sizes
   const avgHdp =
     enriched.length > 0
       ? enriched.reduce((s, r) => s + r.hdp, 0) / enriched.length

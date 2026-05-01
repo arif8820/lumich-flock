@@ -234,8 +234,8 @@ describe('daily-record.service — pure functions', () => {
       expect(queries.insertDailyRecordWithMovements).toHaveBeenCalledWith(
         expect.objectContaining({ flockId: 'f1', eggsGradeA: 900 }),
         expect.arrayContaining([
-          expect.objectContaining({ grade: 'A', quantity: 900, movementType: 'IN' }),
-          expect.objectContaining({ grade: 'B', quantity: 50, movementType: 'IN' }),
+          expect.objectContaining({ grade: 'A', quantity: 900, movementType: 'in' }),
+          expect.objectContaining({ grade: 'B', quantity: 50, movementType: 'in' }),
         ])
       )
     })
