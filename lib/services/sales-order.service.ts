@@ -214,6 +214,14 @@ export async function fulfillSO(orderId: string, userId: string, role: string) {
       createdBy: userId,
     }))
 
+  // Guard: egg items present but no movements built → item type mismatch
+  const eggItems = items.filter(
+    (i) => i.itemType === 'egg_grade_a' || i.itemType === 'egg_grade_b'
+  )
+  if (eggItems.length > 0 && movements.length === 0) {
+    throw new Error('Gagal membuat movement inventory — periksa tipe item SO')
+  }
+
   // Build invoice
   const prefix = so.paymentMethod === 'cash' ? 'RCP' : 'INV'
   const invSeq = await countInvoicesThisMonth(prefix)
@@ -236,6 +244,14 @@ export async function fulfillSO(orderId: string, userId: string, role: string) {
     status: so.paymentMethod === 'cash' ? 'paid' : 'sent',
     notes: null,
     createdBy: userId,
+  }
+
+  // Guard: invoice number must be non-empty and total must be > 0
+  if (!invoiceNumber || invoiceNumber.trim() === '') {
+    throw new Error('Gagal generate nomor invoice')
+  }
+  if (Number(so.totalAmount) <= 0) {
+    throw new Error('Total SO harus lebih dari Rp 0 sebelum dapat diproses')
   }
 
   // Build flock retirement updates for flock items
