@@ -14,6 +14,14 @@ function toISODate(d: Date): string {
   return d.toISOString().split('T')[0]!
 }
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+
+function parseSafeDate(str: string, fallback: Date): Date {
+  if (!ISO_DATE.test(str)) return fallback
+  const d = new Date(str)
+  return isNaN(d.getTime()) ? fallback : d
+}
+
 export default async function LaporanProduksiPage({
   searchParams,
 }: {
@@ -30,12 +38,10 @@ export default async function LaporanProduksiPage({
   const fromStr = typeof params.from === 'string' ? params.from : toISODate(defaultFrom)
   const toStr = typeof params.to === 'string' ? params.to : toISODate(today)
 
-  const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
-  const safeFrom = ISO_DATE.test(fromStr) ? fromStr : toISODate(defaultFrom)
-  const safeTo   = ISO_DATE.test(toStr)   ? toStr   : toISODate(today)
-
-  const from = new Date(safeFrom)
-  const to = new Date(safeTo)
+  const from = parseSafeDate(fromStr, defaultFrom)
+  const to = parseSafeDate(toStr, today)
+  const safeFrom = toISODate(from)
+  const safeTo = toISODate(to)
 
   let result: Awaited<ReturnType<typeof getProductionReportData>> = {
     rows: [],
