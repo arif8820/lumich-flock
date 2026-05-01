@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
 import { getSession } from '@/lib/auth/get-session'
 import { getProductionReportData } from '@/lib/services/daily-record.service'
 import type { Role } from '@/lib/services/daily-record.service'
@@ -6,11 +7,11 @@ import { KpiCard } from '@/components/ui/kpi-card'
 import { ProductionReportFilter } from '@/components/forms/production-report-filter'
 
 function formatDate(d: Date): string {
-  return new Date(d).toLocaleDateString('id-ID')
+  return d.toLocaleDateString('id-ID')
 }
 
 function toISODate(d: Date): string {
-  return d.toISOString().split('T')[0] ?? ''
+  return d.toISOString().split('T')[0]!
 }
 
 export default async function LaporanProduksiPage({
@@ -29,8 +30,12 @@ export default async function LaporanProduksiPage({
   const fromStr = typeof params.from === 'string' ? params.from : toISODate(defaultFrom)
   const toStr = typeof params.to === 'string' ? params.to : toISODate(today)
 
-  const from = new Date(fromStr)
-  const to = new Date(toStr)
+  const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+  const safeFrom = ISO_DATE.test(fromStr) ? fromStr : toISODate(defaultFrom)
+  const safeTo   = ISO_DATE.test(toStr)   ? toStr   : toISODate(today)
+
+  const from = new Date(safeFrom)
+  const to = new Date(safeTo)
 
   let result: Awaited<ReturnType<typeof getProductionReportData>> = {
     rows: [],
@@ -60,10 +65,12 @@ export default async function LaporanProduksiPage({
           </p>
         </div>
         <div className="flex items-center gap-4 flex-wrap">
-          <ProductionReportFilter defaultFrom={fromStr} defaultTo={toStr} />
+          <Suspense fallback={null}>
+            <ProductionReportFilter defaultFrom={safeFrom} defaultTo={safeTo} />
+          </Suspense>
           {(session.role === 'admin' || session.role === 'supervisor') && (
             <a
-              href={`/api/laporan/produksi-csv?from=${fromStr}&to=${toStr}`}
+              href={`/api/laporan/produksi-csv?from=${safeFrom}&to=${safeTo}`}
               className="inline-flex items-center px-4 py-2 rounded-[10px] text-sm font-medium transition-colors"
               style={{ backgroundColor: 'var(--lf-teal)', color: '#ffffff' }}
             >

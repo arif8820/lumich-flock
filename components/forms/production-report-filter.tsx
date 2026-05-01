@@ -1,8 +1,7 @@
 'use client'
 // client: needs onChange handlers for date inputs
 
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 type Props = {
   defaultFrom: string
@@ -11,16 +10,16 @@ type Props = {
 
 export function ProductionReportFilter({ defaultFrom, defaultTo }: Props) {
   const router = useRouter()
-  const [from, setFrom] = useState(defaultFrom)
-  const [to, setTo] = useState(defaultTo)
+  const searchParams = useSearchParams()
+
+  const from = searchParams.get('from') ?? defaultFrom
+  const to = searchParams.get('to') ?? defaultTo
 
   function handleFromChange(value: string) {
-    setFrom(value)
     router.push(`/laporan/produksi?from=${value}&to=${to}`)
   }
 
   function handleToChange(value: string) {
-    setTo(value)
     router.push(`/laporan/produksi?from=${from}&to=${value}`)
   }
 
