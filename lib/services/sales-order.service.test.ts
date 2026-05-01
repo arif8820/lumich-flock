@@ -213,6 +213,7 @@ describe('sales-order.service', () => {
     const mockDraftSO = {
       id: 'so-1',
       orderNumber: 'SO-202604-0001',
+      orderDate: new Date('2026-04-23'),
       status: 'draft' as const,
     }
 
@@ -233,8 +234,8 @@ describe('sales-order.service', () => {
       ] as any)
       vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(500)
 
-      await expect(confirmSO('so-1', 'user-1', 'supervisor')).rejects.toThrow('Stok tidak mencukupi')
-      await expect(confirmSO('so-1', 'user-1', 'supervisor')).rejects.toThrow('Grade A')
+      await expect(confirmSO('so-1', 'user-1', 'supervisor'))
+        .rejects.toThrow('Stok tidak mencukupi: Grade A')
     })
 
     it('throws when Grade B stock is insufficient', async () => {
@@ -244,8 +245,8 @@ describe('sales-order.service', () => {
       ] as any)
       vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(300)
 
-      await expect(confirmSO('so-1', 'user-1', 'supervisor')).rejects.toThrow('Stok tidak mencukupi')
-      await expect(confirmSO('so-1', 'user-1', 'supervisor')).rejects.toThrow('Grade B')
+      await expect(confirmSO('so-1', 'user-1', 'supervisor'))
+        .rejects.toThrow('Stok tidak mencukupi: Grade B')
     })
 
     it('throws when SO is not draft', async () => {
