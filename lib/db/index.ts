@@ -8,8 +8,10 @@ if (!connectionUrl) {
 }
 
 const client = postgres(connectionUrl, {
-  prepare: false, // required for Supabase Transaction pooler
-  max: 1,         // Session mode pooler: keep to 1 to avoid exhausting free-tier pool
+  prepare: false,      // safer with Supabase pooler (both session + transaction mode)
+  max: 3,              // allow a few concurrent connections on free-tier pool
+  idle_timeout: 20,    // release idle connections after 20s (avoids stale conn on hot reload)
+  connect_timeout: 10, // fail fast instead of hanging indefinitely
 })
 
 export const db = drizzle(client, { schema })
