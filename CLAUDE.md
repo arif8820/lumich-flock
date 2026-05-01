@@ -44,6 +44,10 @@ Migration files: `lib/db/migrations/` — committed to git, source of truth for 
 Phase 1 baseline: `lib/db/migrations/0000_complex_ultron.sql`
 Phase 2 schemas (daily_records, inventory_movements, etc.) harus ada migration file sendiri.
 
+## Codebase Context
+
+Codebase summary : `repomix/repomix-main.md`
+
 ## Architecture
 
 ```
