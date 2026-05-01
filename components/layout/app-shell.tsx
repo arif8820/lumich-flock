@@ -9,13 +9,11 @@ import type { Notification } from '@/lib/services/notification.service'
 export function AppShell({
   user,
   children,
-  unreadCount,
   notifications,
   readNotificationIds,
 }: {
   user: SessionUser
   children: React.ReactNode
-  unreadCount: number
   notifications: Notification[]
   readNotificationIds: string[]
 }) {
@@ -26,7 +24,6 @@ export function AppShell({
       <Sidebar
         user={user}
         currentPath={pathname}
-        unreadCount={unreadCount}
         notifications={notifications}
         readNotificationIds={readNotificationIds}
       />

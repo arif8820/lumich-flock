@@ -9,7 +9,6 @@ import {
   flocks,
   dailyRecords,
   invoices,
-  inventoryMovements,
 } from '@/lib/db/schema'
 import { eq, isNull, desc, and, lte, sql, inArray } from 'drizzle-orm'
 // sql is used in checkDepletionAlerts aggregation
@@ -18,7 +17,6 @@ import { findActiveCooldown, upsertCooldown } from '@/lib/db/queries/alert-coold
 import { createNotification } from '@/lib/db/queries/notification.queries'
 import { getPhaseForWeeks } from '@/lib/services/flock-phase.service'
 import { getStockBalanceByGrade } from '@/lib/db/queries/inventory.queries'
-import type { NewNotification } from '@/lib/db/schema'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 

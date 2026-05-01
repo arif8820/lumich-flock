@@ -41,7 +41,7 @@ function parseInt2(val: string, field: string, rowNum: number, required = true):
   return { num: n }
 }
 
-function parseFloat2(val: string, field: string, rowNum: number, required = false): { num?: number | null; error?: string } {
+function parseFloat2(val: string, field: string, rowNum: number): { num?: number | null; error?: string } {
   if (!val) return { num: null }
   const n = parseFloat(val)
   if (isNaN(n)) return { error: `Baris ${rowNum}: ${field} harus berupa angka` }
