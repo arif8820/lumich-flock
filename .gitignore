@@ -51,4 +51,5 @@ next-env.d.ts
 design/
 
 # superpowers
-docs/superpowers/*
+docs/superpowers/*PORT=5555
+nohup.out
