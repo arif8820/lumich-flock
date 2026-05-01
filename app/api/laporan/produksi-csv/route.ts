@@ -1,6 +1,6 @@
 import { getSession } from '@/lib/auth/get-session'
 import { getProductionReportData } from '@/lib/services/daily-record.service'
-import type { Role } from '@/lib/services/daily-record.service'
+import type { Role, ProductionReportResult } from '@/lib/services/daily-record.service'
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -9,6 +9,13 @@ function parseSafeDate(str: string | null, fallback: Date): Date {
   const d = new Date(str)
   if (isNaN(d.getTime())) return fallback
   return d
+}
+
+function escapeField(value: string): string {
+  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+    return `"${value.replace(/"/g, '""')}"`
+  }
+  return value
 }
 
 export async function GET(request: Request): Promise<Response> {
@@ -33,7 +40,12 @@ export async function GET(request: Request): Promise<Response> {
   const from = parseSafeDate(fromParam, defaultFrom)
   const to = parseSafeDate(toParam, today)
 
-  const result = await getProductionReportData(from, to, session.role as Role)
+  let result: ProductionReportResult
+  try {
+    result = await getProductionReportData(from, to, session.role as Role)
+  } catch {
+    return new Response('Gagal mengambil data laporan', { status: 500 })
+  }
 
   const header = [
     'Tanggal',
@@ -48,13 +60,6 @@ export async function GET(request: Request): Promise<Response> {
     'FCR',
     'Kematian',
   ].join(',')
-
-  function escapeField(value: string): string {
-    if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-      return `"${value.replace(/"/g, '""')}"`
-    }
-    return value
-  }
 
   const dataRows = result.rows.map((row) => {
     const recordDate = row.recordDate instanceof Date
