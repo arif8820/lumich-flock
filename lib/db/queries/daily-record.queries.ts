@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { dailyRecords, inventoryMovements, flocks, coops } from '@/lib/db/schema'
-import { eq, and, desc, sum, gte, lte } from 'drizzle-orm'
+import { eq, and, desc, sum, gte, lte, asc } from 'drizzle-orm'
 import type { DailyRecord, NewDailyRecord, NewInventoryMovement } from '@/lib/db/schema'
 
 export async function findDailyRecordById(id: string): Promise<DailyRecord | null> {
@@ -68,11 +68,11 @@ export async function getCumulativeDepletionByFlockUpTo(
 
 export type ProductionReportRow = {
   recordDate: Date
-  coopId: string | null
-  coopName: string | null
-  flockId: string | null
-  flockName: string | null
-  flockInitialCount: number | null
+  coopId: string
+  coopName: string
+  flockId: string
+  flockName: string
+  flockInitialCount: number
   deaths: number
   culled: number
   eggsGradeA: number
@@ -99,8 +99,8 @@ export async function getProductionReport(
       feedKg: dailyRecords.feedKg,
     })
     .from(dailyRecords)
-    .leftJoin(flocks, eq(flocks.id, dailyRecords.flockId))
-    .leftJoin(coops, eq(coops.id, flocks.coopId))
+    .innerJoin(flocks, eq(flocks.id, dailyRecords.flockId))
+    .innerJoin(coops, eq(coops.id, flocks.coopId))
     .where(and(gte(dailyRecords.recordDate, from), lte(dailyRecords.recordDate, to)))
-    .orderBy(coops.name, dailyRecords.recordDate)
+    .orderBy(asc(coops.name), asc(dailyRecords.recordDate))
 }
