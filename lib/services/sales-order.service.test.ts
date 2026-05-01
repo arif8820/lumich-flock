@@ -427,5 +427,17 @@ describe('sales-order.service', () => {
       const invoiceArg = vi.mocked(salesOrderQueries.fulfillSOTx).mock.calls[0]![3]
       expect((invoiceArg as any).invoiceNumber).toMatch(/^INV-/)
     })
+
+    it('throws when SO totalAmount is zero or negative', async () => {
+      const mockZeroSO = { ...mockConfirmedSO, totalAmount: '0' }
+      vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockZeroSO as any)
+      vi.mocked(customerQueries.findCustomerById).mockResolvedValue(mockCustomer as any)
+      vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue([])
+      vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(1000)
+      vi.mocked(invoiceQueries.countInvoicesThisMonth).mockResolvedValue(0)
+
+      await expect(fulfillSO('so-1', 'user-1', 'admin'))
+        .rejects.toThrow('Total SO harus lebih dari Rp 0 sebelum dapat diproses')
+    })
   })
 })
