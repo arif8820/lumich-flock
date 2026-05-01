@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
-import { dailyRecords, inventoryMovements } from '@/lib/db/schema'
-import { eq, and, desc, sum } from 'drizzle-orm'
+import { dailyRecords, inventoryMovements, flocks, coops } from '@/lib/db/schema'
+import { eq, and, desc, sum, gte, lte } from 'drizzle-orm'
 import type { DailyRecord, NewDailyRecord, NewInventoryMovement } from '@/lib/db/schema'
 
 export async function findDailyRecordById(id: string): Promise<DailyRecord | null> {
@@ -50,4 +50,57 @@ export async function insertDailyRecordWithMovements(
     }
     return inserted!
   })
+}
+
+export async function getCumulativeDepletionByFlockUpTo(
+  flockId: string,
+  upToDate: Date
+): Promise<{ deaths: number; culled: number }> {
+  const [row] = await db
+    .select({ totalDeaths: sum(dailyRecords.deaths), totalCulled: sum(dailyRecords.culled) })
+    .from(dailyRecords)
+    .where(and(eq(dailyRecords.flockId, flockId), lte(dailyRecords.recordDate, upToDate)))
+  return {
+    deaths: Number(row?.totalDeaths ?? '0'),
+    culled: Number(row?.totalCulled ?? '0'),
+  }
+}
+
+export type ProductionReportRow = {
+  recordDate: Date
+  coopId: string | null
+  coopName: string | null
+  flockId: string | null
+  flockName: string | null
+  flockInitialCount: number | null
+  deaths: number
+  culled: number
+  eggsGradeA: number
+  eggsGradeB: number
+  feedKg: string | null
+}
+
+export async function getProductionReport(
+  from: Date,
+  to: Date
+): Promise<ProductionReportRow[]> {
+  return db
+    .select({
+      recordDate: dailyRecords.recordDate,
+      coopId: coops.id,
+      coopName: coops.name,
+      flockId: flocks.id,
+      flockName: flocks.name,
+      flockInitialCount: flocks.initialCount,
+      deaths: dailyRecords.deaths,
+      culled: dailyRecords.culled,
+      eggsGradeA: dailyRecords.eggsGradeA,
+      eggsGradeB: dailyRecords.eggsGradeB,
+      feedKg: dailyRecords.feedKg,
+    })
+    .from(dailyRecords)
+    .leftJoin(flocks, eq(flocks.id, dailyRecords.flockId))
+    .leftJoin(coops, eq(coops.id, flocks.coopId))
+    .where(and(gte(dailyRecords.recordDate, from), lte(dailyRecords.recordDate, to)))
+    .orderBy(coops.name, dailyRecords.recordDate)
 }
