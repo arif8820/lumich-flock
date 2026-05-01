@@ -49,7 +49,7 @@ describe('stock.service', () => {
       expect(q.getStockBalance).toHaveBeenCalledWith('f1', 'A')
       expect(q.insertStockAdjustmentWithMovement).toHaveBeenCalledWith(
         expect.objectContaining({ quantity: -30 }),
-        expect.objectContaining({ movementType: 'OUT', quantity: 30 })
+        expect.objectContaining({ movementType: 'out', quantity: 30 })
       )
     })
 
@@ -76,7 +76,7 @@ describe('stock.service', () => {
       expect(q.getStockBalance).toHaveBeenCalledWith('f1', 'A')
       expect(q.insertStockAdjustmentWithMovement).toHaveBeenCalledWith(
         expect.objectContaining({ quantity: 100 }),
-        expect.objectContaining({ movementType: 'IN', quantity: 100 })
+        expect.objectContaining({ movementType: 'in', quantity: 100 })
       )
     })
   })
