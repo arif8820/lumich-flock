@@ -24,13 +24,11 @@ function getRoleLabel(role: string) {
 export function Sidebar({
   user,
   currentPath,
-  unreadCount,
   notifications,
   readNotificationIds,
 }: {
   user: SessionUser
   currentPath: string
-  unreadCount: number
   notifications: Notification[]
   readNotificationIds: string[]
 }) {
@@ -49,7 +47,6 @@ export function Sidebar({
           <p className="text-[11px]" style={{ color: '#8fa08f' }}>ERP Peternakan</p>
         </div>
         <NotificationBell
-          initialUnread={unreadCount}
           initialNotifications={notifications}
           readIds={readNotificationIds}
         />

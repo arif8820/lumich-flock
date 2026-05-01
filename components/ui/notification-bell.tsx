@@ -1,6 +1,6 @@
 'use client' // client: needs useState + onClick for dropdown + real-time updates
 
-import { useState, useTransition, useEffect, useRef } from 'react'
+import { useState, useTransition, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Bell, Check, CheckCheck } from 'lucide-react'
 import {
@@ -27,23 +27,17 @@ const TYPE_COLOR: Record<Notification['type'], string> = {
 }
 
 type Props = {
-  initialUnread: number
   initialNotifications: Notification[]
   readIds: string[]
 }
 
-export function NotificationBell({ initialUnread, initialNotifications, readIds: initialReadIds }: Props) {
+export function NotificationBell({ initialNotifications, readIds: initialReadIds }: Props) {
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>(initialNotifications)
   const [readIds, setReadIds] = useState<Set<string>>(new Set(initialReadIds))
-  const [unread, setUnread] = useState(initialUnread)
   const [isPending, startTransition] = useTransition()
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null)
   const bellRef = useRef<HTMLButtonElement>(null)
-  const [mounted, setMounted] = useState(false)
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: sets mounted flag once on client for SSR hydration guard
-  useEffect(() => { setMounted(true) }, [])
 
   const unreadCount = notifications.filter((n) => !readIds.has(n.id)).length
 
@@ -63,7 +57,6 @@ export function NotificationBell({ initialUnread, initialNotifications, readIds:
     startTransition(async () => {
       await markNotificationReadAction(id)
       setReadIds((prev) => new Set([...prev, id]))
-      setUnread((v) => Math.max(0, v - 1))
     })
   }
 
@@ -72,7 +65,6 @@ export function NotificationBell({ initialUnread, initialNotifications, readIds:
       await markAllNotificationsReadAction()
       const allIds = new Set(notifications.map((n) => n.id))
       setReadIds(allIds)
-      setUnread(0)
     })
   }
 
@@ -96,7 +88,7 @@ export function NotificationBell({ initialUnread, initialNotifications, readIds:
         )}
       </button>
 
-      {open && mounted && dropdownPos && createPortal(
+      {open && dropdownPos && createPortal(
         <>
           {/* Backdrop */}
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
