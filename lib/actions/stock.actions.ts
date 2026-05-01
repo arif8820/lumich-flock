@@ -2,6 +2,7 @@
 
 import { z } from 'zod'
 import { getSession } from '@/lib/auth/get-session'
+import { requireSupervisorOrAdmin, requireAdmin } from '@/lib/auth/guards'
 import {
   getStockBalance,
   createStockAdjustment,
@@ -18,9 +19,9 @@ const stockAdjustmentSchema = z.object({
   flockId: z.string().uuid(),
   adjustmentDate: z.coerce.date(),
   grade: z.enum(['A', 'B']),
-  quantity: z.coerce.number().int(), // signed
-  reason: z.string().min(1),
-  notes: z.string().optional(),
+  quantity: z.coerce.number().int(),
+  reason: z.string().min(1).max(500).trim(),
+  notes: z.string().max(500).trim().optional(),
 })
 
 const regradeRequestSchema = z.object({
@@ -29,7 +30,7 @@ const regradeRequestSchema = z.object({
   gradeTo: z.enum(['A', 'B']),
   quantity: z.coerce.number().int().positive(),
   requestDate: z.coerce.date(),
-  notes: z.string().optional(),
+  notes: z.string().max(500).trim().optional(),
 })
 
 export async function getStockBalanceAction(
@@ -53,8 +54,10 @@ export async function getStockBalanceAction(
 export async function createStockAdjustmentAction(
   formData: FormData
 ): Promise<ActionResult<{ id: string }>> {
+  const guard = await requireSupervisorOrAdmin()
+  if (guard) return guard
+
   const session = await getSession()
-  if (!session) return { success: false, error: 'Tidak terautentikasi' }
 
   const parsed = stockAdjustmentSchema.safeParse({
     flockId: formData.get('flockId'),
@@ -69,7 +72,7 @@ export async function createStockAdjustmentAction(
   }
 
   try {
-    const result = await createStockAdjustment(parsed.data, session.id, session.role)
+    const result = await createStockAdjustment(parsed.data, session!.id, session!.role)
     return { success: true, data: { id: result.id } }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal menyimpan penyesuaian stok' }
@@ -79,8 +82,10 @@ export async function createStockAdjustmentAction(
 export async function submitRegradeRequestAction(
   formData: FormData
 ): Promise<ActionResult<{ id: string }>> {
+  const guard = await requireSupervisorOrAdmin()
+  if (guard) return guard
+
   const session = await getSession()
-  if (!session) return { success: false, error: 'Tidak terautentikasi' }
 
   const parsed = regradeRequestSchema.safeParse({
     flockId: formData.get('flockId'),
@@ -95,7 +100,7 @@ export async function submitRegradeRequestAction(
   }
 
   try {
-    const result = await submitRegradeRequest(parsed.data, session.id)
+    const result = await submitRegradeRequest(parsed.data, session!.id)
     return { success: true, data: { id: result.id } }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal mengajukan permintaan regrade' }
@@ -105,12 +110,13 @@ export async function submitRegradeRequestAction(
 export async function approveRegradeRequestAction(
   requestId: string
 ): Promise<ActionResult> {
+  const guard = await requireAdmin()
+  if (guard) return guard
+
   const session = await getSession()
-  if (!session) return { success: false, error: 'Tidak terautentikasi' }
-  if (session.role !== 'admin') return { success: false, error: 'Tidak diizinkan' } // admin-only per PRD
 
   try {
-    await approveRegradeRequest(requestId, session.id)
+    await approveRegradeRequest(requestId, session!.id)
     return { success: true, data: undefined }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal menyetujui permintaan regrade' }
@@ -120,12 +126,13 @@ export async function approveRegradeRequestAction(
 export async function rejectRegradeRequestAction(
   requestId: string
 ): Promise<ActionResult> {
+  const guard = await requireAdmin()
+  if (guard) return guard
+
   const session = await getSession()
-  if (!session) return { success: false, error: 'Tidak terautentikasi' }
-  if (session.role !== 'admin') return { success: false, error: 'Tidak diizinkan' } // admin-only per PRD
 
   try {
-    await rejectRegradeRequest(requestId, session.id)
+    await rejectRegradeRequest(requestId, session!.id)
     return { success: true, data: undefined }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal menolak permintaan regrade' }

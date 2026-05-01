@@ -3,13 +3,19 @@ import { getSession } from '@/lib/auth/get-session'
 import { redirect } from 'next/navigation'
 import { KpiCard } from '@/components/ui/kpi-card'
 import { DashboardCharts } from '@/components/ui/charts/dashboard-charts'
-import { MOCK_KPI, MOCK_CHART_DATA, MOCK_RECENT_RECORDS } from '@/lib/mock/dashboard.mock'
+import { getDashboardKpis, getProductionChartData, getRecentDashboardRecords } from '@/lib/services/dashboard.service'
 import { getAgingData } from '@/lib/services/invoice.service'
 import type { AgingRow } from '@/lib/db/queries/invoice.queries'
 
 export default async function DashboardPage() {
   const user = await getSession()
   if (!user) redirect('/login')
+
+  const [kpis, chartData, recentRecords] = await Promise.all([
+    getDashboardKpis(),
+    getProductionChartData(30),
+    getRecentDashboardRecords(7),
+  ])
 
   let top5: AgingRow[] = []
   if (user.role !== 'operator') {
@@ -31,16 +37,16 @@ export default async function DashboardPage() {
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        <KpiCard label="HDP%" value={`${MOCK_KPI.hdpPercent.toFixed(1)}%`} />
-        <KpiCard label="FCR 7 Hari" value={MOCK_KPI.fcr7Day.toFixed(2)} />
-        <KpiCard label="Produksi Hari Ini" value={MOCK_KPI.productionToday.toLocaleString('id')} unit="butir" />
-        <KpiCard label="Stok Siap Jual" value={MOCK_KPI.stockReadyToSell.toLocaleString('id')} unit="butir" />
-        <KpiCard label="Populasi Aktif" value={MOCK_KPI.activePopulation.toLocaleString('id')} unit="ekor" />
-        <KpiCard label="Pakan/Ekor" value={MOCK_KPI.feedPerBirdGrams} unit="g" />
+        <KpiCard label="HDP%" value={`${kpis.hdpPercent.toFixed(1)}%`} />
+        <KpiCard label="FCR 7 Hari" value={kpis.fcr7Day.toFixed(2)} />
+        <KpiCard label="Produksi Hari Ini" value={kpis.productionToday.toLocaleString('id')} unit="butir" />
+        <KpiCard label="Stok Siap Jual" value={kpis.stockReadyToSell.toLocaleString('id')} unit="butir" />
+        <KpiCard label="Populasi Aktif" value={kpis.activePopulation.toLocaleString('id')} unit="ekor" />
+        <KpiCard label="Pakan/Ekor" value={kpis.feedPerBirdGrams.toFixed(0)} unit="g" />
       </div>
 
       {/* Charts 2x2 */}
-      <DashboardCharts data={MOCK_CHART_DATA} />
+      <DashboardCharts data={chartData} />
 
       {/* Recent records table */}
       <div className="bg-white rounded-2xl p-4 shadow-lf-sm border border-[var(--lf-border)]">
@@ -57,8 +63,8 @@ export default async function DashboardPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--lf-border)]">
-              {MOCK_RECENT_RECORDS.map((r) => (
-                <tr key={r.date} className="py-2">
+              {recentRecords.map((r, i) => (
+                <tr key={i} className="py-2">
                   <td className="py-2 text-[var(--lf-text-dark)]">
                     {r.date}
                     {r.isLate && (

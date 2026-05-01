@@ -2,6 +2,7 @@
 
 import { z } from 'zod'
 import { getSession } from '@/lib/auth/get-session'
+import { requireAdmin } from '@/lib/auth/guards'
 import {
   createUser,
   getAllUsers,
@@ -20,21 +21,13 @@ const passwordSchema = z
 const createUserSchema = z.object({
   email: z.string().email('Email tidak valid'),
   password: passwordSchema,
-  fullName: z.string().min(2, 'Nama minimal 2 karakter'),
+  fullName: z.string().min(2, 'Nama minimal 2 karakter').max(500).trim(),
   role: z.enum(['operator', 'supervisor', 'admin']),
 })
 
 type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: false; error: string }
-
-async function requireAdmin(): Promise<{ success: false; error: string } | null> {
-  const session = await getSession()
-  if (!session || session.role !== 'admin') {
-    return { success: false, error: 'Akses ditolak' }
-  }
-  return null
-}
 
 export async function createUserAction(
   formData: FormData

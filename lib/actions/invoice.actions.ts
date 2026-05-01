@@ -25,7 +25,7 @@ const recordPaymentSchema = z.object({
   invoiceId: z.string().uuid('ID invoice tidak valid'),
   amount: z.coerce.number().positive('Jumlah harus lebih dari 0'),
   method: z.enum(['cash', 'transfer', 'cheque', 'credit']),
-  referenceNumber: z.string().optional(),
+  referenceNumber: z.string().max(500).trim().optional(),
   paymentDate: z.coerce.date(),
 })
 

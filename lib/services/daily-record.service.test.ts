@@ -4,6 +4,8 @@ vi.mock('@/lib/db/queries/daily-record.queries', () => ({
   findDailyRecord: vi.fn(),
   insertDailyRecordWithMovements: vi.fn(),
   getTotalDepletionByFlock: vi.fn(),
+  getCumulativeDepletionByFlockUpTo: vi.fn(),
+  getProductionReport: vi.fn(),
 }))
 
 vi.mock('@/lib/db/queries/flock.queries', () => ({
@@ -41,6 +43,7 @@ import {
   computeFeedPerBird,
   computeFCR,
   createDailyRecord,
+  getProductionReportData,
 } from './daily-record.service'
 
 describe('daily-record.service — pure functions', () => {
@@ -127,6 +130,79 @@ describe('daily-record.service — pure functions', () => {
     })
   })
 
+  describe('getProductionReportData', () => {
+    const mockRawRow = {
+      recordDate: new Date('2026-04-20'),
+      coopId: 'coop-1',
+      coopName: 'Kandang A',
+      flockId: 'flock-1',
+      flockName: 'Batch 2026-01',
+      flockInitialCount: 1000,
+      deaths: 5,
+      culled: 2,
+      eggsGradeA: 850,
+      eggsGradeB: 50,
+      feedKg: '120',
+    }
+
+    beforeEach(() => {
+      vi.clearAllMocks()
+    })
+
+    it('throws Akses ditolak for operator role', async () => {
+      await expect(
+        getProductionReportData(new Date('2026-04-01'), new Date('2026-04-30'), 'operator')
+      ).rejects.toThrow('Akses ditolak')
+    })
+
+    it('happy path: correctly computes activePopulation, hdp, fcr, totalEggs and KPI aggregates', async () => {
+      vi.mocked(queries.getProductionReport).mockResolvedValue([mockRawRow])
+      // Cumulative depletion up to recordDate: 5 deaths, 2 culled (same as the single row)
+      vi.mocked(queries.getCumulativeDepletionByFlockUpTo).mockResolvedValue({ deaths: 5, culled: 2 })
+
+      const result = await getProductionReportData(
+        new Date('2026-04-01'),
+        new Date('2026-04-30'),
+        'supervisor'
+      )
+
+      expect(result.rows).toHaveLength(1)
+
+      const row = result.rows[0]!
+      // activePopulation = 1000 - (5 + 2) = 993
+      expect(row.activePopulation).toBe(993)
+      // totalEggs = 850 + 50 = 900
+      expect(row.totalEggs).toBe(900)
+      // hdp = (900 / 993) * 100 ≈ 90.63
+      expect(row.hdp).toBeCloseTo((900 / 993) * 100, 4)
+      // fcr = 120 / (900 / 12) = 120 / 75 = 1.6
+      expect(row.fcr).toBeCloseTo(1.6, 4)
+      expect(row.feedKg).toBe(120)
+      expect(row.deaths).toBe(5)
+      expect(row.culled).toBe(2)
+
+      // KPI aggregates
+      expect(result.kpi.totalEggs).toBe(900)
+      expect(result.kpi.totalFeedKg).toBe(120)
+      expect(result.kpi.totalDeaths).toBe(5)
+      expect(result.kpi.avgHdp).toBeCloseTo((900 / 993) * 100, 4)
+    })
+
+    it('returns zero avgHdp when there are no rows', async () => {
+      vi.mocked(queries.getProductionReport).mockResolvedValue([])
+
+      const result = await getProductionReportData(
+        new Date('2026-04-01'),
+        new Date('2026-04-30'),
+        'admin'
+      )
+
+      expect(result.rows).toHaveLength(0)
+      expect(result.kpi.avgHdp).toBe(0)
+      expect(result.kpi.totalEggs).toBe(0)
+    })
+  })
+
   describe('createDailyRecord', () => {
     beforeEach(() => {
       vi.clearAllMocks()
@@ -158,8 +234,8 @@ describe('daily-record.service — pure functions', () => {
       expect(queries.insertDailyRecordWithMovements).toHaveBeenCalledWith(
         expect.objectContaining({ flockId: 'f1', eggsGradeA: 900 }),
         expect.arrayContaining([
-          expect.objectContaining({ grade: 'A', quantity: 900, movementType: 'IN' }),
-          expect.objectContaining({ grade: 'B', quantity: 50, movementType: 'IN' }),
+          expect.objectContaining({ grade: 'A', quantity: 900, movementType: 'in' }),
+          expect.objectContaining({ grade: 'B', quantity: 50, movementType: 'in' }),
         ])
       )
     })

@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth/get-session'
+import { requireSupervisorOrAdmin, requireAdmin } from '@/lib/auth/guards'
 import {
   createSalesReturn,
   approveSalesReturn,
@@ -20,29 +21,13 @@ const createSalesReturnSchema = z.object({
   orderId: z.string().uuid('ID SO tidak valid'),
   returnDate: z.coerce.date(),
   reasonType: z.enum(['wrong_grade', 'damaged', 'quantity_error', 'other']),
-  notes: z.string().optional(),
+  notes: z.string().max(500).trim().optional(),
   items: z.array(salesReturnItemSchema).min(1, 'Item tidak boleh kosong'),
 })
 
 type ActionResult<T> =
   | { success: true; data: T }
   | { success: false; error: string }
-
-async function requireSupervisorOrAdmin(): Promise<{ success: false; error: string } | null> {
-  const session = await getSession()
-  if (!session || !['supervisor', 'admin'].includes(session.role)) {
-    return { success: false, error: 'Akses ditolak' }
-  }
-  return null
-}
-
-async function requireAdmin(): Promise<{ success: false; error: string } | null> {
-  const session = await getSession()
-  if (!session || session.role !== 'admin') {
-    return { success: false, error: 'Akses ditolak' }
-  }
-  return null
-}
 
 export async function createSalesReturnAction(formData: FormData): Promise<ActionResult<{ id: string }>> {
   const guard = await requireSupervisorOrAdmin()

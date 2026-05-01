@@ -2,7 +2,7 @@
 // client: dynamic ssr:false requires Client Component in Next.js 15
 
 import dynamic from 'next/dynamic'
-import type { DailyChartPoint } from '@/lib/mock/dashboard.mock'
+import type { DashboardChartPoint } from '@/lib/services/dashboard.service'
 
 const HdpLineChart = dynamic(
   () => import('./hdp-line-chart').then((m) => m.HdpLineChart),
@@ -21,7 +21,7 @@ const DepletionAreaChart = dynamic(
   { ssr: false }
 )
 
-export function DashboardCharts({ data }: { data: DailyChartPoint[] }) {
+export function DashboardCharts({ data }: { data: DashboardChartPoint[] }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div className="bg-white rounded-2xl p-4 shadow-lf-sm border border-[var(--lf-border)]">

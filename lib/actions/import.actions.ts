@@ -1,6 +1,7 @@
 'use server'
 
 import { getSession } from '@/lib/auth/get-session'
+import { requireAdmin } from '@/lib/auth/guards'
 import {
   parseFlockscsv,
   parseDailyRecordsCsv,
@@ -20,9 +21,8 @@ export async function parseCsvAction(
   csvText: string
   // any: ParseResult generic varies by entity
 ): Promise<ActionResult<ParseResult<Record<string, unknown>>>> {
-  const session = await getSession()
-  if (!session) return { success: false, error: 'Tidak terautentikasi' }
-  if (session.role !== 'admin') return { success: false, error: 'Hanya admin yang dapat mengimpor data' }
+  const guard = await requireAdmin()
+  if (guard) return guard
 
   try {
     let result
@@ -46,12 +46,14 @@ export async function commitImportAction(
   // any: parsed rows from dynamic parse step
   rows: ParsedRow<Record<string, unknown>>[]
 ): Promise<ActionResult<ImportResult>> {
+  const guard = await requireAdmin()
+  if (guard) return guard
+
+  // requireAdmin() already confirmed session exists — getSession() is safe
   const session = await getSession()
-  if (!session) return { success: false, error: 'Tidak terautentikasi' }
-  if (session.role !== 'admin') return { success: false, error: 'Hanya admin yang dapat mengimpor data' }
 
   try {
-    const result = await commitImport(entity, rows, session.id)
+    const result = await commitImport(entity, rows, session!.id)
     return { success: true, data: result }
   } catch (e) {
     return {
@@ -64,9 +66,8 @@ export async function commitImportAction(
 export async function getCsvTemplateAction(
   entity: ImportEntity
 ): Promise<ActionResult<string>> {
-  const session = await getSession()
-  if (!session) return { success: false, error: 'Tidak terautentikasi' }
-  if (session.role !== 'admin') return { success: false, error: 'Hanya admin yang dapat mengakses template' }
+  const guard = await requireAdmin()
+  if (guard) return guard
 
   return { success: true, data: getCsvTemplate(entity) }
 }

@@ -2,6 +2,8 @@ import {
   findDailyRecord,
   insertDailyRecordWithMovements,
   getTotalDepletionByFlock,
+  getCumulativeDepletionByFlockUpTo,
+  getProductionReport,
 } from '@/lib/db/queries/daily-record.queries'
 import { findAllActiveFlocks, findFlockById } from '@/lib/db/queries/flock.queries'
 import { findAssignedCoopIds } from '@/lib/db/queries/user-coop-assignment.queries'
@@ -11,7 +13,7 @@ import { eq } from 'drizzle-orm'
 import { assertCanEdit } from '@/lib/services/lock-period.service'
 import type { DailyRecord, NewDailyRecord, NewInventoryMovement } from '@/lib/db/schema'
 
-type Role = 'operator' | 'supervisor' | 'admin'
+export type Role = 'operator' | 'supervisor' | 'admin'
 
 export function validateBackdate(recordDate: Date, now: Date, role: Role): void {
   if (recordDate > now) throw new Error('Tidak dapat input untuk tanggal masa depan')
@@ -189,4 +191,85 @@ export async function updateDailyRecord(
 
   const [updated] = await db.update(dailyRecords).set(updateSet).where(eq(dailyRecords.id, recordId)).returning()
   return updated!
+}
+
+export type EnrichedProductionRow = {
+  recordDate: Date
+  coopId: string
+  coopName: string
+  flockId: string
+  flockName: string
+  activePopulation: number
+  deaths: number
+  culled: number
+  eggsGradeA: number
+  eggsGradeB: number
+  totalEggs: number
+  feedKg: number
+  hdp: number
+  fcr: number
+}
+
+export type ProductionReportResult = {
+  rows: EnrichedProductionRow[]
+  kpi: {
+    avgHdp: number
+    totalEggs: number
+    totalFeedKg: number
+    totalDeaths: number
+  }
+}
+
+export async function getProductionReportData(
+  from: Date,
+  to: Date,
+  role: Role
+): Promise<ProductionReportResult> {
+  if (role === 'operator') throw new Error('Akses ditolak')
+
+  const rawRows = await getProductionReport(from, to)
+
+  // PERF: N+1 per flock-date row; batch if > 10 flocks per report
+  const enriched: EnrichedProductionRow[] = await Promise.all(
+    rawRows.map(async (row) => {
+      const { deaths: cumDeaths, culled: cumCulled } = await getCumulativeDepletionByFlockUpTo(
+        row.flockId,
+        row.recordDate
+      )
+      const activePopulation = Math.max(0, row.flockInitialCount - cumDeaths - cumCulled)
+      const feedKgNum = Number(row.feedKg ?? 0)
+      const hdp = computeHDP(row.eggsGradeA, row.eggsGradeB, activePopulation)
+      const fcr = computeFCR(feedKgNum, row.eggsGradeA, row.eggsGradeB)
+      return {
+        recordDate: row.recordDate,
+        coopId: row.coopId,
+        coopName: row.coopName,
+        flockId: row.flockId,
+        flockName: row.flockName,
+        activePopulation,
+        deaths: row.deaths,
+        culled: row.culled,
+        eggsGradeA: row.eggsGradeA,
+        eggsGradeB: row.eggsGradeB,
+        totalEggs: row.eggsGradeA + row.eggsGradeB,
+        feedKg: feedKgNum,
+        hdp,
+        fcr,
+      }
+    })
+  )
+
+  const totalEggs = enriched.reduce((s, r) => s + r.totalEggs, 0)
+  const totalFeedKg = enriched.reduce((s, r) => s + r.feedKg, 0)
+  const totalDeaths = enriched.reduce((s, r) => s + r.deaths, 0)
+  // Unweighted mean across all flock-day rows; does not account for different flock sizes
+  const avgHdp =
+    enriched.length > 0
+      ? enriched.reduce((s, r) => s + r.hdp, 0) / enriched.length
+      : 0
+
+  return {
+    rows: enriched,
+    kpi: { avgHdp, totalEggs, totalFeedKg, totalDeaths },
+  }
 }

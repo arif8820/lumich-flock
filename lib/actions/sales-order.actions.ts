@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth/get-session'
+import { requireSupervisorOrAdmin } from '@/lib/auth/guards'
 import {
   createDraftSO,
   confirmSO,
@@ -14,7 +15,7 @@ import {
 const salesOrderItemSchema = z.object({
   itemType: z.enum(['egg_grade_a', 'egg_grade_b', 'flock', 'other']),
   itemRefId: z.string().uuid().optional(),
-  description: z.string().optional(),
+  description: z.string().max(500).trim().optional(),
   quantity: z.coerce.number().int().min(1),
   unit: z.enum(['butir', 'ekor', 'unit']),
   pricePerUnit: z.coerce.number().min(0),
@@ -26,22 +27,14 @@ const createSalesOrderSchema = z.object({
   orderDate: z.coerce.date(),
   paymentMethod: z.enum(['cash', 'credit']),
   taxPct: z.coerce.number().min(0).max(100).optional(),
-  notes: z.string().optional(),
-  overrideReason: z.string().optional(),
+  notes: z.string().max(500).trim().optional(),
+  overrideReason: z.string().max(500).trim().optional(),
   items: z.array(salesOrderItemSchema).min(1, 'Item tidak boleh kosong'),
 })
 
 type ActionResult<T> =
   | { success: true; data: T }
   | { success: false; error: string }
-
-async function requireSupervisorOrAdmin(): Promise<{ success: false; error: string } | null> {
-  const session = await getSession()
-  if (!session || !['supervisor', 'admin'].includes(session.role)) {
-    return { success: false, error: 'Akses ditolak' }
-  }
-  return null
-}
 
 export async function createDraftSOAction(formData: FormData): Promise<ActionResult<{ id: string }>> {
   const guard = await requireSupervisorOrAdmin()

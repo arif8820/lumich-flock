@@ -213,15 +213,40 @@ describe('sales-order.service', () => {
     const mockDraftSO = {
       id: 'so-1',
       orderNumber: 'SO-202604-0001',
+      orderDate: new Date('2026-04-23'),
       status: 'draft' as const,
     }
 
     it('confirms draft SO', async () => {
       vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockDraftSO as any)
+      vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue([] as any)
+      vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(1000)
 
       const result = await confirmSO('so-1', 'user-1', 'supervisor')
 
       expect(salesOrderQueries.updateSalesOrderStatus).toHaveBeenCalledWith('so-1', 'confirmed', 'user-1')
+    })
+
+    it('throws when Grade A stock is insufficient', async () => {
+      vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockDraftSO as any)
+      vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue([
+        { itemType: 'egg_grade_a', quantity: 1000 },
+      ] as any)
+      vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(500)
+
+      await expect(confirmSO('so-1', 'user-1', 'supervisor'))
+        .rejects.toThrow('Stok tidak mencukupi: Grade A')
+    })
+
+    it('throws when Grade B stock is insufficient', async () => {
+      vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockDraftSO as any)
+      vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue([
+        { itemType: 'egg_grade_b', quantity: 2000 },
+      ] as any)
+      vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(300)
+
+      await expect(confirmSO('so-1', 'user-1', 'supervisor'))
+        .rejects.toThrow('Stok tidak mencukupi: Grade B')
     })
 
     it('throws when SO is not draft', async () => {
@@ -401,6 +426,18 @@ describe('sales-order.service', () => {
 
       const invoiceArg = vi.mocked(salesOrderQueries.fulfillSOTx).mock.calls[0]![3]
       expect((invoiceArg as any).invoiceNumber).toMatch(/^INV-/)
+    })
+
+    it('throws when SO totalAmount is zero or negative', async () => {
+      const mockZeroSO = { ...mockConfirmedSO, totalAmount: '0' }
+      vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockZeroSO as any)
+      vi.mocked(customerQueries.findCustomerById).mockResolvedValue(mockCustomer as any)
+      vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue([])
+      vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(1000)
+      vi.mocked(invoiceQueries.countInvoicesThisMonth).mockResolvedValue(0)
+
+      await expect(fulfillSO('so-1', 'user-1', 'admin'))
+        .rejects.toThrow('Total SO harus lebih dari Rp 0 sebelum dapat diproses')
     })
   })
 })

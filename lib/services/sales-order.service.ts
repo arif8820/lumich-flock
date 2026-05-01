@@ -119,6 +119,18 @@ export async function confirmSO(orderId: string, userId: string, role: string) {
   // Lock period check — use orderDate as the record date
   assertCanEdit(new Date(so.orderDate), role as 'operator' | 'supervisor' | 'admin')
 
+  // Stock availability check before confirming
+  const items = await findSalesOrderItems(orderId)
+  for (const item of items) {
+    if (item.itemType === 'egg_grade_a' || item.itemType === 'egg_grade_b') {
+      const grade = item.itemType === 'egg_grade_a' ? 'A' : 'B'
+      const available = await getStockBalanceByGrade(grade)
+      if (available < item.quantity) {
+        throw new Error(`Stok tidak mencukupi: Grade ${grade} tersedia ${available} butir, dibutuhkan ${item.quantity} butir`)
+      }
+    }
+  }
+
   await updateSalesOrderStatus(orderId, 'confirmed', userId)
   return so
 }
@@ -202,10 +214,27 @@ export async function fulfillSO(orderId: string, userId: string, role: string) {
       createdBy: userId,
     }))
 
+  // Assertion: movements filter uses same predicate — fires only if predicates diverge in future refactors
+  const hasEggItems = items.some(
+    (i) => i.itemType === 'egg_grade_a' || i.itemType === 'egg_grade_b'
+  )
+  if (hasEggItems && movements.length === 0) {
+    throw new Error('Gagal membuat movement inventory — periksa tipe item SO')
+  }
+
   // Build invoice
   const prefix = so.paymentMethod === 'cash' ? 'RCP' : 'INV'
   const invSeq = await countInvoicesThisMonth(prefix)
   const invoiceNumber = generateOrderNumber(prefix, invSeq)
+
+  // Guard: invoice number must be non-empty and total must be > 0
+  if (!invoiceNumber || invoiceNumber.trim() === '') {
+    throw new Error('Gagal generate nomor invoice')
+  }
+  if (Number(so.totalAmount) <= 0) {
+    throw new Error('Total SO harus lebih dari Rp 0 sebelum dapat diproses')
+  }
+
   const today = new Date()
   const dueDate = new Date(today)
   dueDate.setDate(dueDate.getDate() + (customer.paymentTerms || 0))

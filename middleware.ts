@@ -1,7 +1,37 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { Ratelimit } from '@upstash/ratelimit'
+import { Redis } from '@upstash/redis'
+
+const ratelimit = new Ratelimit({
+  redis: Redis.fromEnv(),
+  limiter: Ratelimit.slidingWindow(10, '60 s'),
+  analytics: false,
+})
 
 export async function middleware(request: NextRequest) {
+  // Rate limit auth endpoints
+  if (
+    request.method === 'POST' &&
+    (request.nextUrl.pathname === '/login' || request.nextUrl.pathname.startsWith('/api/auth/'))
+  ) {
+    const ip =
+      request.headers.get('x-real-ip') ??
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+      '127.0.0.1'
+    const { success, reset } = await ratelimit.limit(ip)
+    if (!success) {
+      const retryAfterSecs = Math.ceil((reset - Date.now()) / 1000)
+      return NextResponse.json(
+        { error: 'Terlalu banyak percobaan, coba lagi dalam 1 menit' },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(retryAfterSecs) },
+        }
+      )
+    }
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -28,17 +58,13 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const pathname = request.nextUrl.pathname
 
-  // Redirect unauthenticated to login (skip API routes — they handle auth themselves)
   if (!user && !pathname.startsWith('/login') && !pathname.startsWith('/api/')) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Redirect authenticated user away from login
   if (user && pathname === '/login') {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
-
-  // Role and is_active checks are handled in server components via cached getSession()
 
   return supabaseResponse
 }
