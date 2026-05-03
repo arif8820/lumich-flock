@@ -1,4 +1,4 @@
-import { pgTable, uuid, integer, numeric, uniqueIndex } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, integer, numeric, uniqueIndex, timestamp } from 'drizzle-orm/pg-core'
 import { dailyRecords } from './daily-records'
 import { stockItems } from './stock-items'
 
@@ -8,7 +8,9 @@ export const dailyEggRecords = pgTable('daily_egg_records', {
   stockItemId: uuid('stock_item_id').notNull().references(() => stockItems.id),
   qtyButir: integer('qty_butir').notNull().default(0),
   qtyKg: numeric('qty_kg', { precision: 8, scale: 2 }).notNull().default('0'),
-}, (t) => [uniqueIndex('daily_egg_records_record_item_unique').on(t.dailyRecordId, t.stockItemId)])
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdateFn(() => new Date()),
+}, (t) =>[uniqueIndex('daily_egg_records_record_item_unique').on(t.dailyRecordId, t.stockItemId)])
 
 export type DailyEggRecord = typeof dailyEggRecords.$inferSelect
 export type NewDailyEggRecord = typeof dailyEggRecords.$inferInsert
