@@ -105,6 +105,11 @@ function canSee(roles: Array<'admin' | 'supervisor' | 'operator'> | undefined, u
   return roles.includes(userRole as 'admin' | 'supervisor' | 'operator')
 }
 
+// Prevents /admin matching /admin/kandang — requires trailing slash or exact match
+function isActive(currentPath: string, href: string): boolean {
+  return currentPath === href || currentPath.startsWith(href + '/')
+}
+
 function getDefaultOpenId(
   sections: typeof NAV_SECTIONS,
   currentPath: string,
@@ -115,7 +120,7 @@ function getDefaultOpenId(
       if (item.kind !== 'accordion') continue
       if (!canSee(item.roles, userRole)) continue
       const hasActiveChild = item.children.some(
-        child => canSee(child.roles, userRole) && currentPath.startsWith(child.href),
+        child => canSee(child.roles, userRole) && isActive(currentPath, child.href),
       )
       if (hasActiveChild) return item.id
     }
@@ -188,7 +193,7 @@ export function Sidebar({
               )}
               {visibleItems.map(item => {
                 if (item.kind === 'flat') {
-                  const active = currentPath.startsWith(item.href)
+                  const active = isActive(currentPath, item.href)
                   const Icon = item.icon
                   return (
                     <Link
@@ -207,38 +212,41 @@ export function Sidebar({
                 const Icon = item.icon
                 const isOpen = openId === item.id
                 const visibleChildren = item.children.filter(c => canSee(c.roles, user.role))
-                const hasActiveChild = visibleChildren.some(c => currentPath.startsWith(c.href))
-                const headerActive = hasActiveChild
+                const parentActive = visibleChildren.some(c => isActive(currentPath, c.href))
                 return (
                   <div key={item.id}>
                     <button
                       type="button"
                       onClick={() => toggleAccordion(item.id)}
                       className="w-full flex items-center gap-2.5 px-[10px] py-[9px] rounded-[9px] mb-0.5 transition-colors text-[13px]"
-                      style={{ background: headerActive ? '#e3f0f9' : 'transparent', color: headerActive ? '#3d7cb0' : '#5a6b5b', fontWeight: headerActive ? 600 : 400 }}
+                      style={{ background: parentActive ? '#e3f0f9' : 'transparent', color: parentActive ? '#3d7cb0' : '#5a6b5b', fontWeight: parentActive ? 600 : 400 }}
                     >
-                      <Icon size={16} strokeWidth={1.8} style={{ color: headerActive ? '#7aadd4' : '#b0bab0', flexShrink: 0 }} />
+                      <Icon size={16} strokeWidth={1.8} style={{ color: parentActive ? '#7aadd4' : '#b0bab0', flexShrink: 0 }} />
                       <span className="flex-1 text-left">{item.label}</span>
                       <ChevronDown
                         size={13}
                         strokeWidth={2}
-                        style={{ color: '#b0bab0', flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
+                        style={{ color: '#b0bab0', flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 150ms ease' }}
                       />
                     </button>
-                    {isOpen && visibleChildren.map(child => {
-                      const childActive = currentPath.startsWith(child.href)
-                      return (
-                        <Link
-                          key={child.href}
-                          href={child.href}
-                          className="flex items-center gap-2.5 pl-[28px] pr-[10px] py-[7px] rounded-[9px] mb-0.5 transition-colors text-[12px]"
-                          style={{ background: childActive ? '#e3f0f9' : 'transparent', color: childActive ? '#3d7cb0' : '#7a8b7a', fontWeight: childActive ? 600 : 400 }}
-                        >
-                          <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: childActive ? '#7aadd4' : '#b0bab0' }} />
-                          {child.label}
-                        </Link>
-                      )
-                    })}
+                    {isOpen && (
+                      <div className="mb-1">
+                        {visibleChildren.map(child => {
+                          const childActive = isActive(currentPath, child.href)
+                          return (
+                            <Link
+                              key={child.href}
+                              href={child.href}
+                              className="flex items-center gap-2.5 pl-[28px] pr-[10px] py-[7px] rounded-[9px] mb-0.5 transition-colors text-[12px]"
+                              style={{ background: childActive ? '#e3f0f9' : 'transparent', color: childActive ? '#3d7cb0' : '#7a8b7a', fontWeight: childActive ? 600 : 400 }}
+                            >
+                              <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: childActive ? '#7aadd4' : '#b0bab0' }} />
+                              {child.label}
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
                 )
               })}
