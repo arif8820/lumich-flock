@@ -1,8 +1,9 @@
 import { getSession } from '@/lib/auth/get-session'
 import { redirect } from 'next/navigation'
 import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
-import { findRecentDailyRecords } from '@/lib/db/queries/daily-record.queries'
+import { findRecentDailyRecordsMultiFlocks } from '@/lib/db/queries/daily-record.queries'
 import Link from 'next/link'
+import FlockFilter from './flock-filter'
 
 function isWithinLockWindow(recordDate: Date, now: Date, days: number): boolean {
   const recDay = Date.UTC(recordDate.getUTCFullYear(), recordDate.getUTCMonth(), recordDate.getUTCDate())
@@ -10,18 +11,32 @@ function isWithinLockWindow(recordDate: Date, now: Date, days: number): boolean 
   return Math.round((nowDay - recDay) / 86_400_000) <= days
 }
 
-export default async function ProduksiPage() {
+export default async function ProduksiPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ flockId?: string; coopId?: string }>
+}) {
   const session = await getSession()
   if (!session) redirect('/login')
 
+  const { flockId, coopId } = await searchParams
   const flocks = await findAllActiveFlocks()
-  const firstFlock = flocks[0]
-  const records = firstFlock ? await findRecentDailyRecords(firstFlock.id, 14) : []
+
+  let targetFlockIds: string[]
+  if (flockId) {
+    targetFlockIds = flocks.filter(f => f.id === flockId).map(f => f.id)
+  } else if (coopId) {
+    targetFlockIds = flocks.filter(f => f.coopId === coopId).map(f => f.id)
+  } else {
+    targetFlockIds = flocks.map(f => f.id)
+  }
+
+  const records = await findRecentDailyRecordsMultiFlocks(targetFlockIds, 50)
   const now = new Date()
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold text-[var(--lf-text-dark)]">Produksi</h1>
         <Link
           href="/produksi/input"
@@ -31,6 +46,12 @@ export default async function ProduksiPage() {
         </Link>
       </div>
 
+      <FlockFilter
+        flocks={flocks.map(f => ({ id: f.id, name: f.name, coopId: f.coopId, coopName: f.coopName }))}
+        selectedFlockId={flockId}
+        selectedCoopId={coopId}
+      />
+
       {records.length === 0 ? (
         <p className="text-[var(--lf-text-soft)] text-center py-16">Belum ada data produksi.</p>
       ) : (
@@ -39,6 +60,7 @@ export default async function ProduksiPage() {
             <thead>
               <tr className="text-xs text-[var(--lf-text-soft)] uppercase tracking-wide text-left">
                 <th className="px-3 py-2">Tanggal</th>
+                <th className="px-3 py-2">Kandang</th>
                 <th className="px-3 py-2 text-right">Grade A</th>
                 <th className="px-3 py-2 text-right">Grade B</th>
                 <th className="px-3 py-2 text-right">Kematian</th>
@@ -53,7 +75,6 @@ export default async function ProduksiPage() {
                 const lockDays = session.role === 'operator' ? 1 : 7
                 const withinLockWindow = isWithinLockWindow(recordDate, now, lockDays)
                 const editable = isAdmin || withinLockWindow
-                const showEdit = editable
                 const showCorrection = isAdmin && !withinLockWindow
 
                 return (
@@ -64,6 +85,7 @@ export default async function ProduksiPage() {
                         <span className="ml-2 text-[10px] bg-[var(--lf-danger-bg)] rounded px-1.5 py-0.5" style={{ color: 'var(--lf-danger-text)' }}>Terlambat</span>
                       )}
                     </td>
+                    <td className="px-3 py-3 text-[var(--lf-text-soft)] text-xs">{r.coopName}</td>
                     <td className="px-3 py-3 text-right text-[var(--lf-text-dark)]">{r.eggsGradeA.toLocaleString('id')}</td>
                     <td className="px-3 py-3 text-right text-[var(--lf-text-dark)]">{r.eggsGradeB.toLocaleString('id')}</td>
                     <td className="px-3 py-3 text-right text-[var(--lf-text-mid)]">{r.deaths}</td>
@@ -71,7 +93,7 @@ export default async function ProduksiPage() {
                       {r.feedKg != null ? Number(r.feedKg).toFixed(1) : '—'}
                     </td>
                     <td className="px-3 py-3 text-right rounded-r-xl">
-                      {showEdit ? (
+                      {editable ? (
                         <Link
                           href={`/produksi/${r.id}/edit`}
                           className="text-xs px-2.5 py-1 rounded-lg"

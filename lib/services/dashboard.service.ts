@@ -36,11 +36,11 @@ export type DashboardRecentRecord = {
   isLate: boolean
 }
 
-export async function getDashboardKpis(): Promise<DashboardKpis> {
+export async function getDashboardKpis(flockIds?: string[]): Promise<DashboardKpis> {
   const [popRows, stockSummary, recentRecords] = await Promise.all([
-    getActiveFlockPopulations(),
+    getActiveFlockPopulations(flockIds),
     getStockSummary(),
-    getRecentDailyRecordsAcrossFlocks(7),
+    getRecentDailyRecordsAcrossFlocks(7, flockIds),
   ])
 
   const activePopulation = popRows.reduce(
@@ -72,10 +72,10 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
   }
 }
 
-export async function getProductionChartData(days: number = 30): Promise<DashboardChartPoint[]> {
+export async function getProductionChartData(days: number = 30, flockIds?: string[]): Promise<DashboardChartPoint[]> {
   const [aggRows, popRows] = await Promise.all([
-    getDailyProductionAgg(days),
-    getActiveFlockPopulations(),
+    getDailyProductionAgg(days, flockIds),
+    getActiveFlockPopulations(flockIds),
   ])
 
   const totalInitial = popRows.reduce((acc, r) => acc + r.initialCount, 0)
@@ -102,8 +102,8 @@ export async function getProductionChartData(days: number = 30): Promise<Dashboa
   })
 }
 
-export async function getRecentDashboardRecords(limit: number = 7): Promise<DashboardRecentRecord[]> {
-  const records: DashboardRecord[] = await getRecentDailyRecordsAcrossFlocks(limit)
+export async function getRecentDashboardRecords(limit: number = 7, flockIds?: string[]): Promise<DashboardRecentRecord[]> {
+  const records: DashboardRecord[] = await getRecentDailyRecordsAcrossFlocks(limit, flockIds)
   return records.map((r) => {
     const feedKg = Number(r.feedKg ?? 0)
     const d = new Date(r.recordDate)

@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { dailyRecords, inventoryMovements, flocks, coops } from '@/lib/db/schema'
-import { eq, and, desc, sum, gte, lte, asc } from 'drizzle-orm'
+import { eq, and, desc, sum, gte, lte, asc, inArray } from 'drizzle-orm'
 import type { DailyRecord, NewDailyRecord, NewInventoryMovement } from '@/lib/db/schema'
 
 export async function findDailyRecordById(id: string): Promise<DailyRecord | null> {
@@ -22,6 +22,44 @@ export async function findRecentDailyRecords(flockId: string, limit: number): Pr
     .select()
     .from(dailyRecords)
     .where(eq(dailyRecords.flockId, flockId))
+    .orderBy(desc(dailyRecords.recordDate))
+    .limit(limit)
+}
+
+export type DailyRecordWithFlock = DailyRecord & { flockName: string; coopName: string }
+
+export async function findRecentDailyRecordsMultiFlocks(
+  flockIds: string[],
+  limit: number,
+): Promise<DailyRecordWithFlock[]> {
+  if (flockIds.length === 0) return []
+  return db
+    .select({
+      id: dailyRecords.id,
+      flockId: dailyRecords.flockId,
+      recordDate: dailyRecords.recordDate,
+      deaths: dailyRecords.deaths,
+      culled: dailyRecords.culled,
+      eggsGradeA: dailyRecords.eggsGradeA,
+      eggsGradeB: dailyRecords.eggsGradeB,
+      eggsCracked: dailyRecords.eggsCracked,
+      eggsAbnormal: dailyRecords.eggsAbnormal,
+      avgWeightKg: dailyRecords.avgWeightKg,
+      feedKg: dailyRecords.feedKg,
+      isLateInput: dailyRecords.isLateInput,
+      isImported: dailyRecords.isImported,
+      importedBy: dailyRecords.importedBy,
+      createdBy: dailyRecords.createdBy,
+      updatedBy: dailyRecords.updatedBy,
+      createdAt: dailyRecords.createdAt,
+      updatedAt: dailyRecords.updatedAt,
+      flockName: flocks.name,
+      coopName: coops.name,
+    })
+    .from(dailyRecords)
+    .innerJoin(flocks, eq(flocks.id, dailyRecords.flockId))
+    .innerJoin(coops, eq(coops.id, flocks.coopId))
+    .where(inArray(dailyRecords.flockId, flockIds))
     .orderBy(desc(dailyRecords.recordDate))
     .limit(limit)
 }

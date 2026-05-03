@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { dailyRecords, flocks, inventoryMovements } from '@/lib/db/schema'
-import { desc, isNull, gte, and, sum, eq } from 'drizzle-orm'
+import { desc, isNull, gte, and, sum, eq, inArray, SQL } from 'drizzle-orm'
 import type { DailyRecord } from '@/lib/db/schema'
 
 export type DashboardRecord = Pick<
@@ -8,7 +8,9 @@ export type DashboardRecord = Pick<
   'id' | 'flockId' | 'recordDate' | 'deaths' | 'culled' | 'eggsGradeA' | 'eggsGradeB' | 'feedKg' | 'isLateInput'
 >
 
-export async function getRecentDailyRecordsAcrossFlocks(limit: number): Promise<DashboardRecord[]> {
+export async function getRecentDailyRecordsAcrossFlocks(limit: number, flockIds?: string[]): Promise<DashboardRecord[]> {
+  const conditions: SQL[] = [isNull(flocks.retiredAt)]
+  if (flockIds && flockIds.length > 0) conditions.push(inArray(dailyRecords.flockId, flockIds))
   return db
     .select({
       id: dailyRecords.id,
@@ -23,7 +25,7 @@ export async function getRecentDailyRecordsAcrossFlocks(limit: number): Promise<
     })
     .from(dailyRecords)
     .innerJoin(flocks, eq(dailyRecords.flockId, flocks.id))
-    .where(isNull(flocks.retiredAt))
+    .where(and(...conditions))
     .orderBy(desc(dailyRecords.recordDate))
     .limit(limit)
 }
@@ -36,9 +38,12 @@ export type DailyAggRow = {
   totalFeedKg: number
 }
 
-export async function getDailyProductionAgg(days: number): Promise<DailyAggRow[]> {
+export async function getDailyProductionAgg(days: number, flockIds?: string[]): Promise<DailyAggRow[]> {
   const since = new Date()
   since.setDate(since.getDate() - days)
+
+  const conditions: SQL[] = [isNull(flocks.retiredAt), gte(dailyRecords.recordDate, since)]
+  if (flockIds && flockIds.length > 0) conditions.push(inArray(dailyRecords.flockId, flockIds))
 
   const rows = await db
     .select({
@@ -50,7 +55,7 @@ export async function getDailyProductionAgg(days: number): Promise<DailyAggRow[]
     })
     .from(dailyRecords)
     .innerJoin(flocks, eq(dailyRecords.flockId, flocks.id))
-    .where(and(isNull(flocks.retiredAt), gte(dailyRecords.recordDate, since)))
+    .where(and(...conditions))
     .groupBy(dailyRecords.recordDate)
     .orderBy(desc(dailyRecords.recordDate))
     .limit(days)
@@ -71,7 +76,9 @@ export type FlockPopulationRow = {
   totalCulled: number
 }
 
-export async function getActiveFlockPopulations(): Promise<FlockPopulationRow[]> {
+export async function getActiveFlockPopulations(flockIds?: string[]): Promise<FlockPopulationRow[]> {
+  const conditions: SQL[] = [isNull(flocks.retiredAt)]
+  if (flockIds && flockIds.length > 0) conditions.push(inArray(flocks.id, flockIds))
   const rows = await db
     .select({
       flockId: flocks.id,
@@ -81,7 +88,7 @@ export async function getActiveFlockPopulations(): Promise<FlockPopulationRow[]>
     })
     .from(flocks)
     .leftJoin(dailyRecords, eq(dailyRecords.flockId, flocks.id))
-    .where(isNull(flocks.retiredAt))
+    .where(and(...conditions))
     .groupBy(flocks.id, flocks.initialCount)
 
   return rows.map((r) => ({

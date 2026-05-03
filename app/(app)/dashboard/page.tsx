@@ -5,16 +5,32 @@ import { KpiCard } from '@/components/ui/kpi-card'
 import { DashboardCharts } from '@/components/ui/charts/dashboard-charts'
 import { getDashboardKpis, getProductionChartData, getRecentDashboardRecords } from '@/lib/services/dashboard.service'
 import { getAgingData } from '@/lib/services/invoice.service'
+import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
+import FlockFilter from '../produksi/flock-filter'
 import type { AgingRow } from '@/lib/db/queries/invoice.queries'
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ flockId?: string; coopId?: string }>
+}) {
   const user = await getSession()
   if (!user) redirect('/login')
 
+  const { flockId, coopId } = await searchParams
+  const allFlocks = await findAllActiveFlocks()
+
+  let flockIds: string[] | undefined
+  if (flockId) {
+    flockIds = allFlocks.filter(f => f.id === flockId).map(f => f.id)
+  } else if (coopId) {
+    flockIds = allFlocks.filter(f => f.coopId === coopId).map(f => f.id)
+  }
+
   const [kpis, chartData, recentRecords] = await Promise.all([
-    getDashboardKpis(),
-    getProductionChartData(30),
-    getRecentDashboardRecords(7),
+    getDashboardKpis(flockIds),
+    getProductionChartData(30, flockIds),
+    getRecentDashboardRecords(7, flockIds),
   ])
 
   let top5: AgingRow[] = []
@@ -34,6 +50,12 @@ export default async function DashboardPage() {
         <h1 className="text-xl font-semibold text-[var(--lf-text-dark)]">Dashboard</h1>
         <p className="text-sm text-[var(--lf-text-soft)] mt-0.5">Selamat datang, {user?.fullName}</p>
       </div>
+
+      <FlockFilter
+        flocks={allFlocks.map(f => ({ id: f.id, name: f.name, coopId: f.coopId, coopName: f.coopName }))}
+        selectedFlockId={flockId}
+        selectedCoopId={coopId}
+      />
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
