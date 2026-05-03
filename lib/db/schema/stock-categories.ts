@@ -5,7 +5,8 @@ export const stockCategories = pgTable('stock_categories', {
   name: text('name').notNull().unique(),
   unit: text('unit').notNull(),
   isSystem: boolean('is_system').notNull().default(false),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdateFn(() => new Date()),
 })
 
 export type StockCategory = typeof stockCategories.$inferSelect
