@@ -176,94 +176,75 @@ export function Sidebar({
 
       {/* Nav */}
       <div className="px-[10px] flex-1 overflow-y-auto">
-        <p className="text-[10px] uppercase font-medium px-[10px] mb-1.5" style={{ letterSpacing: '0.8px', color: '#b0bab0' }}>
-          Menu Utama
-        </p>
-        {mainNav.map(({ href, icon: Icon, label }) => {
-          const active = currentPath.startsWith(href)
+        {NAV_SECTIONS.map(({ section, items }, sectionIdx) => {
+          const visibleItems = items.filter(item => canSee(item.roles, user.role))
+          if (visibleItems.length === 0) return null
           return (
-            <div key={href}>
-              <Link
-                href={href}
-                className="flex items-center gap-2.5 px-[10px] py-[9px] rounded-[9px] mb-0.5 transition-colors text-[13px]"
-                style={{ background: active ? '#e3f0f9' : 'transparent', color: active ? '#3d7cb0' : '#5a6b5b', fontWeight: active ? 600 : 400 }}
-              >
-                <Icon size={16} strokeWidth={1.8} style={{ color: active ? '#7aadd4' : '#b0bab0', flexShrink: 0 }} />
-                {label}
-              </Link>
-              {/* Invoice sub-link under Penjualan — admin + supervisor only */}
-              {href === '/penjualan' && user.role !== 'operator' && (() => {
-                const invActive = currentPath.startsWith('/penjualan/invoices')
+            <div key={section ?? 'default'}>
+              {section && (
+                <p className="text-[10px] uppercase font-medium px-[10px] mb-1.5" style={{ letterSpacing: '0.8px', color: '#b0bab0', marginTop: sectionIdx === 0 ? 0 : 16 }}>
+                  {section}
+                </p>
+              )}
+              {visibleItems.map(item => {
+                if (item.kind === 'flat') {
+                  const active = currentPath.startsWith(item.href)
+                  const Icon = item.icon
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="flex items-center gap-2.5 px-[10px] py-[9px] rounded-[9px] mb-0.5 transition-colors text-[13px]"
+                      style={{ background: active ? '#e3f0f9' : 'transparent', color: active ? '#3d7cb0' : '#5a6b5b', fontWeight: active ? 600 : 400 }}
+                    >
+                      <Icon size={16} strokeWidth={1.8} style={{ color: active ? '#7aadd4' : '#b0bab0', flexShrink: 0 }} />
+                      {item.label}
+                    </Link>
+                  )
+                }
+
+                // accordion item
+                const Icon = item.icon
+                const isOpen = openId === item.id
+                const visibleChildren = item.children.filter(c => canSee(c.roles, user.role))
+                const hasActiveChild = visibleChildren.some(c => currentPath.startsWith(c.href))
+                const headerActive = hasActiveChild && !isOpen
                 return (
-                  <Link
-                    href="/penjualan/invoices"
-                    className="flex items-center gap-2.5 pl-[28px] pr-[10px] py-[7px] rounded-[9px] mb-0.5 transition-colors text-[12px]"
-                    style={{ background: invActive ? '#e3f0f9' : 'transparent', color: invActive ? '#3d7cb0' : '#7a8b7a', fontWeight: invActive ? 600 : 400 }}
-                  >
-                    <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: invActive ? '#7aadd4' : '#b0bab0' }} />
-                    Invoice
-                  </Link>
+                  <div key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => toggleAccordion(item.id)}
+                      className="w-full flex items-center gap-2.5 px-[10px] py-[9px] rounded-[9px] mb-0.5 transition-colors text-[13px]"
+                      style={{ background: headerActive ? '#e3f0f9' : 'transparent', color: headerActive ? '#3d7cb0' : '#5a6b5b', fontWeight: headerActive ? 600 : 400 }}
+                    >
+                      <Icon size={16} strokeWidth={1.8} style={{ color: headerActive ? '#7aadd4' : '#b0bab0', flexShrink: 0 }} />
+                      <span className="flex-1 text-left">{item.label}</span>
+                      <ChevronDown
+                        size={13}
+                        strokeWidth={2}
+                        style={{ color: '#b0bab0', flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
+                      />
+                    </button>
+                    {isOpen && visibleChildren.map(child => {
+                      const childActive = currentPath.startsWith(child.href)
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className="flex items-center gap-2.5 pl-[28px] pr-[10px] py-[7px] rounded-[9px] mb-0.5 transition-colors text-[12px]"
+                          style={{ background: childActive ? '#e3f0f9' : 'transparent', color: childActive ? '#3d7cb0' : '#7a8b7a', fontWeight: childActive ? 600 : 400 }}
+                        >
+                          <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: childActive ? '#7aadd4' : '#b0bab0' }} />
+                          {child.label}
+                        </Link>
+                      )
+                    })}
+                  </div>
                 )
-              })()}
+              })}
             </div>
           )
         })}
-
-        {/* Laporan — admin + supervisor only */}
-        {user.role !== 'operator' && (() => {
-          const active = currentPath.startsWith('/laporan')
-          const piutangActive = currentPath.startsWith('/laporan') && !currentPath.startsWith('/laporan/produksi')
-          const produksiActive = currentPath.startsWith('/laporan/produksi')
-          return (
-            <>
-              <Link
-                href="/laporan"
-                className="flex items-center gap-2.5 px-[10px] py-[9px] rounded-[9px] mb-0.5 transition-colors text-[13px]"
-                style={{ background: active ? '#e3f0f9' : 'transparent', color: active ? '#3d7cb0' : '#5a6b5b', fontWeight: active ? 600 : 400 }}
-              >
-                <BarChart2 size={16} strokeWidth={1.8} style={{ color: active ? '#7aadd4' : '#b0bab0', flexShrink: 0 }} />
-                Laporan
-              </Link>
-              <Link
-                href="/laporan"
-                className="flex items-center gap-2.5 pl-[28px] pr-[10px] py-[7px] rounded-[9px] mb-0.5 transition-colors text-[12px]"
-                style={{ background: piutangActive ? '#e3f0f9' : 'transparent', color: piutangActive ? '#3d7cb0' : '#7a8b7a', fontWeight: piutangActive ? 600 : 400 }}
-              >
-                <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: piutangActive ? '#7aadd4' : '#b0bab0' }} />
-                Piutang
-              </Link>
-              <Link
-                href="/laporan/produksi"
-                className="flex items-center gap-2.5 pl-[28px] pr-[10px] py-[7px] rounded-[9px] mb-0.5 transition-colors text-[12px]"
-                style={{ background: produksiActive ? '#e3f0f9' : 'transparent', color: produksiActive ? '#3d7cb0' : '#7a8b7a', fontWeight: produksiActive ? 600 : 400 }}
-              >
-                <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: produksiActive ? '#7aadd4' : '#b0bab0' }} />
-                Produksi
-              </Link>
-            </>
-          )
-        })()}
-
-        {user.role === 'admin' && (
-          <>
-            <p className="text-[10px] uppercase font-medium px-[10px] mt-4 mb-1.5" style={{ letterSpacing: '0.8px', color: '#b0bab0' }}>
-              Pengaturan
-            </p>
-            {(() => {
-              const active = currentPath.startsWith('/admin')
-              return (
-                <Link
-                  href="/admin"
-                  className="flex items-center gap-2.5 px-[10px] py-[9px] rounded-[9px] mb-0.5 transition-colors text-[13px]"
-                  style={{ background: active ? '#e3f0f9' : 'transparent', color: active ? '#3d7cb0' : '#5a6b5b', fontWeight: active ? 600 : 400 }}
-                >
-                  <Settings size={16} strokeWidth={1.8} style={{ color: active ? '#7aadd4' : '#b0bab0', flexShrink: 0 }} />
-                  Admin
-                </Link>
-              )
-            })()}
-          </>
-        )}
       </div>
 
       {/* User card */}
