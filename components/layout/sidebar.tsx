@@ -100,6 +100,29 @@ function getRoleLabel(role: string) {
   return map[role] ?? role
 }
 
+function canSee(roles: Array<'admin' | 'supervisor' | 'operator'> | undefined, userRole: string): boolean {
+  if (!roles) return true
+  return roles.includes(userRole as 'admin' | 'supervisor' | 'operator')
+}
+
+function getDefaultOpenId(
+  sections: typeof NAV_SECTIONS,
+  currentPath: string,
+  userRole: string,
+): string | null {
+  for (const { items } of sections) {
+    for (const item of items) {
+      if (item.kind !== 'accordion') continue
+      if (!canSee(item.roles, userRole)) continue
+      const hasActiveChild = item.children.some(
+        child => canSee(child.roles, userRole) && currentPath.startsWith(child.href),
+      )
+      if (hasActiveChild) return item.id
+    }
+  }
+  return null
+}
+
 export function Sidebar({
   user,
   currentPath,
@@ -111,6 +134,14 @@ export function Sidebar({
   notifications: Notification[]
   readNotificationIds: string[]
 }) {
+  const [openId, setOpenId] = useState<string | null>(
+    () => getDefaultOpenId(NAV_SECTIONS, currentPath, user.role),
+  )
+
+  function toggleAccordion(id: string) {
+    setOpenId(prev => (prev === id ? null : id))
+  }
+
   return (
     <aside className="hidden md:flex w-[220px] flex-shrink-0 flex-col bg-white h-screen sticky top-0" style={{ borderRight: '1px solid #e0e8df' }}>
       {/* Brand */}
