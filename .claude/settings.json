@@ -22,7 +22,8 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" -L http://localhost:3000)",
       "Bash(curl -sv http://localhost:3000/login)",
-      "Bash(powershell -Command \"Get-Process chromium -ErrorAction SilentlyContinue | Stop-Process -Force\")"
+      "Bash(powershell -Command \"Get-Process chromium -ErrorAction SilentlyContinue | Stop-Process -Force\")",
+      "Read(//d/App/lumich-flock/lib/actions/**)"
     ],
     "additionalDirectories": [
       "D:\\App\\lumich-flock",

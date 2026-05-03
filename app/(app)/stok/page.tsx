@@ -22,10 +22,10 @@ export default async function StokPage() {
         <h1 className="text-xl font-semibold text-[var(--lf-text-dark)]">Stok Telur</h1>
         {session.role !== 'operator' && (
           <div className="flex gap-2">
-            <Link href="/stok/sesuaikan" className="text-sm px-3 py-2 bg-gradient-to-r from-[#7aadd4] to-[#5090be] text-white rounded-lg shadow-lf-btn">
+            <Link href="/stok/sesuaikan" className="press-feedback text-sm px-3 py-2 bg-gradient-to-r from-[#7aadd4] to-[#5090be] text-white rounded-lg shadow-lf-btn">
               Penyesuaian
             </Link>
-            <Link href="/stok/regrade" className="text-sm px-3 py-2 border border-[var(--lf-border)] rounded-lg text-[var(--lf-text-mid)]">
+            <Link href="/stok/regrade" className="press-feedback text-sm px-3 py-2 border border-[var(--lf-border)] rounded-lg text-[var(--lf-text-mid)]">
               Regrade
             </Link>
           </div>

@@ -199,7 +199,7 @@ export function Sidebar({
                     <Link
                       key={item.href}
                       href={item.href}
-                      className="flex items-center gap-2.5 px-[10px] py-[9px] rounded-[9px] mb-0.5 transition-colors text-[13px]"
+                      className="press-feedback flex items-center gap-2.5 px-[10px] py-[9px] rounded-[9px] mb-0.5 transition-colors text-[13px]"
                       style={{ background: active ? '#e3f0f9' : 'transparent', color: active ? '#3d7cb0' : '#5a6b5b', fontWeight: active ? 600 : 400 }}
                     >
                       <Icon size={16} strokeWidth={1.8} style={{ color: active ? '#7aadd4' : '#b0bab0', flexShrink: 0 }} />
@@ -218,7 +218,7 @@ export function Sidebar({
                     <button
                       type="button"
                       onClick={() => toggleAccordion(item.id)}
-                      className="w-full flex items-center gap-2.5 px-[10px] py-[9px] rounded-[9px] mb-0.5 transition-colors text-[13px]"
+                      className="press-feedback w-full flex items-center gap-2.5 px-[10px] py-[9px] rounded-[9px] mb-0.5 transition-colors text-[13px]"
                       style={{ background: parentActive ? '#e3f0f9' : 'transparent', color: parentActive ? '#3d7cb0' : '#5a6b5b', fontWeight: parentActive ? 600 : 400 }}
                     >
                       <Icon size={16} strokeWidth={1.8} style={{ color: parentActive ? '#7aadd4' : '#b0bab0', flexShrink: 0 }} />
@@ -237,7 +237,7 @@ export function Sidebar({
                             <Link
                               key={child.href}
                               href={child.href}
-                              className="flex items-center gap-2.5 pl-[28px] pr-[10px] py-[7px] rounded-[9px] mb-0.5 transition-colors text-[12px]"
+                              className="press-feedback flex items-center gap-2.5 pl-[28px] pr-[10px] py-[7px] rounded-[9px] mb-0.5 transition-colors text-[12px]"
                               style={{ background: childActive ? '#e3f0f9' : 'transparent', color: childActive ? '#3d7cb0' : '#7a8b7a', fontWeight: childActive ? 600 : 400 }}
                             >
                               <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: childActive ? '#7aadd4' : '#b0bab0' }} />

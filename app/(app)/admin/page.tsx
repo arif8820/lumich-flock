@@ -63,7 +63,7 @@ export default function AdminPage() {
           <Link
             key={href}
             href={href}
-            className="flex items-start gap-4 p-5 bg-white rounded-2xl shadow-lf-sm border border-[var(--lf-border)] hover:shadow-lf-md transition-shadow"
+            className="press-feedback flex items-start gap-4 p-5 bg-white rounded-2xl shadow-lf-sm border border-[var(--lf-border)] hover:shadow-lf-md transition-shadow"
           >
             <div
               className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
