@@ -1,15 +1,94 @@
+'use client'
+// client: needs useState for accordion open/close state
+
+import { useState } from 'react'
 import Link from 'next/link'
-import { LayoutDashboard, Egg, Package, DollarSign, Bird, Settings, LogOut, BarChart2 } from 'lucide-react'
+import { LayoutDashboard, Egg, Package, DollarSign, Bird, Settings, LogOut, BarChart2, ChevronDown } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import type { SessionUser } from '@/lib/auth/get-session'
 import type { Notification } from '@/lib/services/notification.service'
 import { NotificationBell } from '@/components/ui/notification-bell'
 
-const mainNav = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/produksi', icon: Egg, label: 'Produksi' },
-  { href: '/stok', icon: Package, label: 'Stok' },
-  { href: '/penjualan', icon: DollarSign, label: 'Penjualan' },
-  { href: '/flock', icon: Bird, label: 'Flock' },
+type NavSubItem = {
+  href: string
+  label: string
+  /** roles that can see this sub-item. undefined = all roles */
+  roles?: Array<'admin' | 'supervisor' | 'operator'>
+}
+
+type NavItem =
+  | { kind: 'flat'; href: string; icon: LucideIcon; label: string; roles?: Array<'admin' | 'supervisor' | 'operator'> }
+  | { kind: 'accordion'; id: string; icon: LucideIcon; label: string; roles?: Array<'admin' | 'supervisor' | 'operator'>; children: NavSubItem[] }
+
+const NAV_SECTIONS: { section?: string; items: NavItem[] }[] = [
+  {
+    section: 'Menu Utama',
+    items: [
+      {
+        kind: 'flat',
+        href: '/dashboard',
+        icon: LayoutDashboard,
+        label: 'Dashboard',
+      },
+      {
+        kind: 'accordion',
+        id: 'produksi',
+        icon: Egg,
+        label: 'Produksi',
+        children: [
+          { href: '/produksi', label: 'Input Harian' },
+          { href: '/admin/kandang', label: 'Kandang', roles: ['admin'] },
+          { href: '/flock', label: 'Flock' },
+        ],
+      },
+      {
+        kind: 'flat',
+        href: '/stok',
+        icon: Package,
+        label: 'Stok',
+      },
+      {
+        kind: 'accordion',
+        id: 'penjualan',
+        icon: DollarSign,
+        label: 'Penjualan',
+        roles: ['admin', 'supervisor'],
+        children: [
+          { href: '/penjualan', label: 'Sales Order' },
+          { href: '/penjualan/invoices', label: 'Invoice', roles: ['admin', 'supervisor'] },
+          { href: '/admin/pelanggan', label: 'Pelanggan', roles: ['admin', 'supervisor'] },
+        ],
+      },
+    ],
+  },
+  {
+    section: 'Laporan',
+    items: [
+      {
+        kind: 'accordion',
+        id: 'laporan',
+        icon: BarChart2,
+        label: 'Laporan',
+        roles: ['admin', 'supervisor'],
+        children: [
+          { href: '/laporan', label: 'Piutang' },
+          { href: '/laporan/produksi', label: 'Produksi' },
+        ],
+      },
+    ],
+  },
+  {
+    section: 'Pengaturan',
+    items: [
+      {
+        kind: 'flat',
+        href: '/admin',
+        icon: Settings,
+        label: 'Admin',
+        roles: ['admin'],
+      },
+    ],
+  },
 ]
 
 function getInitials(name: string) {
@@ -99,18 +178,38 @@ export function Sidebar({
           )
         })}
 
-        {/* Laporan Piutang — admin + supervisor only */}
+        {/* Laporan — admin + supervisor only */}
         {user.role !== 'operator' && (() => {
           const active = currentPath.startsWith('/laporan')
+          const piutangActive = currentPath.startsWith('/laporan') && !currentPath.startsWith('/laporan/produksi')
+          const produksiActive = currentPath.startsWith('/laporan/produksi')
           return (
-            <Link
-              href="/laporan"
-              className="flex items-center gap-2.5 px-[10px] py-[9px] rounded-[9px] mb-0.5 transition-colors text-[13px]"
-              style={{ background: active ? '#e3f0f9' : 'transparent', color: active ? '#3d7cb0' : '#5a6b5b', fontWeight: active ? 600 : 400 }}
-            >
-              <BarChart2 size={16} strokeWidth={1.8} style={{ color: active ? '#7aadd4' : '#b0bab0', flexShrink: 0 }} />
-              Laporan Piutang
-            </Link>
+            <>
+              <Link
+                href="/laporan"
+                className="flex items-center gap-2.5 px-[10px] py-[9px] rounded-[9px] mb-0.5 transition-colors text-[13px]"
+                style={{ background: active ? '#e3f0f9' : 'transparent', color: active ? '#3d7cb0' : '#5a6b5b', fontWeight: active ? 600 : 400 }}
+              >
+                <BarChart2 size={16} strokeWidth={1.8} style={{ color: active ? '#7aadd4' : '#b0bab0', flexShrink: 0 }} />
+                Laporan
+              </Link>
+              <Link
+                href="/laporan"
+                className="flex items-center gap-2.5 pl-[28px] pr-[10px] py-[7px] rounded-[9px] mb-0.5 transition-colors text-[12px]"
+                style={{ background: piutangActive ? '#e3f0f9' : 'transparent', color: piutangActive ? '#3d7cb0' : '#7a8b7a', fontWeight: piutangActive ? 600 : 400 }}
+              >
+                <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: piutangActive ? '#7aadd4' : '#b0bab0' }} />
+                Piutang
+              </Link>
+              <Link
+                href="/laporan/produksi"
+                className="flex items-center gap-2.5 pl-[28px] pr-[10px] py-[7px] rounded-[9px] mb-0.5 transition-colors text-[12px]"
+                style={{ background: produksiActive ? '#e3f0f9' : 'transparent', color: produksiActive ? '#3d7cb0' : '#7a8b7a', fontWeight: produksiActive ? 600 : 400 }}
+              >
+                <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: produksiActive ? '#7aadd4' : '#b0bab0' }} />
+                Produksi
+              </Link>
+            </>
           )
         })()}
 
