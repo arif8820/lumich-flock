@@ -176,13 +176,13 @@ export function Sidebar({
 
       {/* Nav */}
       <div className="px-[10px] flex-1 overflow-y-auto">
-        {NAV_SECTIONS.map(({ section, items }, sectionIdx) => {
+        {NAV_SECTIONS.map(({ section, items }) => {
           const visibleItems = items.filter(item => canSee(item.roles, user.role))
           if (visibleItems.length === 0) return null
           return (
             <div key={section ?? 'default'}>
               {section && (
-                <p className="text-[10px] uppercase font-medium px-[10px] mb-1.5" style={{ letterSpacing: '0.8px', color: '#b0bab0', marginTop: sectionIdx === 0 ? 0 : 16 }}>
+                <p className="text-[10px] uppercase font-medium px-[10px] mb-1.5 mt-4 first:mt-0" style={{ letterSpacing: '0.8px', color: '#b0bab0' }}>
                   {section}
                 </p>
               )}
@@ -208,7 +208,7 @@ export function Sidebar({
                 const isOpen = openId === item.id
                 const visibleChildren = item.children.filter(c => canSee(c.roles, user.role))
                 const hasActiveChild = visibleChildren.some(c => currentPath.startsWith(c.href))
-                const headerActive = hasActiveChild && !isOpen
+                const headerActive = hasActiveChild
                 return (
                   <div key={item.id}>
                     <button
