@@ -5,51 +5,70 @@ import { getSession } from '@/lib/auth/get-session'
 import { requireSupervisorOrAdmin, requireAdmin } from '@/lib/auth/guards'
 import {
   getStockBalance,
+  getAllStockBalances,
   createStockAdjustment,
   submitRegradeRequest,
   approveRegradeRequest,
   rejectRegradeRequest,
+  createStockPurchase,
+  type StockBalance,
 } from '@/lib/services/stock.service'
 
 type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: false; error: string }
 
+export async function getStockBalanceAction(
+  stockItemId: string
+): Promise<ActionResult<number>> {
+  const session = await getSession()
+  if (!session) return { success: false, error: 'Tidak terautentikasi' }
+
+  const parsed = z.string().uuid().safeParse(stockItemId)
+  if (!parsed.success) return { success: false, error: 'Input tidak valid' }
+
+  try {
+    const balance = await getStockBalance(parsed.data)
+    return { success: true, data: balance }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Gagal memuat saldo stok' }
+  }
+}
+
+export async function getAllStockBalancesAction(): Promise<ActionResult<StockBalance[]>> {
+  const session = await getSession()
+  if (!session) return { success: false, error: 'Tidak terautentikasi' }
+
+  try {
+    const balances = await getAllStockBalances()
+    return { success: true, data: balances }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Gagal memuat stok' }
+  }
+}
+
 const stockAdjustmentSchema = z.object({
-  flockId: z.string().uuid(),
-  adjustmentDate: z.coerce.date(),
-  grade: z.enum(['A', 'B']),
+  stockItemId: z.string().uuid(),
+  adjustmentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   quantity: z.coerce.number().int(),
   reason: z.string().min(1).max(500).trim(),
   notes: z.string().max(500).trim().optional(),
 })
 
 const regradeRequestSchema = z.object({
-  flockId: z.string().uuid(),
-  gradeFrom: z.enum(['A', 'B']),
-  gradeTo: z.enum(['A', 'B']),
+  fromItemId: z.string().uuid(),
+  toItemId: z.string().uuid(),
   quantity: z.coerce.number().int().positive(),
-  requestDate: z.coerce.date(),
+  requestDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   notes: z.string().max(500).trim().optional(),
 })
 
-export async function getStockBalanceAction(
-  flockId: string,
-  grade: 'A' | 'B'
-): Promise<ActionResult<number>> {
-  const session = await getSession()
-  if (!session) return { success: false, error: 'Tidak terautentikasi' }
-
-  const parsed = z.object({ flockId: z.string().uuid(), grade: z.enum(['A', 'B']) }).safeParse({ flockId, grade })
-  if (!parsed.success) return { success: false, error: 'Input tidak valid. Periksa kembali data yang diisi.' }
-
-  try {
-    const balance = await getStockBalance(parsed.data.flockId, parsed.data.grade)
-    return { success: true, data: balance }
-  } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : 'Gagal memuat saldo stok' }
-  }
-}
+const stockPurchaseSchema = z.object({
+  stockItemId: z.string().uuid(),
+  quantity: z.coerce.number().int().positive(),
+  purchaseDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  notes: z.string().max(500).trim().optional(),
+})
 
 export async function createStockAdjustmentAction(
   formData: FormData
@@ -60,9 +79,8 @@ export async function createStockAdjustmentAction(
   const session = await getSession()
 
   const parsed = stockAdjustmentSchema.safeParse({
-    flockId: formData.get('flockId'),
+    stockItemId: formData.get('stockItemId'),
     adjustmentDate: formData.get('adjustmentDate'),
-    grade: formData.get('grade'),
     quantity: formData.get('quantity'),
     reason: formData.get('reason'),
     notes: formData.get('notes') || undefined,
@@ -88,9 +106,8 @@ export async function submitRegradeRequestAction(
   const session = await getSession()
 
   const parsed = regradeRequestSchema.safeParse({
-    flockId: formData.get('flockId'),
-    gradeFrom: formData.get('gradeFrom'),
-    gradeTo: formData.get('gradeTo'),
+    fromItemId: formData.get('fromItemId'),
+    toItemId: formData.get('toItemId'),
     quantity: formData.get('quantity'),
     requestDate: formData.get('requestDate'),
     notes: formData.get('notes') || undefined,
@@ -136,5 +153,31 @@ export async function rejectRegradeRequestAction(
     return { success: true, data: undefined }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal menolak permintaan regrade' }
+  }
+}
+
+export async function createStockPurchaseAction(
+  formData: FormData
+): Promise<ActionResult> {
+  const guard = await requireSupervisorOrAdmin()
+  if (guard) return guard
+
+  const session = await getSession()
+
+  const parsed = stockPurchaseSchema.safeParse({
+    stockItemId: formData.get('stockItemId'),
+    quantity: formData.get('quantity'),
+    purchaseDate: formData.get('purchaseDate'),
+    notes: formData.get('notes') || undefined,
+  })
+  if (!parsed.success) {
+    return { success: false, error: 'Input tidak valid. Periksa kembali data yang diisi.' }
+  }
+
+  try {
+    await createStockPurchase(parsed.data, session!.id)
+    return { success: true, data: undefined }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Gagal menyimpan pembelian stok' }
   }
 }
