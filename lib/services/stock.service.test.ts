@@ -6,6 +6,8 @@ vi.mock('@/lib/services/lock-period.service', () => ({
 
 vi.mock('@/lib/db/queries/inventory.queries', () => ({
   getStockBalance: vi.fn(),
+  getAllStockBalances: vi.fn(),
+  insertInventoryMovement: vi.fn(),
   insertStockAdjustmentWithMovement: vi.fn(),
   findPendingRegradeRequests: vi.fn(),
   findRegradeRequestById: vi.fn(),
@@ -42,11 +44,11 @@ describe('stock.service', () => {
       vi.mocked(q.insertStockAdjustmentWithMovement).mockResolvedValue({ id: 'adj-1' } as any) // any: partial mock
 
       await createStockAdjustment(
-        { flockId: 'f1', adjustmentDate: new Date(), grade: 'A', quantity: -30, reason: 'Koreksi' },
+        { stockItemId: 'item-grade-a', adjustmentDate: '2026-04-20', quantity: -30, reason: 'Koreksi' },
         'user-1'
       )
 
-      expect(q.getStockBalance).toHaveBeenCalledWith('f1', 'A')
+      expect(q.getStockBalance).toHaveBeenCalledWith('item-grade-a')
       expect(q.insertStockAdjustmentWithMovement).toHaveBeenCalledWith(
         expect.objectContaining({ quantity: -30 }),
         expect.objectContaining({ movementType: 'out', quantity: 30 })
@@ -58,7 +60,7 @@ describe('stock.service', () => {
 
       await expect(
         createStockAdjustment(
-          { flockId: 'f1', adjustmentDate: new Date(), grade: 'A', quantity: -50, reason: 'Koreksi' },
+          { stockItemId: 'item-grade-a', adjustmentDate: '2026-04-20', quantity: -50, reason: 'Koreksi' },
           'user-1'
         )
       ).rejects.toThrow('Stok tidak mencukupi')
@@ -69,11 +71,11 @@ describe('stock.service', () => {
       vi.mocked(q.insertStockAdjustmentWithMovement).mockResolvedValue({ id: 'adj-1' } as any) // any: partial mock
 
       await createStockAdjustment(
-        { flockId: 'f1', adjustmentDate: new Date(), grade: 'A', quantity: 100, reason: 'Tambah stok' },
+        { stockItemId: 'item-grade-a', adjustmentDate: '2026-04-20', quantity: 100, reason: 'Tambah stok' },
         'user-1'
       )
 
-      expect(q.getStockBalance).toHaveBeenCalledWith('f1', 'A')
+      expect(q.getStockBalance).toHaveBeenCalledWith('item-grade-a')
       expect(q.insertStockAdjustmentWithMovement).toHaveBeenCalledWith(
         expect.objectContaining({ quantity: 100 }),
         expect.objectContaining({ movementType: 'in', quantity: 100 })
@@ -82,33 +84,33 @@ describe('stock.service', () => {
   })
 
   describe('submitRegradeRequest', () => {
-    it('throws when gradeFrom equals gradeTo', async () => {
+    it('throws when fromItemId equals toItemId', async () => {
       await expect(
         submitRegradeRequest(
-          { flockId: 'f1', gradeFrom: 'A', gradeTo: 'A', quantity: 100, requestDate: new Date() },
+          { fromItemId: 'item-a', toItemId: 'item-a', quantity: 100, requestDate: '2026-04-20' },
           'user-1'
         )
-      ).rejects.toThrow('Grade asal dan tujuan tidak boleh sama')
+      ).rejects.toThrow('Item asal dan tujuan tidak boleh sama')
     })
 
-    it('checks source grade balance', async () => {
+    it('checks source item balance', async () => {
       vi.mocked(q.getStockBalance).mockResolvedValue(1000)
       vi.mocked(q.insertRegradeRequest).mockResolvedValue({ id: 'rr-1' } as any) // any: partial mock
 
       await submitRegradeRequest(
-        { flockId: 'f1', gradeFrom: 'A', gradeTo: 'B', quantity: 200, requestDate: new Date() },
+        { fromItemId: 'item-a', toItemId: 'item-b', quantity: 200, requestDate: '2026-04-20' },
         'user-1'
       )
 
-      expect(q.getStockBalance).toHaveBeenCalledWith('f1', 'A')
+      expect(q.getStockBalance).toHaveBeenCalledWith('item-a')
     })
 
-    it('throws when source grade has insufficient stock', async () => {
+    it('throws when source item has insufficient stock', async () => {
       vi.mocked(q.getStockBalance).mockResolvedValue(100)
 
       await expect(
         submitRegradeRequest(
-          { flockId: 'f1', gradeFrom: 'A', gradeTo: 'B', quantity: 500, requestDate: new Date() },
+          { fromItemId: 'item-a', toItemId: 'item-b', quantity: 500, requestDate: '2026-04-20' },
           'user-1'
         )
       ).rejects.toThrow('Stok tidak mencukupi')

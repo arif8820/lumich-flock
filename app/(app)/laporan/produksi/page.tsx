@@ -6,7 +6,8 @@ import type { Role } from '@/lib/services/daily-record.service'
 import { KpiCard } from '@/components/ui/kpi-card'
 import { ProductionReportFilter } from '@/components/forms/production-report-filter'
 
-function formatDate(d: Date): string {
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr)
   return d.toLocaleDateString('id-ID')
 }
 
@@ -16,10 +17,10 @@ function toISODate(d: Date): string {
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 
-function parseSafeDate(str: string, fallback: Date): Date {
-  if (!ISO_DATE.test(str)) return fallback
+function parseSafeISODate(str: string, fallback: Date): string {
+  if (!ISO_DATE.test(str)) return toISODate(fallback)
   const d = new Date(str)
-  return isNaN(d.getTime()) ? fallback : d
+  return isNaN(d.getTime()) ? toISODate(fallback) : str
 }
 
 export default async function LaporanProduksiPage({
@@ -38,17 +39,15 @@ export default async function LaporanProduksiPage({
   const fromStr = typeof params.from === 'string' ? params.from : toISODate(defaultFrom)
   const toStr = typeof params.to === 'string' ? params.to : toISODate(today)
 
-  const from = parseSafeDate(fromStr, defaultFrom)
-  const to = parseSafeDate(toStr, today)
-  const safeFrom = toISODate(from)
-  const safeTo = toISODate(to)
+  const safeFrom = parseSafeISODate(fromStr, defaultFrom)
+  const safeTo = parseSafeISODate(toStr, today)
 
   let result: Awaited<ReturnType<typeof getProductionReportData>> = {
     rows: [],
-    kpi: { avgHdp: 0, totalEggs: 0, totalFeedKg: 0, totalDeaths: 0 },
+    kpi: { totalDeaths: 0, totalCulled: 0 },
   }
   try {
-    result = await getProductionReportData(from, to, session.role as Role)
+    result = await getProductionReportData(safeFrom, safeTo, session.role as Role)
   } catch {
     // DB error — render empty state
   }
@@ -87,11 +86,9 @@ export default async function LaporanProduksiPage({
       </div>
 
       {/* KPI Row */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <KpiCard label="Rata-rata HDP%" value={`${kpi.avgHdp.toFixed(1)}%`} />
-        <KpiCard label="Total Telur" value={kpi.totalEggs.toLocaleString('id-ID')} />
-        <KpiCard label="Total Pakan (kg)" value={kpi.totalFeedKg.toFixed(1)} />
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-2">
         <KpiCard label="Total Kematian" value={kpi.totalDeaths.toLocaleString('id-ID')} />
+        <KpiCard label="Total Afkir" value={kpi.totalCulled.toLocaleString('id-ID')} />
       </div>
 
       {/* Production Table */}
@@ -103,36 +100,26 @@ export default async function LaporanProduksiPage({
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Kandang</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Flock</th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Populasi</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Telur A</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Telur B</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Total</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>HDP%</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Pakan (kg)</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>FCR</th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Kematian</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Afkir</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={11} className="px-4 py-8 text-center text-sm" style={{ color: 'var(--lf-text-soft)' }}>
+                <td colSpan={6} className="px-4 py-8 text-center text-sm" style={{ color: 'var(--lf-text-soft)' }}>
                   Tidak ada data produksi untuk periode ini
                 </td>
               </tr>
             ) : (
               rows.map((row, i) => (
-                <tr key={`${row.flockId}-${String(row.recordDate)}-${i}`} className="border-t" style={{ borderColor: 'var(--lf-border)' }}>
+                <tr key={`${row.flockId}-${row.recordDate}-${i}`} className="border-t" style={{ borderColor: 'var(--lf-border)' }}>
                   <td className="px-4 py-3 text-sm" style={{ color: 'var(--lf-text-mid)' }}>{formatDate(row.recordDate)}</td>
                   <td className="px-4 py-3 text-sm font-medium" style={{ color: 'var(--lf-text-dark)' }}>{row.coopName}</td>
                   <td className="px-4 py-3 text-sm" style={{ color: 'var(--lf-text-mid)' }}>{row.flockName}</td>
                   <td className="px-4 py-3 text-sm text-right" style={{ color: 'var(--lf-text-dark)' }}>{row.activePopulation.toLocaleString('id-ID')}</td>
-                  <td className="px-4 py-3 text-sm text-right" style={{ color: 'var(--lf-text-dark)' }}>{row.eggsGradeA.toLocaleString('id-ID')}</td>
-                  <td className="px-4 py-3 text-sm text-right" style={{ color: 'var(--lf-text-dark)' }}>{row.eggsGradeB.toLocaleString('id-ID')}</td>
-                  <td className="px-4 py-3 text-sm text-right font-medium" style={{ color: 'var(--lf-text-dark)' }}>{row.totalEggs.toLocaleString('id-ID')}</td>
-                  <td className="px-4 py-3 text-sm text-right" style={{ color: 'var(--lf-text-dark)' }}>{row.hdp.toFixed(1)}%</td>
-                  <td className="px-4 py-3 text-sm text-right" style={{ color: 'var(--lf-text-mid)' }}>{row.feedKg.toFixed(1)}</td>
-                  <td className="px-4 py-3 text-sm text-right" style={{ color: row.fcr > 2.1 ? '#e74c3c' : 'var(--lf-text-dark)' }}>{row.fcr.toFixed(2)}</td>
                   <td className="px-4 py-3 text-sm text-right" style={{ color: 'var(--lf-text-mid)' }}>{row.deaths}</td>
+                  <td className="px-4 py-3 text-sm text-right" style={{ color: 'var(--lf-text-mid)' }}>{row.culled}</td>
                 </tr>
               ))
             )}

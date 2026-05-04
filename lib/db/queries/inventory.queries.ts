@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { inventoryMovements, stockAdjustments, regradeRequests, stockItems, stockCategories } from '@/lib/db/schema'
-import { eq, and, desc, sql, sum } from 'drizzle-orm'
+import { eq, desc, sql, sum } from 'drizzle-orm'
 import type {
   NewInventoryMovement,
   StockAdjustment, NewStockAdjustment,

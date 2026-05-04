@@ -18,17 +18,20 @@ import {
   customers,
   inventoryMovements,
   coops,
+  stockItems,
 } from '@/lib/db/schema'
 import { eq, and, sql } from 'drizzle-orm'
 import type { NewFlock, NewDailyRecord, NewCustomer, NewInventoryMovement } from '@/lib/db/schema'
 
 // ─── CSV parsing helpers ──────────────────────────────────────────────────────
 
-function parseDate(val: string, field: string, rowNum: number): { date?: Date; error?: string } {
+function parseISODate(val: string, field: string, rowNum: number): { date?: string; dateObj?: Date; error?: string } {
   if (!val) return { error: `Baris ${rowNum}: ${field} wajib diisi` }
+  const ISO = /^\d{4}-\d{2}-\d{2}$/
+  if (!ISO.test(val)) return { error: `Baris ${rowNum}: ${field} format tanggal tidak valid (gunakan YYYY-MM-DD)` }
   const d = new Date(val)
-  if (isNaN(d.getTime())) return { error: `Baris ${rowNum}: ${field} format tanggal tidak valid (gunakan YYYY-MM-DD)` }
-  return { date: d }
+  if (isNaN(d.getTime())) return { error: `Baris ${rowNum}: ${field} tanggal tidak valid` }
+  return { date: val, dateObj: d }
 }
 
 function parseInt2(val: string, field: string, rowNum: number, required = true): { num?: number; error?: string } {
@@ -94,13 +97,12 @@ export async function parseFlockscsv(csvText: string): Promise<ParseResult<Flock
     if (!coopId) {
       rowErrors.push(`Baris ${rowNum}: coop_id wajib diisi`)
     } else {
-      // FK validation: coopId must exist in coops table
       const [coopRow] = await db.select({ id: coops.id }).from(coops).where(eq(coops.id, coopId)).limit(1)
       if (!coopRow) rowErrors.push(`Baris ${rowNum}: coop_id "${coopId}" tidak ditemukan`)
     }
     if (!name) rowErrors.push(`Baris ${rowNum}: name wajib diisi`)
 
-    const { date: arrivalDate, error: dateErr } = parseDate(arrivalDateStr ?? '', 'arrival_date', rowNum)
+    const { dateObj: arrivalDate, error: dateErr } = parseISODate(arrivalDateStr ?? '', 'arrival_date', rowNum)
     if (dateErr) rowErrors.push(dateErr)
 
     const { num: initialCount, error: countErr } = parseInt2(initialCountStr ?? '', 'initial_count', rowNum)
@@ -130,12 +132,11 @@ export async function parseFlockscsv(csvText: string): Promise<ParseResult<Flock
 
 // ─── DailyRecord import ───────────────────────────────────────────────────────
 
-export type DailyRecordImportRow = Omit<NewDailyRecord, 'isImported' | 'importedBy'>
+export type DailyRecordImportRow = Pick<NewDailyRecord, 'flockId' | 'recordDate' | 'deaths' | 'culled' | 'eggsCracked' | 'eggsAbnormal' | 'isLateInput'>
 
 /**
- * Expected CSV columns:
- * flock_id, record_date, deaths, culled, eggs_grade_a, eggs_grade_b,
- * eggs_cracked, eggs_abnormal, avg_weight_kg (opt), feed_kg (opt)
+ * Expected CSV columns: flock_id, record_date, deaths, culled, eggs_cracked (opt), eggs_abnormal (opt)
+ * Note: egg/feed entries are imported separately via the daily input form.
  */
 export async function parseDailyRecordsCsv(csvText: string): Promise<ParseResult<DailyRecordImportRow>> {
   const rows = parseCsv(csvText)
@@ -148,17 +149,16 @@ export async function parseDailyRecordsCsv(csvText: string): Promise<ParseResult
     const rowNum = idx + 2
     const rowErrors: string[] = []
 
-    const [flockId, recordDateStr, deathsStr, culledStr, eggsAStr, eggsBStr, crackedStr, abnormalStr, avgWtStr, feedStr] = cols
+    const [flockId, recordDateStr, deathsStr, culledStr, crackedStr, abnormalStr] = cols
 
     if (!flockId) {
       rowErrors.push(`Baris ${rowNum}: flock_id wajib diisi`)
     } else {
-      // FK validation: flockId must exist in flocks table
       const [flockRow] = await db.select({ id: flocks.id }).from(flocks).where(eq(flocks.id, flockId)).limit(1)
       if (!flockRow) rowErrors.push(`Baris ${rowNum}: flock_id "${flockId}" tidak ditemukan`)
     }
 
-    const { date: recordDate, error: dateErr } = parseDate(recordDateStr ?? '', 'record_date', rowNum)
+    const { date: recordDate, error: dateErr } = parseISODate(recordDateStr ?? '', 'record_date', rowNum)
     if (dateErr) rowErrors.push(dateErr)
 
     // Duplicate check: (flockId, recordDate) must not already exist
@@ -175,16 +175,10 @@ export async function parseDailyRecordsCsv(csvText: string): Promise<ParseResult
     if (e1) rowErrors.push(e1)
     const { num: culled, error: e2 } = parseInt2(culledStr ?? '', 'culled', rowNum)
     if (e2) rowErrors.push(e2)
-    const { num: eggsGradeA, error: e3 } = parseInt2(eggsAStr ?? '', 'eggs_grade_a', rowNum)
-    if (e3) rowErrors.push(e3)
-    const { num: eggsGradeB, error: e4 } = parseInt2(eggsBStr ?? '', 'eggs_grade_b', rowNum)
-    if (e4) rowErrors.push(e4)
-    const { num: eggsCracked, error: e5 } = parseInt2(crackedStr ?? '', 'eggs_cracked', rowNum)
+    const { num: eggsCracked, error: e5 } = parseInt2(crackedStr ?? '', 'eggs_cracked', rowNum, false)
     if (e5) rowErrors.push(e5)
-    const { num: eggsAbnormal, error: e6 } = parseInt2(abnormalStr ?? '', 'eggs_abnormal', rowNum)
+    const { num: eggsAbnormal, error: e6 } = parseInt2(abnormalStr ?? '', 'eggs_abnormal', rowNum, false)
     if (e6) rowErrors.push(e6)
-    const { num: avgWeightKg } = parseFloat2(avgWtStr ?? '', 'avg_weight_kg', rowNum)
-    const { num: feedKg } = parseFloat2(feedStr ?? '', 'feed_kg', rowNum)
 
     if (rowErrors.length > 0) {
       errors.push({ rowNum, errors: rowErrors })
@@ -198,12 +192,8 @@ export async function parseDailyRecordsCsv(csvText: string): Promise<ParseResult
         recordDate: recordDate!,
         deaths: deaths!,
         culled: culled!,
-        eggsGradeA: eggsGradeA!,
-        eggsGradeB: eggsGradeB!,
-        eggsCracked: eggsCracked!,
-        eggsAbnormal: eggsAbnormal!,
-        avgWeightKg: avgWeightKg != null ? String(avgWeightKg) : null,
-        feedKg: feedKg != null ? String(feedKg) : null,
+        eggsCracked: eggsCracked ?? 0,
+        eggsAbnormal: eggsAbnormal ?? 0,
         isLateInput: false,
       },
     })
@@ -268,10 +258,10 @@ export function parseCustomersCsv(csvText: string): ParseResult<CustomerImportRo
 
 // ─── Opening stock import ─────────────────────────────────────────────────────
 
-export type OpeningStockImportRow = Omit<NewInventoryMovement, 'isImported' | 'importedBy'>
+export type OpeningStockImportRow = Pick<NewInventoryMovement, 'stockItemId' | 'movementType' | 'source' | 'sourceType' | 'quantity' | 'movementDate'>
 
 /**
- * Expected CSV columns: flock_id, grade (A|B), quantity, movement_date
+ * Expected CSV columns: stock_item_id, quantity, movement_date
  */
 export async function parseOpeningStockCsv(csvText: string): Promise<ParseResult<OpeningStockImportRow>> {
   const rows = parseCsv(csvText)
@@ -280,26 +270,30 @@ export async function parseOpeningStockCsv(csvText: string): Promise<ParseResult
   const valid: ParsedRow<OpeningStockImportRow>[] = []
   const errors: ParseError[] = []
 
-  // Check once if any import entries already exist for each cutover date encountered
   const checkedDates = new Set<string>()
 
   for (const [idx, cols] of dataRows.entries()) {
     const rowNum = idx + 2
     const rowErrors: string[] = []
 
-    const [flockId, grade, quantityStr, movementDateStr] = cols
+    const [stockItemId, quantityStr, movementDateStr] = cols
 
-    if (!flockId) rowErrors.push(`Baris ${rowNum}: flock_id wajib diisi`)
-    if (!grade || !['A', 'B'].includes(grade)) rowErrors.push(`Baris ${rowNum}: grade harus A atau B`)
+    if (!stockItemId) {
+      rowErrors.push(`Baris ${rowNum}: stock_item_id wajib diisi`)
+    } else {
+      const [itemRow] = await db.select({ id: stockItems.id }).from(stockItems).where(eq(stockItems.id, stockItemId)).limit(1)
+      if (!itemRow) rowErrors.push(`Baris ${rowNum}: stock_item_id "${stockItemId}" tidak ditemukan`)
+    }
+
     const { num: quantity, error: qErr } = parseInt2(quantityStr ?? '', 'quantity', rowNum)
     if (qErr) rowErrors.push(qErr)
     if (quantity !== undefined && quantity <= 0) rowErrors.push(`Baris ${rowNum}: quantity harus > 0`)
-    const { date: movementDate, error: dErr } = parseDate(movementDateStr ?? '', 'movement_date', rowNum)
+
+    const { date: movementDate, error: dErr } = parseISODate(movementDateStr ?? '', 'movement_date', rowNum)
     if (dErr) rowErrors.push(dErr)
 
-    // Check for existing import entries on the same cutover_date
-    if (movementDate && !checkedDates.has(movementDate.toISOString())) {
-      checkedDates.add(movementDate.toISOString())
+    if (movementDate && !checkedDates.has(movementDate)) {
+      checkedDates.add(movementDate)
       const [existing] = await db
         .select({ count: sql<string>`COUNT(*)` })
         .from(inventoryMovements)
@@ -322,11 +316,10 @@ export async function parseOpeningStockCsv(csvText: string): Promise<ParseResult
     valid.push({
       rowNum,
       data: {
-        flockId: flockId || null,
+        stockItemId: stockItemId!,
         movementType: 'in',
         source: 'import',
         sourceType: 'import',
-        grade: grade as 'A' | 'B',
         quantity: quantity!,
         movementDate: movementDate!,
       },
@@ -412,9 +405,9 @@ export async function commitImport(
 
 const TEMPLATES: Record<ImportEntity, string> = {
   flocks: 'coop_id,name,arrival_date,initial_count,breed,notes\n',
-  daily_records: 'flock_id,record_date,deaths,culled,eggs_grade_a,eggs_grade_b,eggs_cracked,eggs_abnormal,avg_weight_kg,feed_kg\n',
+  daily_records: 'flock_id,record_date,deaths,culled,eggs_cracked,eggs_abnormal\n',
   customers: 'name,type,phone,address,credit_limit,payment_terms\n',
-  opening_stock: 'flock_id,grade,quantity,movement_date\n',
+  opening_stock: 'stock_item_id,quantity,movement_date\n',
 }
 
 export function getCsvTemplate(entity: ImportEntity): string {

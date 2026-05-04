@@ -23,8 +23,8 @@ vi.mock('@/lib/db/queries/sales-order.queries', () => ({
 
 vi.mock('@/lib/db/queries/inventory.queries', () => ({
   getStockBalance: vi.fn(),
-  getStockBalanceByGrade: vi.fn(),
   getAllStockBalances: vi.fn(),
+  insertInventoryMovement: vi.fn(),
   insertStockAdjustmentWithMovement: vi.fn(),
   findPendingRegradeRequests: vi.fn(),
   findRegradeRequestById: vi.fn(),
@@ -220,7 +220,7 @@ describe('sales-order.service', () => {
     it('confirms draft SO', async () => {
       vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockDraftSO as any)
       vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue([] as any)
-      vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(1000)
+      vi.mocked(inventoryQueries.getStockBalance).mockResolvedValue(1000)
 
       const result = await confirmSO('so-1', 'user-1', 'supervisor')
 
@@ -230,9 +230,9 @@ describe('sales-order.service', () => {
     it('throws when Grade A stock is insufficient', async () => {
       vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockDraftSO as any)
       vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue([
-        { itemType: 'egg_grade_a', quantity: 1000 },
+        { itemType: 'egg_grade_a', itemRefId: 'item-grade-a', quantity: 1000 },
       ] as any)
-      vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(500)
+      vi.mocked(inventoryQueries.getStockBalance).mockResolvedValue(500)
 
       await expect(confirmSO('so-1', 'user-1', 'supervisor'))
         .rejects.toThrow('Stok tidak mencukupi: Grade A')
@@ -241,9 +241,9 @@ describe('sales-order.service', () => {
     it('throws when Grade B stock is insufficient', async () => {
       vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockDraftSO as any)
       vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue([
-        { itemType: 'egg_grade_b', quantity: 2000 },
+        { itemType: 'egg_grade_b', itemRefId: 'item-grade-b', quantity: 2000 },
       ] as any)
-      vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(300)
+      vi.mocked(inventoryQueries.getStockBalance).mockResolvedValue(300)
 
       await expect(confirmSO('so-1', 'user-1', 'supervisor'))
         .rejects.toThrow('Stok tidak mencukupi: Grade B')
@@ -344,6 +344,7 @@ describe('sales-order.service', () => {
         id: 'item-1',
         order_id: 'so-1',
         itemType: 'egg_grade_a' as const,
+        itemRefId: 'item-grade-a',
         quantity: 1000,
         unit: 'butir' as const,
         pricePerUnit: '1500',
@@ -353,7 +354,7 @@ describe('sales-order.service', () => {
     it('fulfills SO with sufficient stock (cash)', async () => {
       vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockConfirmedSO as any)
       vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue(mockSOItems as any)
-      vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(5000)
+      vi.mocked(inventoryQueries.getStockBalance).mockResolvedValue(5000)
       vi.mocked(customerQueries.findCustomerById).mockResolvedValue(mockCustomer as any)
       vi.mocked(salesOrderQueries.fulfillSOTx).mockResolvedValue(undefined)
 
@@ -365,7 +366,7 @@ describe('sales-order.service', () => {
     it('throws when stock insufficient', async () => {
       vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockConfirmedSO as any)
       vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue(mockSOItems as any)
-      vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(500)
+      vi.mocked(inventoryQueries.getStockBalance).mockResolvedValue(500)
 
       await expect(fulfillSO('so-1', 'user-1', 'supervisor')).rejects.toThrow(
         'Stok tidak mencukupi saat transaksi diproses'
@@ -376,7 +377,7 @@ describe('sales-order.service', () => {
       const creditSO = { ...mockConfirmedSO, paymentMethod: 'credit' as const }
       vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(creditSO as any)
       vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue(mockSOItems as any)
-      vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(5000)
+      vi.mocked(inventoryQueries.getStockBalance).mockResolvedValue(5000)
       vi.mocked(salesOrderQueries.getCustomerOutstandingCredit).mockResolvedValue(9500000)
       vi.mocked(customerQueries.findCustomerById).mockResolvedValue(mockCustomer as any)
 
@@ -401,7 +402,7 @@ describe('sales-order.service', () => {
     it('cash SO: invoice number starts with RCP-', async () => {
       vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockConfirmedSO as any)
       vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue(mockSOItems as any)
-      vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(5000)
+      vi.mocked(inventoryQueries.getStockBalance).mockResolvedValue(5000)
       vi.mocked(customerQueries.findCustomerById).mockResolvedValue(mockCustomer as any)
       vi.mocked(invoiceQueries.countInvoicesThisMonth).mockResolvedValue(0)
       vi.mocked(salesOrderQueries.fulfillSOTx).mockResolvedValue(undefined)
@@ -416,7 +417,7 @@ describe('sales-order.service', () => {
       const creditSO = { ...mockConfirmedSO, paymentMethod: 'credit' as const }
       vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(creditSO as any)
       vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue(mockSOItems as any)
-      vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(5000)
+      vi.mocked(inventoryQueries.getStockBalance).mockResolvedValue(5000)
       vi.mocked(salesOrderQueries.getCustomerOutstandingCredit).mockResolvedValue(0)
       vi.mocked(customerQueries.findCustomerById).mockResolvedValue(mockCustomer as any)
       vi.mocked(invoiceQueries.countInvoicesThisMonth).mockResolvedValue(0)
@@ -433,7 +434,7 @@ describe('sales-order.service', () => {
       vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockZeroSO as any)
       vi.mocked(customerQueries.findCustomerById).mockResolvedValue(mockCustomer as any)
       vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue([])
-      vi.mocked(inventoryQueries.getStockBalanceByGrade).mockResolvedValue(1000)
+      vi.mocked(inventoryQueries.getStockBalance).mockResolvedValue(1000)
       vi.mocked(invoiceQueries.countInvoicesThisMonth).mockResolvedValue(0)
 
       await expect(fulfillSO('so-1', 'user-1', 'admin'))

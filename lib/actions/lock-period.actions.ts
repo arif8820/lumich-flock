@@ -15,12 +15,8 @@ const correctionSchema = z.object({
   reason: z.string().min(3, 'Alasan minimal 3 karakter'),
   deaths: z.coerce.number().int().min(0).optional(),
   culled: z.coerce.number().int().min(0).optional(),
-  eggsGradeA: z.coerce.number().int().min(0).optional(),
-  eggsGradeB: z.coerce.number().int().min(0).optional(),
   eggsCracked: z.coerce.number().int().min(0).optional(),
   eggsAbnormal: z.coerce.number().int().min(0).optional(),
-  avgWeightKg: z.coerce.number().optional(),
-  feedKg: z.coerce.number().optional(),
 })
 
 export async function correctDailyRecordAction(
@@ -35,12 +31,8 @@ export async function correctDailyRecordAction(
     reason: formData.get('reason'),
     deaths: formData.get('deaths') || undefined,
     culled: formData.get('culled') || undefined,
-    eggsGradeA: formData.get('eggsGradeA') || undefined,
-    eggsGradeB: formData.get('eggsGradeB') || undefined,
     eggsCracked: formData.get('eggsCracked') || undefined,
     eggsAbnormal: formData.get('eggsAbnormal') || undefined,
-    avgWeightKg: formData.get('avgWeightKg') || undefined,
-    feedKg: formData.get('feedKg') || undefined,
   })
 
   if (!parsed.success) {

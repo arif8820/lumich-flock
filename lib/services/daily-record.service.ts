@@ -4,7 +4,6 @@ import {
   getTotalDepletionByFlock,
   getCumulativeDepletionByFlockUpTo,
   getProductionReport,
-  type ProductionReportRow,
 } from '@/lib/db/queries/daily-record.queries'
 import { getStockBalance } from '@/lib/db/queries/inventory.queries'
 import { findAllActiveFlocks, findFlockById } from '@/lib/db/queries/flock.queries'

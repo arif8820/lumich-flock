@@ -6,7 +6,7 @@ test.describe('Sprint 5 UAT: Sales Order & Sales Return', () => {
   const PASSWORD = 'Aiueo123!';
   const BASE_URL = 'http://localhost:3000';
 
-  async function login(page, email) {
+  async function login(page: import('@playwright/test').Page, email: string) {
     await page.goto(BASE_URL + '/login');
     await page.fill('input[type="email"]', email);
     await page.fill('input[type="password"]', PASSWORD);

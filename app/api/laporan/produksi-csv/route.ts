@@ -4,11 +4,10 @@ import type { Role, ProductionReportResult } from '@/lib/services/daily-record.s
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 
-function parseSafeDate(str: string | null, fallback: Date): Date {
-  if (!str || !ISO_DATE.test(str)) return fallback
+function parseSafeISODate(str: string | null, fallback: Date): string {
+  if (!str || !ISO_DATE.test(str)) return fallback.toISOString().split('T')[0]!
   const d = new Date(str)
-  if (isNaN(d.getTime())) return fallback
-  return d
+  return isNaN(d.getTime()) ? fallback.toISOString().split('T')[0]! : str
 }
 
 function escapeField(value: string): string {
@@ -37,8 +36,8 @@ export async function GET(request: Request): Promise<Response> {
   const defaultFrom = new Date(today)
   defaultFrom.setDate(defaultFrom.getDate() - 30)
 
-  const from = parseSafeDate(fromParam, defaultFrom)
-  const to = parseSafeDate(toParam, today)
+  const from = parseSafeISODate(fromParam, defaultFrom)
+  const to = parseSafeISODate(toParam, today)
 
   let result: ProductionReportResult
   try {
@@ -52,33 +51,18 @@ export async function GET(request: Request): Promise<Response> {
     'Kandang',
     'Flock',
     'Populasi',
-    'TelurA',
-    'TelurB',
-    'TotalTelur',
-    'HDP%',
-    'PakanKg',
-    'FCR',
     'Kematian',
+    'Afkir',
   ].join(',')
 
-  const dataRows = result.rows.map((row) => {
-    const recordDate = row.recordDate instanceof Date
-      ? row.recordDate.toISOString().split('T')[0]
-      : String(row.recordDate).split('T')[0]
-    return [
-      recordDate,
-      escapeField(row.coopName),
-      escapeField(row.flockName),
-      row.activePopulation,
-      row.eggsGradeA,
-      row.eggsGradeB,
-      row.totalEggs,
-      row.hdp.toFixed(1),
-      row.feedKg.toFixed(1),
-      row.fcr.toFixed(2),
-      row.deaths,
-    ].join(',')
-  })
+  const dataRows = result.rows.map((row) => [
+    row.recordDate,
+    escapeField(row.coopName),
+    escapeField(row.flockName),
+    row.activePopulation,
+    row.deaths,
+    row.culled,
+  ].join(','))
 
   const csv = [header, ...dataRows].join('\r\n')
 

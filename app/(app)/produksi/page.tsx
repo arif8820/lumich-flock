@@ -61,10 +61,8 @@ export default async function ProduksiPage({
               <tr className="text-xs text-[var(--lf-text-soft)] uppercase tracking-wide text-left">
                 <th className="px-3 py-2">Tanggal</th>
                 <th className="px-3 py-2">Kandang</th>
-                <th className="px-3 py-2 text-right">Grade A</th>
-                <th className="px-3 py-2 text-right">Grade B</th>
                 <th className="px-3 py-2 text-right">Kematian</th>
-                <th className="px-3 py-2 text-right">Pakan (kg)</th>
+                <th className="px-3 py-2 text-right">Afkir</th>
                 <th className="px-3 py-2"></th>
               </tr>
             </thead>
@@ -86,12 +84,8 @@ export default async function ProduksiPage({
                       )}
                     </td>
                     <td className="px-3 py-3 text-[var(--lf-text-soft)] text-xs">{r.coopName}</td>
-                    <td className="px-3 py-3 text-right text-[var(--lf-text-dark)]">{r.eggsGradeA.toLocaleString('id')}</td>
-                    <td className="px-3 py-3 text-right text-[var(--lf-text-dark)]">{r.eggsGradeB.toLocaleString('id')}</td>
                     <td className="px-3 py-3 text-right text-[var(--lf-text-mid)]">{r.deaths}</td>
-                    <td className="px-3 py-3 text-right text-[var(--lf-text-mid)]">
-                      {r.feedKg != null ? Number(r.feedKg).toFixed(1) : '—'}
-                    </td>
+                    <td className="px-3 py-3 text-right text-[var(--lf-text-mid)]">{r.culled}</td>
                     <td className="px-3 py-3 text-right rounded-r-xl">
                       {editable ? (
                         <Link

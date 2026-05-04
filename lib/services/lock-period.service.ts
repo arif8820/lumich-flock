@@ -12,7 +12,7 @@
  */
 
 import { db } from '@/lib/db'
-import { dailyRecords, inventoryMovements } from '@/lib/db/schema'
+import { dailyRecords } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { insertCorrectionRecord } from '@/lib/db/queries/correction-record.queries'
 import type { CorrectionRecord } from '@/lib/db/schema'
@@ -57,18 +57,15 @@ export function isLocked(recordDate: Date, role: Role, now: Date = new Date()): 
 type DailyRecordPatch = {
   deaths?: number
   culled?: number
-  eggsGradeA?: number
-  eggsGradeB?: number
   eggsCracked?: number
   eggsAbnormal?: number
-  avgWeightKg?: number | null
-  feedKg?: number | null
 }
 
 /**
  * Admin-only: apply corrections to a daily_record past lock window.
  * Creates one correction_record per changed field.
- * If eggsGradeA or eggsGradeB changes, creates compensating inventory_movements.
+ * Egg/feed/vaccine corrections are handled via new input entries in the sub-tables;
+ * this service only patches the core daily_record fields.
  */
 export async function correctDailyRecord(
   recordId: string,
@@ -120,44 +117,6 @@ export async function correctDailyRecord(
       updateSet[field] = val != null ? String(val) : null
     }
     await tx.update(dailyRecords).set(updateSet).where(eq(dailyRecords.id, recordId))
-
-    // Compensating inventory movements for egg grade changes
-    const gradeAChanged = changedFields.includes('eggsGradeA')
-    const gradeBChanged = changedFields.includes('eggsGradeB')
-
-    if (gradeAChanged && patch.eggsGradeA !== undefined) {
-      const delta = patch.eggsGradeA - existing.eggsGradeA
-      if (delta !== 0) {
-        await tx.insert(inventoryMovements).values({
-          flockId: existing.flockId,
-          movementType: delta > 0 ? 'in' : 'out',
-          source: 'adjustment',
-          sourceType: 'stock_adjustments',
-          grade: 'A',
-          quantity: Math.abs(delta),
-          note: `Koreksi admin: ${reason.trim()}`,
-          movementDate: existing.recordDate,
-          createdBy: adminId,
-        })
-      }
-    }
-
-    if (gradeBChanged && patch.eggsGradeB !== undefined) {
-      const delta = patch.eggsGradeB - existing.eggsGradeB
-      if (delta !== 0) {
-        await tx.insert(inventoryMovements).values({
-          flockId: existing.flockId,
-          movementType: delta > 0 ? 'in' : 'out',
-          source: 'adjustment',
-          sourceType: 'stock_adjustments',
-          grade: 'B',
-          quantity: Math.abs(delta),
-          note: `Koreksi admin: ${reason.trim()}`,
-          movementDate: existing.recordDate,
-          createdBy: adminId,
-        })
-      }
-    }
 
     return corrections
   })

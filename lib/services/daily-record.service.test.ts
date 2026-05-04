@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/lib/db/queries/daily-record.queries', () => ({
   findDailyRecord: vi.fn(),
-  insertDailyRecordWithMovements: vi.fn(),
+  upsertDailyRecordTx: vi.fn(),
   getTotalDepletionByFlock: vi.fn(),
   getCumulativeDepletionByFlockUpTo: vi.fn(),
   getProductionReport: vi.fn(),
@@ -15,6 +15,10 @@ vi.mock('@/lib/db/queries/flock.queries', () => ({
 
 vi.mock('@/lib/db/queries/user-coop-assignment.queries', () => ({
   findAssignedCoopIds: vi.fn(),
+}))
+
+vi.mock('@/lib/db/queries/inventory.queries', () => ({
+  getStockBalance: vi.fn().mockResolvedValue(9999),
 }))
 
 vi.mock('@/lib/services/lock-period.service', () => ({
@@ -39,10 +43,7 @@ import {
   validateBackdate,
   computeIsLateInput,
   computeActivePopulation,
-  computeHDP,
-  computeFeedPerBird,
-  computeFCR,
-  createDailyRecord,
+  saveDailyRecord,
   getProductionReportData,
 } from './daily-record.service'
 
@@ -99,40 +100,9 @@ describe('daily-record.service — pure functions', () => {
     })
   })
 
-  describe('computeHDP', () => {
-    it('calculates egg lay rate correctly', () => {
-      expect(computeHDP(850, 50, 1000)).toBeCloseTo(90)
-    })
-
-    it('returns 0 when population is 0', () => {
-      expect(computeHDP(100, 50, 0)).toBe(0)
-    })
-  })
-
-  describe('computeFCR', () => {
-    it('calculates kg feed per dozen eggs', () => {
-      // 12 kg feed, 120 eggs = 10 dozen → 1.2
-      expect(computeFCR(12, 120, 0)).toBeCloseTo(1.2)
-    })
-
-    it('returns 0 when no eggs produced', () => {
-      expect(computeFCR(10, 0, 0)).toBe(0)
-    })
-  })
-
-  describe('computeFeedPerBird', () => {
-    it('converts kg to grams per bird', () => {
-      expect(computeFeedPerBird(10, 1000)).toBeCloseTo(10)
-    })
-
-    it('returns 0 when population is 0', () => {
-      expect(computeFeedPerBird(5, 0)).toBe(0)
-    })
-  })
-
   describe('getProductionReportData', () => {
     const mockRawRow = {
-      recordDate: new Date('2026-04-20'),
+      recordDate: '2026-04-20',
       coopId: 'coop-1',
       coopName: 'Kandang A',
       flockId: 'flock-1',
@@ -140,9 +110,6 @@ describe('daily-record.service — pure functions', () => {
       flockInitialCount: 1000,
       deaths: 5,
       culled: 2,
-      eggsGradeA: 850,
-      eggsGradeB: 50,
-      feedKg: '120',
     }
 
     beforeEach(() => {
@@ -151,108 +118,114 @@ describe('daily-record.service — pure functions', () => {
 
     it('throws Akses ditolak for operator role', async () => {
       await expect(
-        getProductionReportData(new Date('2026-04-01'), new Date('2026-04-30'), 'operator')
+        getProductionReportData('2026-04-01', '2026-04-30', 'operator')
       ).rejects.toThrow('Akses ditolak')
     })
 
-    it('happy path: correctly computes activePopulation, hdp, fcr, totalEggs and KPI aggregates', async () => {
+    it('happy path: correctly computes activePopulation and KPI aggregates', async () => {
       vi.mocked(queries.getProductionReport).mockResolvedValue([mockRawRow])
-      // Cumulative depletion up to recordDate: 5 deaths, 2 culled (same as the single row)
       vi.mocked(queries.getCumulativeDepletionByFlockUpTo).mockResolvedValue({ deaths: 5, culled: 2 })
 
-      const result = await getProductionReportData(
-        new Date('2026-04-01'),
-        new Date('2026-04-30'),
-        'supervisor'
-      )
+      const result = await getProductionReportData('2026-04-01', '2026-04-30', 'supervisor')
 
       expect(result.rows).toHaveLength(1)
 
       const row = result.rows[0]!
       // activePopulation = 1000 - (5 + 2) = 993
       expect(row.activePopulation).toBe(993)
-      // totalEggs = 850 + 50 = 900
-      expect(row.totalEggs).toBe(900)
-      // hdp = (900 / 993) * 100 ≈ 90.63
-      expect(row.hdp).toBeCloseTo((900 / 993) * 100, 4)
-      // fcr = 120 / (900 / 12) = 120 / 75 = 1.6
-      expect(row.fcr).toBeCloseTo(1.6, 4)
-      expect(row.feedKg).toBe(120)
       expect(row.deaths).toBe(5)
       expect(row.culled).toBe(2)
 
       // KPI aggregates
-      expect(result.kpi.totalEggs).toBe(900)
-      expect(result.kpi.totalFeedKg).toBe(120)
       expect(result.kpi.totalDeaths).toBe(5)
-      expect(result.kpi.avgHdp).toBeCloseTo((900 / 993) * 100, 4)
+      expect(result.kpi.totalCulled).toBe(2)
     })
 
-    it('returns zero avgHdp when there are no rows', async () => {
+    it('returns zero kpi when there are no rows', async () => {
       vi.mocked(queries.getProductionReport).mockResolvedValue([])
 
-      const result = await getProductionReportData(
-        new Date('2026-04-01'),
-        new Date('2026-04-30'),
-        'admin'
-      )
+      const result = await getProductionReportData('2026-04-01', '2026-04-30', 'admin')
 
       expect(result.rows).toHaveLength(0)
-      expect(result.kpi.avgHdp).toBe(0)
-      expect(result.kpi.totalEggs).toBe(0)
+      expect(result.kpi.totalDeaths).toBe(0)
+      expect(result.kpi.totalCulled).toBe(0)
     })
   })
 
-  describe('createDailyRecord', () => {
+  describe('saveDailyRecord', () => {
     beforeEach(() => {
       vi.clearAllMocks()
-      // Default: flock exists, no depletion
       vi.mocked(flockQueries.findFlockById).mockResolvedValue({ id: 'f1', initialCount: 5000 } as any) // any: partial mock
       vi.mocked(queries.getTotalDepletionByFlock).mockResolvedValue({ deaths: 0, culled: 0 })
-    })
-
-    it('throws when record already exists for that date', async () => {
-      vi.mocked(queries.findDailyRecord).mockResolvedValue({ id: 'existing' } as any) // any: partial mock
-
-      await expect(
-        createDailyRecord(
-          { flockId: 'f1', recordDate: new Date('2026-04-20'), deaths: 0, culled: 0, eggsGradeA: 100, eggsGradeB: 10, eggsCracked: 0, eggsAbnormal: 0 },
-          'user-1', 'operator', new Date('2026-04-21')
-        )
-      ).rejects.toThrow('Data untuk tanggal ini sudah ada')
-    })
-
-    it('inserts record with IN movements for grade A and B', async () => {
       vi.mocked(queries.findDailyRecord).mockResolvedValue(null)
-      vi.mocked(queries.insertDailyRecordWithMovements).mockResolvedValue({ id: 'r1' } as any) // any: partial mock
+      vi.mocked(queries.upsertDailyRecordTx).mockResolvedValue({ id: 'dr-1' } as any) // any: partial mock
+    })
 
-      await createDailyRecord(
-        { flockId: 'f1', recordDate: new Date('2026-04-20'), deaths: 2, culled: 0, eggsGradeA: 900, eggsGradeB: 50, eggsCracked: 0, eggsAbnormal: 0 },
+    it('calls upsertDailyRecordTx with correct input', async () => {
+      await saveDailyRecord(
+        {
+          flockId: 'f1',
+          recordDate: '2026-04-20',
+          deaths: 2,
+          culled: 0,
+          eggsCracked: 0,
+          eggsAbnormal: 0,
+          eggEntries: [],
+          feedEntries: [],
+          vaccineEntries: [],
+        },
         'user-1', 'operator', new Date('2026-04-21')
       )
 
-      expect(queries.insertDailyRecordWithMovements).toHaveBeenCalledWith(
-        expect.objectContaining({ flockId: 'f1', eggsGradeA: 900 }),
-        expect.arrayContaining([
-          expect.objectContaining({ grade: 'A', quantity: 900, movementType: 'in' }),
-          expect.objectContaining({ grade: 'B', quantity: 50, movementType: 'in' }),
-        ])
+      expect(queries.upsertDailyRecordTx).toHaveBeenCalledWith(
+        expect.objectContaining({
+          record: expect.objectContaining({ flockId: 'f1', deaths: 2 }),
+        })
       )
     })
 
     it('sets isLateInput true when submitted next calendar day', async () => {
-      vi.mocked(queries.findDailyRecord).mockResolvedValue(null)
-      vi.mocked(queries.insertDailyRecordWithMovements).mockResolvedValue({ id: 'r1' } as any) // any: partial mock
-
-      await createDailyRecord(
-        { flockId: 'f1', recordDate: new Date('2026-04-20'), deaths: 0, culled: 0, eggsGradeA: 100, eggsGradeB: 0, eggsCracked: 0, eggsAbnormal: 0 },
+      await saveDailyRecord(
+        {
+          flockId: 'f1',
+          recordDate: '2026-04-20',
+          deaths: 0,
+          culled: 0,
+          eggsCracked: 0,
+          eggsAbnormal: 0,
+          eggEntries: [],
+          feedEntries: [],
+          vaccineEntries: [],
+        },
         'user-1', 'operator', new Date('2026-04-21T00:01:00Z')
       )
 
-      expect(queries.insertDailyRecordWithMovements).toHaveBeenCalledWith(
-        expect.objectContaining({ isLateInput: true }),
-        expect.any(Array)
+      expect(queries.upsertDailyRecordTx).toHaveBeenCalledWith(
+        expect.objectContaining({
+          record: expect.objectContaining({ isLateInput: true }),
+        })
       )
+    })
+
+    it('throws when depletion exceeds active population on new record', async () => {
+      vi.mocked(queries.getTotalDepletionByFlock).mockResolvedValue({ deaths: 4990, culled: 0 })
+
+      await expect(
+        saveDailyRecord(
+          {
+            flockId: 'f1',
+            recordDate: '2026-04-20',
+            deaths: 20,
+            culled: 0,
+            eggsCracked: 0,
+            eggsAbnormal: 0,
+            eggEntries: [],
+            feedEntries: [],
+            vaccineEntries: [],
+          },
+          'user-1', 'operator', new Date('2026-04-21')
+        )
+      ).rejects.toThrow('melebihi populasi aktif')
     })
   })
 })

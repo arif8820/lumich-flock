@@ -107,16 +107,15 @@ export async function approveSalesReturn(returnId: string, userId: string, role:
 
   // Build inventory movements (IN) for egg return items only
   const movements: NewInventoryMovement[] = returnItems
-    .filter((item) => item.itemType === 'egg_grade_a' || item.itemType === 'egg_grade_b')
+    .filter((item) => (item.itemType === 'egg_grade_a' || item.itemType === 'egg_grade_b') && item.itemRefId)
     .map((item) => ({
-      flockId: null,
+      stockItemId: item.itemRefId!,
       movementType: 'in' as const,
       source: 'sale' as const,
       sourceType: 'sales_returns' as const,
       sourceId: returnId,
-      grade: item.itemType === 'egg_grade_a' ? ('A' as const) : ('B' as const),
       quantity: item.quantity,
-      movementDate: new Date(),
+      movementDate: new Date().toISOString().slice(0, 10),
       createdBy: userId,
     }))
 

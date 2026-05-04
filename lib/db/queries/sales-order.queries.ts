@@ -79,15 +79,15 @@ export async function fulfillSOTx(
     if (!so) throw new Error('SO not found')
     if (so.status !== 'confirmed') throw new Error('Status SO tidak valid untuk operasi ini')
 
-    // Check stock for each egg item movement
+    // Check stock for each movement that has a stockItemId
     for (const mv of movements) {
-      if (mv.grade) {
+      if (mv.stockItemId) {
         const [stockRow] = await tx
           .select({
             balance: sql<number>`COALESCE(SUM(CASE WHEN ${inventoryMovements.movementType} = 'in' THEN ${inventoryMovements.quantity} ELSE -${inventoryMovements.quantity} END), 0)`,
           })
           .from(inventoryMovements)
-          .where(eq(inventoryMovements.grade, mv.grade))
+          .where(eq(inventoryMovements.stockItemId, mv.stockItemId))
 
         const balance = Number(stockRow?.balance ?? 0)
         if (balance < (mv.quantity ?? 0)) {
