@@ -1,19 +1,28 @@
 import {
   getStockBalance as _getStockBalance,
+  getAllStockBalances as _getAllStockBalances,
+  insertInventoryMovement,
   insertStockAdjustmentWithMovement,
   findPendingRegradeRequests,
   findRegradeRequestById,
   insertRegradeRequest,
   updateRegradeRequestStatus,
   approveRegradeRequestTx,
+  type StockBalance,
 } from '@/lib/db/queries/inventory.queries'
 import { assertCanEdit } from '@/lib/services/lock-period.service'
 import type { StockAdjustment, RegradeRequest } from '@/lib/db/schema'
 
+export type { StockBalance }
+
 type Role = 'operator' | 'supervisor' | 'admin'
 
-export async function getStockBalance(flockId: string, grade: 'A' | 'B'): Promise<number> {
-  return _getStockBalance(flockId, grade)
+export async function getStockBalance(stockItemId: string): Promise<number> {
+  return _getStockBalance(stockItemId)
+}
+
+export async function getAllStockBalances(): Promise<StockBalance[]> {
+  return _getAllStockBalances()
 }
 
 export function validateStockNotBelowZero(currentBalance: number, quantity: number): void {
@@ -21,9 +30,8 @@ export function validateStockNotBelowZero(currentBalance: number, quantity: numb
 }
 
 type AdjustmentInput = {
-  flockId: string
-  adjustmentDate: Date
-  grade: 'A' | 'B'
+  stockItemId: string
+  adjustmentDate: string // YYYY-MM-DD
   quantity: number // signed
   reason: string
   notes?: string
@@ -35,22 +43,28 @@ export async function createStockAdjustment(
   role: Role = 'admin',
   now: Date = new Date()
 ): Promise<StockAdjustment> {
-  // Lock period check — adjustmentDate is treated as the record date
-  assertCanEdit(input.adjustmentDate, role, now)
+  assertCanEdit(new Date(input.adjustmentDate), role, now)
 
-  const balance = await _getStockBalance(input.flockId, input.grade)
+  const balance = await _getStockBalance(input.stockItemId)
   validateStockNotBelowZero(balance, input.quantity)
   const movementType = input.quantity >= 0 ? 'in' : 'out'
   const qty = Math.abs(input.quantity)
+
   return insertStockAdjustmentWithMovement(
-    { ...input, createdBy: userId },
     {
-      flockId: input.flockId,
+      stockItemId: input.stockItemId,
+      adjustmentDate: input.adjustmentDate,
+      quantity: input.quantity,
+      reason: input.reason,
+      notes: input.notes,
+      createdBy: userId,
+    },
+    {
+      stockItemId: input.stockItemId,
       movementType,
       source: 'adjustment',
       sourceType: 'stock_adjustments',
-      sourceId: null, // Will be set by insertStockAdjustmentWithMovement
-      grade: input.grade,
+      sourceId: null,
       quantity: qty,
       movementDate: input.adjustmentDate,
       createdBy: userId,
@@ -59,11 +73,10 @@ export async function createStockAdjustment(
 }
 
 type RegradeInput = {
-  flockId: string
-  gradeFrom: 'A' | 'B'
-  gradeTo: 'A' | 'B'
+  fromItemId: string
+  toItemId: string
   quantity: number
-  requestDate: Date
+  requestDate: string // YYYY-MM-DD
   notes?: string
 }
 
@@ -71,8 +84,8 @@ export async function submitRegradeRequest(
   input: RegradeInput,
   userId: string
 ): Promise<RegradeRequest> {
-  if (input.gradeFrom === input.gradeTo) throw new Error('Grade asal dan tujuan tidak boleh sama')
-  const balance = await _getStockBalance(input.flockId, input.gradeFrom)
+  if (input.fromItemId === input.toItemId) throw new Error('Item asal dan tujuan tidak boleh sama')
+  const balance = await _getStockBalance(input.fromItemId)
   validateStockNotBelowZero(balance, -input.quantity)
   return insertRegradeRequest({ ...input, status: 'PENDING', createdBy: userId })
 }
@@ -93,4 +106,27 @@ export async function rejectRegradeRequest(requestId: string, adminId: string): 
 
 export async function getPendingRegradeRequests(): Promise<RegradeRequest[]> {
   return findPendingRegradeRequests()
+}
+
+type StockPurchaseInput = {
+  stockItemId: string
+  quantity: number
+  purchaseDate: string // YYYY-MM-DD
+  notes?: string
+}
+
+export async function createStockPurchase(
+  input: StockPurchaseInput,
+  userId: string
+): Promise<void> {
+  await insertInventoryMovement({
+    stockItemId: input.stockItemId,
+    movementType: 'in',
+    source: 'purchase',
+    sourceType: 'stock_adjustments',
+    sourceId: null,
+    quantity: input.quantity,
+    movementDate: input.purchaseDate,
+    createdBy: userId,
+  })
 }
