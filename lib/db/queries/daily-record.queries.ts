@@ -1,14 +1,21 @@
 import { db } from '@/lib/db'
-import { dailyRecords, inventoryMovements, flocks, coops } from '@/lib/db/schema'
+import {
+  dailyRecords, dailyEggRecords, dailyFeedRecords, dailyVaccineRecords,
+  inventoryMovements, flocks, coops,
+} from '@/lib/db/schema'
 import { eq, and, desc, sum, gte, lte, asc, inArray } from 'drizzle-orm'
-import type { DailyRecord, NewDailyRecord, NewInventoryMovement } from '@/lib/db/schema'
+import type {
+  DailyRecord, NewDailyRecord,
+  NewDailyEggRecord, NewDailyFeedRecord, NewDailyVaccineRecord,
+  NewInventoryMovement,
+} from '@/lib/db/schema'
 
 export async function findDailyRecordById(id: string): Promise<DailyRecord | null> {
   const [record] = await db.select().from(dailyRecords).where(eq(dailyRecords.id, id)).limit(1)
   return record ?? null
 }
 
-export async function findDailyRecord(flockId: string, recordDate: Date): Promise<DailyRecord | null> {
+export async function findDailyRecord(flockId: string, recordDate: string): Promise<DailyRecord | null> {
   const [record] = await db
     .select()
     .from(dailyRecords)
@@ -40,19 +47,14 @@ export async function findRecentDailyRecordsMultiFlocks(
       recordDate: dailyRecords.recordDate,
       deaths: dailyRecords.deaths,
       culled: dailyRecords.culled,
-      eggsGradeA: dailyRecords.eggsGradeA,
-      eggsGradeB: dailyRecords.eggsGradeB,
       eggsCracked: dailyRecords.eggsCracked,
       eggsAbnormal: dailyRecords.eggsAbnormal,
-      avgWeightKg: dailyRecords.avgWeightKg,
-      feedKg: dailyRecords.feedKg,
+      notes: dailyRecords.notes,
       isLateInput: dailyRecords.isLateInput,
       isImported: dailyRecords.isImported,
       importedBy: dailyRecords.importedBy,
       createdBy: dailyRecords.createdBy,
-      updatedBy: dailyRecords.updatedBy,
       createdAt: dailyRecords.createdAt,
-      updatedAt: dailyRecords.updatedAt,
       flockName: flocks.name,
       coopName: coops.name,
     })
@@ -77,22 +79,9 @@ export async function getTotalDepletionByFlock(
   }
 }
 
-export async function insertDailyRecordWithMovements(
-  record: NewDailyRecord,
-  movements: NewInventoryMovement[]
-): Promise<DailyRecord> {
-  return db.transaction(async (tx) => {
-    const [inserted] = await tx.insert(dailyRecords).values(record).returning()
-    if (movements.length > 0) {
-      await tx.insert(inventoryMovements).values(movements)
-    }
-    return inserted!
-  })
-}
-
 export async function getCumulativeDepletionByFlockUpTo(
   flockId: string,
-  upToDate: Date
+  upToDate: string
 ): Promise<{ deaths: number; culled: number }> {
   const [row] = await db
     .select({ totalDeaths: sum(dailyRecords.deaths), totalCulled: sum(dailyRecords.culled) })
@@ -104,8 +93,67 @@ export async function getCumulativeDepletionByFlockUpTo(
   }
 }
 
+type SaveDailyRecordTxInput = {
+  record: NewDailyRecord
+  eggEntries: NewDailyEggRecord[]
+  feedEntries: NewDailyFeedRecord[]
+  vaccineEntries: NewDailyVaccineRecord[]
+  eggMovements: NewInventoryMovement[]
+  feedMovements: NewInventoryMovement[]
+  vaccineMovements: NewInventoryMovement[]
+}
+
+export async function upsertDailyRecordTx(input: SaveDailyRecordTxInput): Promise<DailyRecord> {
+  return db.transaction(async (tx) => {
+    const [inserted] = await tx
+      .insert(dailyRecords)
+      .values(input.record)
+      .onConflictDoUpdate({
+        target: [dailyRecords.flockId, dailyRecords.recordDate],
+        set: {
+          deaths: input.record.deaths,
+          culled: input.record.culled,
+          eggsCracked: input.record.eggsCracked,
+          eggsAbnormal: input.record.eggsAbnormal,
+          notes: input.record.notes,
+        },
+      })
+      .returning()
+    const recordId = inserted!.id
+
+    await tx.delete(dailyEggRecords).where(eq(dailyEggRecords.dailyRecordId, recordId))
+    await tx.delete(dailyFeedRecords).where(eq(dailyFeedRecords.dailyRecordId, recordId))
+    await tx.delete(dailyVaccineRecords).where(eq(dailyVaccineRecords.dailyRecordId, recordId))
+
+    // Delete old movements from this record (by sourceId reference)
+    await tx
+      .delete(inventoryMovements)
+      .where(and(
+        eq(inventoryMovements.sourceId, recordId),
+        inArray(inventoryMovements.sourceType, ['daily_egg_records', 'daily_feed_records', 'daily_vaccine_records'])
+      ))
+
+    const eggEntriesWithId = input.eggEntries.map((e) => ({ ...e, dailyRecordId: recordId }))
+    const feedEntriesWithId = input.feedEntries.map((e) => ({ ...e, dailyRecordId: recordId }))
+    const vaccineEntriesWithId = input.vaccineEntries.map((e) => ({ ...e, dailyRecordId: recordId }))
+
+    if (eggEntriesWithId.length > 0) await tx.insert(dailyEggRecords).values(eggEntriesWithId)
+    if (feedEntriesWithId.length > 0) await tx.insert(dailyFeedRecords).values(feedEntriesWithId)
+    if (vaccineEntriesWithId.length > 0) await tx.insert(dailyVaccineRecords).values(vaccineEntriesWithId)
+
+    const allMovements = [
+      ...input.eggMovements.map((m) => ({ ...m, sourceId: recordId, sourceType: 'daily_egg_records' as const })),
+      ...input.feedMovements.map((m) => ({ ...m, sourceId: recordId, sourceType: 'daily_feed_records' as const })),
+      ...input.vaccineMovements.map((m) => ({ ...m, sourceId: recordId, sourceType: 'daily_vaccine_records' as const })),
+    ]
+    if (allMovements.length > 0) await tx.insert(inventoryMovements).values(allMovements)
+
+    return inserted!
+  })
+}
+
 export type ProductionReportRow = {
-  recordDate: Date
+  recordDate: string
   coopId: string
   coopName: string
   flockId: string
@@ -113,14 +161,11 @@ export type ProductionReportRow = {
   flockInitialCount: number
   deaths: number
   culled: number
-  eggsGradeA: number
-  eggsGradeB: number
-  feedKg: string | null
 }
 
 export async function getProductionReport(
-  from: Date,
-  to: Date
+  from: string,
+  to: string
 ): Promise<ProductionReportRow[]> {
   return db
     .select({
@@ -132,9 +177,6 @@ export async function getProductionReport(
       flockInitialCount: flocks.initialCount,
       deaths: dailyRecords.deaths,
       culled: dailyRecords.culled,
-      eggsGradeA: dailyRecords.eggsGradeA,
-      eggsGradeB: dailyRecords.eggsGradeB,
-      feedKg: dailyRecords.feedKg,
     })
     .from(dailyRecords)
     .innerJoin(flocks, eq(flocks.id, dailyRecords.flockId))
