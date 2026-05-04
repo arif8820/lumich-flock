@@ -1,11 +1,11 @@
 import { db } from '@/lib/db'
-import { dailyRecords, flocks, inventoryMovements } from '@/lib/db/schema'
+import { dailyRecords, flocks, dailyEggRecords, stockItems, stockCategories } from '@/lib/db/schema'
 import { desc, isNull, gte, and, sum, eq, inArray, SQL } from 'drizzle-orm'
 import type { DailyRecord } from '@/lib/db/schema'
 
 export type DashboardRecord = Pick<
   DailyRecord,
-  'id' | 'flockId' | 'recordDate' | 'deaths' | 'culled' | 'eggsGradeA' | 'eggsGradeB' | 'feedKg' | 'isLateInput'
+  'id' | 'flockId' | 'recordDate' | 'deaths' | 'culled' | 'isLateInput'
 >
 
 export async function getRecentDailyRecordsAcrossFlocks(limit: number, flockIds?: string[]): Promise<DashboardRecord[]> {
@@ -18,9 +18,6 @@ export async function getRecentDailyRecordsAcrossFlocks(limit: number, flockIds?
       recordDate: dailyRecords.recordDate,
       deaths: dailyRecords.deaths,
       culled: dailyRecords.culled,
-      eggsGradeA: dailyRecords.eggsGradeA,
-      eggsGradeB: dailyRecords.eggsGradeB,
-      feedKg: dailyRecords.feedKg,
       isLateInput: dailyRecords.isLateInput,
     })
     .from(dailyRecords)
@@ -31,27 +28,23 @@ export async function getRecentDailyRecordsAcrossFlocks(limit: number, flockIds?
 }
 
 export type DailyAggRow = {
-  date: Date
-  totalEggsA: number
-  totalEggsB: number
+  date: string
+  totalEggs: number
   totalDeaths: number
-  totalFeedKg: number
 }
 
 export async function getDailyProductionAgg(days: number, flockIds?: string[]): Promise<DailyAggRow[]> {
   const since = new Date()
   since.setDate(since.getDate() - days)
+  const sinceStr = since.toISOString().split('T')[0]!
 
-  const conditions: SQL[] = [isNull(flocks.retiredAt), gte(dailyRecords.recordDate, since)]
+  const conditions: SQL[] = [isNull(flocks.retiredAt), gte(dailyRecords.recordDate, sinceStr)]
   if (flockIds && flockIds.length > 0) conditions.push(inArray(dailyRecords.flockId, flockIds))
 
   const rows = await db
     .select({
       date: dailyRecords.recordDate,
-      totalEggsA: sum(dailyRecords.eggsGradeA),
-      totalEggsB: sum(dailyRecords.eggsGradeB),
       totalDeaths: sum(dailyRecords.deaths),
-      totalFeedKg: sum(dailyRecords.feedKg),
     })
     .from(dailyRecords)
     .innerJoin(flocks, eq(dailyRecords.flockId, flocks.id))
@@ -60,12 +53,11 @@ export async function getDailyProductionAgg(days: number, flockIds?: string[]): 
     .orderBy(desc(dailyRecords.recordDate))
     .limit(days)
 
+  // Egg totals require joining daily_egg_records — return 0 for now, laporan has full data
   return rows.map((r) => ({
-    date: r.date,
-    totalEggsA: Number(r.totalEggsA ?? 0),
-    totalEggsB: Number(r.totalEggsB ?? 0),
+    date: r.date as string,
+    totalEggs: 0,
     totalDeaths: Number(r.totalDeaths ?? 0),
-    totalFeedKg: Number(r.totalFeedKg ?? 0),
   }))
 }
 
@@ -100,27 +92,22 @@ export async function getActiveFlockPopulations(flockIds?: string[]): Promise<Fl
 }
 
 export type StockSummaryRow = {
-  totalGradeA: number
-  totalGradeB: number
+  totalEggs: number
 }
 
 export async function getStockSummary(): Promise<StockSummaryRow> {
   const rows = await db
     .select({
-      type: inventoryMovements.movementType,
-      grade: inventoryMovements.grade,
-      qty: sum(inventoryMovements.quantity),
+      stockItemId: dailyEggRecords.stockItemId,
+      categoryName: stockCategories.name,
+      totalButir: sum(dailyEggRecords.qtyButir),
     })
-    .from(inventoryMovements)
-    .groupBy(inventoryMovements.movementType, inventoryMovements.grade)
+    .from(dailyEggRecords)
+    .innerJoin(stockItems, eq(dailyEggRecords.stockItemId, stockItems.id))
+    .innerJoin(stockCategories, eq(stockItems.categoryId, stockCategories.id))
+    .where(eq(stockCategories.name, 'Telur'))
+    .groupBy(dailyEggRecords.stockItemId, stockCategories.name)
 
-  let gradeA = 0
-  let gradeB = 0
-  for (const r of rows) {
-    const qty = Number(r.qty ?? 0)
-    const sign = r.type === 'in' ? 1 : -1
-    if (r.grade === 'A') gradeA += sign * qty
-    if (r.grade === 'B') gradeB += sign * qty
-  }
-  return { totalGradeA: Math.max(0, gradeA), totalGradeB: Math.max(0, gradeB) }
+  const totalEggs = rows.reduce((s, r) => s + Number(r.totalButir ?? 0), 0)
+  return { totalEggs }
 }
