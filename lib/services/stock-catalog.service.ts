@@ -18,6 +18,18 @@ export async function getCategories(): Promise<StockCategory[]> {
   return findAllCategories()
 }
 
+export type CategoryWithItems = StockCategory & { items: StockItem[] }
+
+export async function getCategoriesWithActiveItems(): Promise<CategoryWithItems[]> {
+  const cats = await findAllCategories()
+  return Promise.all(
+    cats.map(async (cat) => ({
+      ...cat,
+      items: await findActiveItemsByCategory(cat.id),
+    }))
+  )
+}
+
 export async function getCategoryWithItems(
   categoryId: string
 ): Promise<{ category: StockCategory; items: StockItem[] }> {
