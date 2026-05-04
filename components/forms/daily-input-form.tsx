@@ -1,7 +1,7 @@
 'use client'
 // client: tabs, dynamic state, sessionStorage persistence
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveDailyRecordAction } from '@/lib/actions/daily-record.actions'
 import type { FlockOption } from '@/lib/services/daily-record.service'

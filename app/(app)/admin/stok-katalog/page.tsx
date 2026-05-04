@@ -1,6 +1,6 @@
 import { getSession } from '@/lib/auth/get-session'
 import { redirect } from 'next/navigation'
-import { getCategoriesWithActiveItems, getCategories } from '@/lib/services/stock-catalog.service'
+import { getCategories } from '@/lib/services/stock-catalog.service'
 import { findItemsByCategory } from '@/lib/db/queries/stock-catalog.queries'
 import { createCategoryAction, createStockItemAction, toggleStockItemActiveAction } from '@/lib/actions/stock-catalog.actions'
 

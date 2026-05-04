@@ -1,7 +1,6 @@
 'use server'
 
 import { z } from 'zod'
-import { getSession } from '@/lib/auth/get-session'
 import { requireAdmin } from '@/lib/auth/guards'
 import {
   createCategory,
