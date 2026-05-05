@@ -1,6 +1,7 @@
 export * from './users'
 export * from './coops'
 export * from './flocks'
+export * from './flock-deliveries'
 export * from './flock-phases'
 export * from './customers'
 export * from './user-coop-assignments'

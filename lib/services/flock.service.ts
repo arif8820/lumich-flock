@@ -41,7 +41,6 @@ type CreateFlockInput = {
   coopId: string
   name: string
   arrivalDate: Date
-  docDate: Date
   breed?: string
   notes?: string
   createdBy: string
@@ -58,6 +57,11 @@ export async function createFlock(input: CreateFlockInput): Promise<Flock & { to
     throw new Error('Kandang ini sudah memiliki flock aktif. Pensiunkan flock lama terlebih dahulu.')
   }
 
+  // Calculate DOC birth date from first delivery date minus age at arrival
+  const ageAtArrival = input.ageAtArrivalDays ?? 0
+  const docDate = new Date(input.firstDeliveryDate)
+  docDate.setDate(docDate.getDate() - ageAtArrival)
+
   return db.transaction(async (tx) => {
     const [flock] = await tx
       .insert(flocks)
@@ -65,7 +69,7 @@ export async function createFlock(input: CreateFlockInput): Promise<Flock & { to
         coopId: input.coopId,
         name: input.name,
         arrivalDate: input.arrivalDate,
-        docDate: input.docDate,
+        docDate,
         breed: input.breed,
         notes: input.notes,
         createdBy: input.createdBy,
@@ -88,7 +92,7 @@ export async function createFlock(input: CreateFlockInput): Promise<Flock & { to
 
 export async function updateFlockById(
   id: string,
-  input: Partial<Omit<CreateFlockInput, 'createdBy' | 'firstDeliveryDate' | 'firstDeliveryQuantity' | 'ageAtArrivalDays'>>,
+  input: Partial<Pick<CreateFlockInput, 'name' | 'breed' | 'notes' | 'arrivalDate'>>,
   updatedBy: string
 ): Promise<Flock | null> {
   return updateFlock(id, { ...input, updatedBy })

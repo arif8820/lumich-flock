@@ -12,7 +12,6 @@ const flockSchema = z.object({
   coopId: z.string().uuid('Kandang tidak valid'),
   name: z.string().min(1, 'Nama flock wajib diisi'),
   arrivalDate: z.coerce.date(),
-  docDate: z.coerce.date(),
   firstDeliveryDate: z.coerce.date(),
   firstDeliveryQuantity: z.coerce.number().int().positive('Jumlah DOC harus positif'),
   ageAtArrivalDays: z.coerce.number().int().nonnegative().optional(),
@@ -39,7 +38,6 @@ export async function createFlockAction(formData: FormData): Promise<ActionResul
     coopId: formData.get('coopId'),
     name: formData.get('name'),
     arrivalDate: formData.get('arrivalDate'),
-    docDate: formData.get('docDate'),
     firstDeliveryDate: formData.get('firstDeliveryDate'),
     firstDeliveryQuantity: formData.get('firstDeliveryQuantity'),
     ageAtArrivalDays: formData.get('ageAtArrivalDays') || undefined,
@@ -51,8 +49,9 @@ export async function createFlockAction(formData: FormData): Promise<ActionResul
   try {
     const flock = await createFlock({ ...parsed.data, createdBy: session!.id })
     return { success: true, data: { id: flock.id } }
-  } catch {
-    return { success: false, error: 'Gagal membuat flock' }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Gagal membuat flock'
+    return { success: false, error: msg }
   }
 }
 
