@@ -25,7 +25,6 @@ interface Props {
 export function AddDeliveryForm({ flockId, onSuccess, onCancel }: Props) {
   const [deliveryDate, setDeliveryDate] = useState(todayISO())
   const [quantity, setQuantity] = useState('')
-  const [ageAtArrivalDays, setAgeAtArrivalDays] = useState('0')
   const [notes, setNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -39,7 +38,6 @@ export function AddDeliveryForm({ flockId, onSuccess, onCancel }: Props) {
       fd.set('flockId', flockId)
       fd.set('deliveryDate', deliveryDate)
       fd.set('quantity', quantity)
-      if (ageAtArrivalDays && ageAtArrivalDays !== '0') fd.set('ageAtArrivalDays', ageAtArrivalDays)
       if (notes) fd.set('notes', notes)
       const result = await createFlockDeliveryAction(fd)
       if (!result.success) {
@@ -56,7 +54,7 @@ export function AddDeliveryForm({ flockId, onSuccess, onCancel }: Props) {
     <form onSubmit={onSubmit} className="space-y-4 p-4 rounded-xl border border-[var(--lf-border)] bg-[var(--lf-bg-warm)]">
       <h3 className="text-sm font-semibold text-[var(--lf-text-dark)]">Tambah Kedatangan</h3>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Tanggal Tiba</label>
           <input
@@ -77,16 +75,6 @@ export function AddDeliveryForm({ flockId, onSuccess, onCancel }: Props) {
             required
             min="1"
             placeholder="Jumlah ekor"
-          />
-        </div>
-        <div>
-          <label className={labelClass}>Umur saat tiba (hari)</label>
-          <input
-            className={inputClass}
-            type="number"
-            value={ageAtArrivalDays}
-            onChange={(e) => setAgeAtArrivalDays(e.target.value)}
-            min="0"
           />
         </div>
       </div>

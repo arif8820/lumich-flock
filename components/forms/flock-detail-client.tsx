@@ -107,14 +107,13 @@ export function FlockDetailClient({ flock, deliveries, coopName, userRole }: Pro
               <tr className="bg-[var(--lf-bg-warm)] text-left">
                 <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Tgl Tiba</th>
                 <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Jumlah</th>
-                <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Umur Tiba</th>
                 <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Catatan</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--lf-border)]">
               {deliveries.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-[var(--lf-text-soft)]">
+                  <td colSpan={3} className="px-4 py-8 text-center text-[var(--lf-text-soft)]">
                     Belum ada data kedatangan
                   </td>
                 </tr>
@@ -124,9 +123,6 @@ export function FlockDetailClient({ flock, deliveries, coopName, userRole }: Pro
                   <td className="px-4 py-3 text-[var(--lf-text-dark)]">{formatDate(d.deliveryDate)}</td>
                   <td className="px-4 py-3 text-[var(--lf-text-mid)]">
                     {d.quantity.toLocaleString('id-ID')} ekor
-                  </td>
-                  <td className="px-4 py-3 text-[var(--lf-text-mid)]">
-                    {d.ageAtArrivalDays !== null ? `${d.ageAtArrivalDays} hari` : '—'}
                   </td>
                   <td className="px-4 py-3 text-[var(--lf-text-mid)]">{d.notes ?? '—'}</td>
                 </tr>
@@ -139,7 +135,7 @@ export function FlockDetailClient({ flock, deliveries, coopName, userRole }: Pro
                   <td className="px-4 py-3 font-semibold text-[var(--lf-text-dark)]">
                     {totalCount.toLocaleString('id-ID')} ekor
                   </td>
-                  <td colSpan={2} />
+                  <td />
                 </tr>
               </tfoot>
             )}
