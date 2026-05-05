@@ -73,7 +73,11 @@ export function FlockListClient({ flocks, userRole }: Props) {
               </tr>
             )}
             {flocks.map((flock) => (
-              <tr key={flock.id} className="bg-white hover:bg-[var(--lf-bg)]">
+              <tr
+                key={flock.id}
+                className="bg-white hover:bg-[var(--lf-bg)] cursor-pointer"
+                onClick={() => router.push(`/flock/${flock.id}`)}
+              >
                 <td className="px-4 py-3 text-[var(--lf-text-dark)] font-medium">{flock.name}</td>
                 <td className="px-4 py-3 text-[var(--lf-text-mid)]">{flock.coopName}</td>
                 <td className="px-4 py-3 text-[var(--lf-text-mid)]">{flock.ageWeeks} minggu</td>
@@ -82,7 +86,7 @@ export function FlockListClient({ flocks, userRole }: Props) {
                   {flock.totalCount.toLocaleString('id-ID')} ekor
                 </td>
                 {userRole === 'admin' && (
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     {flock.retiredAt == null && (
                       <button
                         onClick={() => handleRetire(flock.id)}
