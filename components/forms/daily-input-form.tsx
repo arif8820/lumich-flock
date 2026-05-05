@@ -294,20 +294,6 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
         )}
       </div>
 
-      {/* Also track waste metrics (hidden from tabs but included in Ayam tab context) */}
-      {activeTab === 'ayam' && (
-        <div className="bg-white rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)] grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide">Telur Retak</label>
-            <input type="number" min="0" value={eggsCracked} onChange={(e) => setEggsCracked(Number(e.target.value))} className={inputClass} />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide">Telur Abnormal</label>
-            <input type="number" min="0" value={eggsAbnormal} onChange={(e) => setEggsAbnormal(Number(e.target.value))} className={inputClass} />
-          </div>
-        </div>
-      )}
-
       {error && (
         <div className="bg-[var(--lf-danger-bg)] rounded-lg px-4 py-3 text-sm" style={{ color: 'var(--lf-danger-text)' }}>{error}</div>
       )}
