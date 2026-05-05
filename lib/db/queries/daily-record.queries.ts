@@ -15,6 +15,28 @@ export async function findDailyRecordById(id: string): Promise<DailyRecord | nul
   return record ?? null
 }
 
+export type DailySubRecords = {
+  eggRecords: { stockItemId: string; qtyButir: number; qtyKg: number }[]
+  feedRecords: { stockItemId: string; qtyUsed: number }[]
+  vaccineRecords: { stockItemId: string; qtyUsed: number }[]
+}
+
+export async function findDailySubRecordsByRecordId(recordId: string): Promise<DailySubRecords> {
+  const [eggs, feeds, vaccines] = await Promise.all([
+    db.select({ stockItemId: dailyEggRecords.stockItemId, qtyButir: dailyEggRecords.qtyButir, qtyKg: dailyEggRecords.qtyKg })
+      .from(dailyEggRecords).where(eq(dailyEggRecords.dailyRecordId, recordId)),
+    db.select({ stockItemId: dailyFeedRecords.stockItemId, qtyUsed: dailyFeedRecords.qtyUsed })
+      .from(dailyFeedRecords).where(eq(dailyFeedRecords.dailyRecordId, recordId)),
+    db.select({ stockItemId: dailyVaccineRecords.stockItemId, qtyUsed: dailyVaccineRecords.qtyUsed })
+      .from(dailyVaccineRecords).where(eq(dailyVaccineRecords.dailyRecordId, recordId)),
+  ])
+  return {
+    eggRecords: eggs.map((e) => ({ stockItemId: e.stockItemId, qtyButir: e.qtyButir, qtyKg: Number(e.qtyKg) })),
+    feedRecords: feeds.map((f) => ({ stockItemId: f.stockItemId, qtyUsed: Number(f.qtyUsed) })),
+    vaccineRecords: vaccines.map((v) => ({ stockItemId: v.stockItemId, qtyUsed: Number(v.qtyUsed) })),
+  }
+}
+
 export async function findDailyRecord(flockId: string, recordDate: string): Promise<DailyRecord | null> {
   const [record] = await db
     .select()

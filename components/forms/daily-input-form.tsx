@@ -53,8 +53,8 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
   const [recordDate, setRecordDate] = useState(todayUTC())
   const [deaths, setDeaths] = useState(0)
   const [culled, setCulled] = useState(0)
-  const [eggsCracked, setEggsCracked] = useState(0)
-  const [eggsAbnormal, setEggsAbnormal] = useState(0)
+  const [eggsCracked] = useState(0)
+  const [eggsAbnormal] = useState(0)
   const [notes, setNotes] = useState('')
   const [eggEntries, setEggEntries] = useState<EggEntry[]>(
     eggItems.map((i) => ({ stockItemId: i.id, qtyButir: 0, qtyKg: 0 }))
