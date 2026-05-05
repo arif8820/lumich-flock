@@ -12,7 +12,10 @@ const flockSchema = z.object({
   coopId: z.string().uuid('Kandang tidak valid'),
   name: z.string().min(1, 'Nama flock wajib diisi'),
   arrivalDate: z.coerce.date(),
-  initialCount: z.coerce.number().int().positive('Jumlah ayam harus positif'),
+  docDate: z.coerce.date(),
+  firstDeliveryDate: z.coerce.date(),
+  firstDeliveryQuantity: z.coerce.number().int().positive('Jumlah DOC harus positif'),
+  ageAtArrivalDays: z.coerce.number().int().nonnegative().optional(),
   breed: z.string().optional(),
   notes: z.string().optional(),
 })
@@ -36,7 +39,10 @@ export async function createFlockAction(formData: FormData): Promise<ActionResul
     coopId: formData.get('coopId'),
     name: formData.get('name'),
     arrivalDate: formData.get('arrivalDate'),
-    initialCount: formData.get('initialCount'),
+    docDate: formData.get('docDate'),
+    firstDeliveryDate: formData.get('firstDeliveryDate'),
+    firstDeliveryQuantity: formData.get('firstDeliveryQuantity'),
+    ageAtArrivalDays: formData.get('ageAtArrivalDays') || undefined,
     breed: formData.get('breed') || undefined,
     notes: formData.get('notes') || undefined,
   })

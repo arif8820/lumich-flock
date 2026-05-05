@@ -19,6 +19,7 @@ import { findActiveCooldown, upsertCooldown } from '@/lib/db/queries/alert-coold
 import { createNotification } from '@/lib/db/queries/notification.queries'
 import { getPhaseForWeeks } from '@/lib/services/flock-phase.service'
 import { getAllStockBalances } from '@/lib/db/queries/inventory.queries'
+import { sumDeliveriesQuantityByFlockId } from '@/lib/db/queries/flock-delivery.queries'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -120,7 +121,8 @@ async function checkHdpDropAlerts(hdpDropThreshold: number): Promise<void> {
 
     const totalDepletion =
       Number(depResult[0]?.totalDeaths ?? 0) + Number(depResult[0]?.totalCulled ?? 0)
-    const livePop = Math.max(1, flock.initialCount - totalDepletion)
+    const flockTotalCount = await sumDeliveriesQuantityByFlockId(flock.id)
+    const livePop = Math.max(1, flockTotalCount - totalDepletion)
 
     const eggsToday = await getTotalEggsForRecord(today!.id)
     const eggsYesterday = await getTotalEggsForRecord(yesterday!.id)
@@ -181,7 +183,8 @@ async function checkDepletionAlerts(depletionThreshold: number): Promise<void> {
 
     const totalDepletion =
       Number(depResult[0]?.totalDeaths ?? 0) + Number(depResult[0]?.totalCulled ?? 0)
-    const currentPop = Math.max(1, flock.initialCount - totalDepletion)
+    const flockTotalCount = await sumDeliveriesQuantityByFlockId(flock.id)
+    const currentPop = Math.max(1, flockTotalCount - totalDepletion)
     const todayDepletion = latest.deaths + latest.culled
     const depletionPct = (todayDepletion / currentPop) * 100
 

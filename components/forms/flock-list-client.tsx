@@ -58,7 +58,7 @@ export function FlockListClient({ flocks, userRole }: Props) {
               <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Kandang</th>
               <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Umur</th>
               <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Fase</th>
-              <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Jml Awal</th>
+              <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Total DOC</th>
               {userRole === 'admin' && (
                 <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Aksi</th>
               )}
@@ -79,7 +79,7 @@ export function FlockListClient({ flocks, userRole }: Props) {
                 <td className="px-4 py-3 text-[var(--lf-text-mid)]">{flock.ageWeeks} minggu</td>
                 <td className="px-4 py-3 text-[var(--lf-text-mid)]">{flock.phase?.name ?? '—'}</td>
                 <td className="px-4 py-3 text-[var(--lf-text-mid)]">
-                  {flock.initialCount.toLocaleString('id-ID')} ekor
+                  {flock.totalCount.toLocaleString('id-ID')} ekor
                 </td>
                 {userRole === 'admin' && (
                   <td className="px-4 py-3">

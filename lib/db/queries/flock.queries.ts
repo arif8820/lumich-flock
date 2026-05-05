@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { flocks, coops } from '@/lib/db/schema'
-import { eq, isNull } from 'drizzle-orm'
+import { eq, isNull, and } from 'drizzle-orm'
 import type { Flock, NewFlock } from '@/lib/db/schema'
 
 export async function findAllActiveFlocks(): Promise<(Flock & { coopName: string })[]> {
@@ -26,5 +26,14 @@ export async function insertFlock(data: NewFlock): Promise<Flock> {
 
 export async function updateFlock(id: string, data: Partial<NewFlock>): Promise<Flock | null> {
   const [flock] = await db.update(flocks).set(data).where(eq(flocks.id, id)).returning()
+  return flock ?? null
+}
+
+export async function findActiveFlockByCoopId(coopId: string): Promise<Flock | null> {
+  const [flock] = await db
+    .select()
+    .from(flocks)
+    .where(and(eq(flocks.coopId, coopId), isNull(flocks.retiredAt)))
+    .limit(1)
   return flock ?? null
 }

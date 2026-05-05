@@ -3,7 +3,7 @@ import {
   dailyRecords, dailyEggRecords, dailyFeedRecords, dailyVaccineRecords,
   inventoryMovements, flocks, coops,
 } from '@/lib/db/schema'
-import { eq, and, desc, sum, gte, lte, asc, inArray } from 'drizzle-orm'
+import { eq, and, desc, sum, gte, lte, asc, inArray, sql } from 'drizzle-orm'
 import type {
   DailyRecord, NewDailyRecord,
   NewDailyEggRecord, NewDailyFeedRecord, NewDailyVaccineRecord,
@@ -158,7 +158,7 @@ export type ProductionReportRow = {
   coopName: string
   flockId: string
   flockName: string
-  flockInitialCount: number
+  flockTotalCount: number
   deaths: number
   culled: number
 }
@@ -167,14 +167,14 @@ export async function getProductionReport(
   from: string,
   to: string
 ): Promise<ProductionReportRow[]> {
-  return db
+  const rows = await db
     .select({
       recordDate: dailyRecords.recordDate,
       coopId: coops.id,
       coopName: coops.name,
       flockId: flocks.id,
       flockName: flocks.name,
-      flockInitialCount: flocks.initialCount,
+      flockTotalCount: sql<number>`COALESCE((SELECT SUM(fd.quantity) FROM flock_deliveries fd WHERE fd.flock_id = ${flocks.id}), 0)`,
       deaths: dailyRecords.deaths,
       culled: dailyRecords.culled,
     })
@@ -183,4 +183,6 @@ export async function getProductionReport(
     .innerJoin(coops, eq(coops.id, flocks.coopId))
     .where(and(gte(dailyRecords.recordDate, from), lte(dailyRecords.recordDate, to)))
     .orderBy(asc(coops.name), asc(dailyRecords.recordDate))
+
+  return rows.map((r) => ({ ...r, flockTotalCount: Number(r.flockTotalCount) }))
 }

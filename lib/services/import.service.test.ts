@@ -76,7 +76,7 @@ beforeEach(() => {
 })
 
 describe('import.service -- parseFlockscsv', () => {
-  const HEADER = 'coop_id,name,arrival_date,initial_count,breed,notes\n'
+  const HEADER = 'coop_id,name,arrival_date,quantity,breed,notes\n'
 
   it('parses a valid row when coop exists', async () => {
     _limitResult = [{ id: 'uuid-coop-1' }]
@@ -85,7 +85,7 @@ describe('import.service -- parseFlockscsv', () => {
     expect(errors).toHaveLength(0)
     expect(valid).toHaveLength(1)
     expect(valid[0]!.data.name).toBe('Flock A')
-    expect(valid[0]!.data.initialCount).toBe(5000)
+    expect(valid[0]!.data.quantity).toBe(5000)
   })
 
   it('rejects missing coop_id', async () => {
@@ -110,11 +110,11 @@ describe('import.service -- parseFlockscsv', () => {
     expect(errors[0]!.errors[0]).toMatch(/arrival_date/)
   })
 
-  it('rejects zero initial_count', async () => {
+  it('rejects zero quantity', async () => {
     _limitResult = [{ id: 'uuid-coop-1' }]
     const csv = HEADER + 'uuid-coop-1,Flock A,2026-01-01,0,,\n'
     const { errors } = await parseFlockscsv(csv)
-    expect(errors[0]!.errors.some((e) => e.includes('initial_count'))).toBe(true)
+    expect(errors[0]!.errors.some((e) => e.includes('quantity'))).toBe(true)
   })
 
   it('separates valid and error rows', async () => {

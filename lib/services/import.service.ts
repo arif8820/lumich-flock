@@ -14,6 +14,7 @@
 import { db } from '@/lib/db'
 import {
   flocks,
+  flockDeliveries,
   dailyRecords,
   customers,
   inventoryMovements,
@@ -76,10 +77,13 @@ function parseCsv(text: string): string[][] {
 
 // ─── Flock import ─────────────────────────────────────────────────────────────
 
-export type FlockImportRow = Omit<NewFlock, 'isImported' | 'importedBy'>
+export type FlockImportRow = Omit<NewFlock, 'isImported' | 'importedBy'> & {
+  quantity: number
+}
 
 /**
- * Expected CSV columns: coop_id, name, arrival_date, initial_count, breed (opt), notes (opt)
+ * Expected CSV columns: coop_id, name, arrival_date, quantity, breed (opt), notes (opt)
+ * quantity = first delivery quantity (DOC count); docDate defaults to arrival_date.
  */
 export async function parseFlockscsv(csvText: string): Promise<ParseResult<FlockImportRow>> {
   const rows = parseCsv(csvText)
@@ -92,7 +96,7 @@ export async function parseFlockscsv(csvText: string): Promise<ParseResult<Flock
     const rowNum = idx + 2
     const rowErrors: string[] = []
 
-    const [coopId, name, arrivalDateStr, initialCountStr, breed, notes] = cols
+    const [coopId, name, arrivalDateStr, quantityStr, breed, notes] = cols
 
     if (!coopId) {
       rowErrors.push(`Baris ${rowNum}: coop_id wajib diisi`)
@@ -105,9 +109,9 @@ export async function parseFlockscsv(csvText: string): Promise<ParseResult<Flock
     const { dateObj: arrivalDate, error: dateErr } = parseISODate(arrivalDateStr ?? '', 'arrival_date', rowNum)
     if (dateErr) rowErrors.push(dateErr)
 
-    const { num: initialCount, error: countErr } = parseInt2(initialCountStr ?? '', 'initial_count', rowNum)
+    const { num: quantity, error: countErr } = parseInt2(quantityStr ?? '', 'quantity', rowNum)
     if (countErr) rowErrors.push(countErr)
-    if (initialCount !== undefined && initialCount <= 0) rowErrors.push(`Baris ${rowNum}: initial_count harus > 0`)
+    if (quantity !== undefined && quantity <= 0) rowErrors.push(`Baris ${rowNum}: quantity harus > 0`)
 
     if (rowErrors.length > 0) {
       errors.push({ rowNum, errors: rowErrors })
@@ -120,7 +124,8 @@ export async function parseFlockscsv(csvText: string): Promise<ParseResult<Flock
         coopId: coopId!,
         name: name!,
         arrivalDate: arrivalDate!,
-        initialCount: initialCount!,
+        docDate: arrivalDate!, // default docDate to arrivalDate for CSV imports
+        quantity: quantity!,
         breed: breed || null,
         notes: notes || null,
       },
@@ -357,10 +362,18 @@ export async function commitImport(
 
     if (entity === 'flocks') {
       for (const row of rows) {
-        await tx.insert(flocks).values({
-          ...(row.data as NewFlock),
+        const { quantity, ...flockData } = row.data as FlockImportRow
+        const [inserted_flock] = await tx.insert(flocks).values({
+          ...flockData,
           isImported: true,
           importedBy: adminId,
+          createdBy: adminId,
+        }).returning()
+        await tx.insert(flockDeliveries).values({
+          flockId: inserted_flock!.id,
+          deliveryDate: flockData.arrivalDate!,
+          quantity,
+          ageAtArrivalDays: 0,
           createdBy: adminId,
         })
         inserted++
@@ -404,7 +417,7 @@ export async function commitImport(
 // ─── CSV templates ───────────────────────────────────────────────────────────
 
 const TEMPLATES: Record<ImportEntity, string> = {
-  flocks: 'coop_id,name,arrival_date,initial_count,breed,notes\n',
+  flocks: 'coop_id,name,arrival_date,quantity,breed,notes\n',
   daily_records: 'flock_id,record_date,deaths,culled,eggs_cracked,eggs_abnormal\n',
   customers: 'name,type,phone,address,credit_limit,payment_terms\n',
   opening_stock: 'stock_item_id,quantity,movement_date\n',
