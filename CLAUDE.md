@@ -48,6 +48,8 @@ Phase 2 schemas (daily_records, inventory_movements, etc.) harus ada migration f
 
 Codebase summary : `repomix/repomix-main.md`
 
+Each worktree has its own repomix snapshot at `repomix/repomix-main.md` relative to that worktree root. When working in a worktree (e.g., `.worktrees/generic-inventory`), refer to `.worktrees/generic-inventory/repomix/repomix-main.md` for codebase patterns — not the root repomix.
+
 ## Architecture
 
 ```

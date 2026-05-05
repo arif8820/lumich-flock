@@ -1099,6 +1099,41 @@ interface SOSummaryFooterProps {
 
 ## File: components/ui/sonner.tsx
 ````typescript
+import type { SalesOrderItem } from '@/lib/db/schema'
+⋮----
+interface SOItemRowProps {
+  item: SalesOrderItem
+  index: number
+  onRemove?: (index: number) => void
+  onQuantityChange?: (index: number, quantity: number) => void
+  onPriceChange?: (index: number, price: number) => void
+  onDiscountChange?: (index: number, discount: number) => void
+}
+````
+
+## File: components/ui/so-status-badge.tsx
+````typescript
+import type { SalesOrder } from '@/lib/db/schema'
+⋮----
+interface SOStatusBadgeProps {
+  status: SalesOrder['status']
+}
+⋮----
+export function SOStatusBadge(
+````
+
+## File: components/ui/so-summary-footer.tsx
+````typescript
+interface SOSummaryFooterProps {
+  subtotal: number
+  taxPct: number
+  taxAmount: number
+  totalAmount: number
+}
+````
+
+## File: components/ui/sonner.tsx
+````typescript
 // client: wraps Sonner toast library which requires browser APIs
 ⋮----
 import {
@@ -1696,6 +1731,50 @@ import { getPhaseForWeeks, getAllFlockPhases } from './flock-phase.service'
 
 ## File: lib/services/flock-phase.service.ts
 ````typescript
+import {
+  listCustomers as findAllCustomers,
+  findCustomerById,
+  insertCustomer,
+  updateCustomer,
+} from '@/lib/db/queries/customer.queries'
+import type { Customer } from '@/lib/db/schema'
+⋮----
+type CreateCustomerInput = {
+  name: string
+  type?: 'retail' | 'wholesale' | 'distributor'
+  phone?: string
+  address?: string
+  creditLimit?: number
+  paymentTerms?: number
+  notes?: string
+  createdBy: string
+}
+⋮----
+export async function createCustomer(input: CreateCustomerInput): Promise<Customer>
+⋮----
+export async function getAllCustomers(): Promise<Customer[]>
+⋮----
+export async function getCustomerById(id: string): Promise<Customer | null>
+⋮----
+export async function updateCustomerById(
+  id: string,
+  input: Partial<Omit<CreateCustomerInput, 'createdBy'>>
+): Promise<Customer | null>
+⋮----
+export async function deactivateCustomer(id: string): Promise<void>
+⋮----
+export async function activateCustomer(id: string): Promise<void>
+````
+
+## File: lib/services/flock-phase.service.test.ts
+````typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+⋮----
+import { getPhaseForWeeks, getAllFlockPhases } from './flock-phase.service'
+````
+
+## File: lib/services/flock-phase.service.ts
+````typescript
 import { unstable_cache } from 'next/cache'
 import {
   findAllFlockPhases,
@@ -1772,6 +1851,45 @@ export async function updateFlockById(
 ): Promise<Flock | null>
 ⋮----
 export async function retireFlock(id: string, updatedBy: string): Promise<void>
+````
+
+## File: lib/services/sales-return.service.ts
+````typescript
+import { generateOrderNumber } from '@/lib/utils/order-number'
+import type { NewSalesReturn, NewSalesReturnItem, NewInventoryMovement, NewInvoice, NewCustomerCredit } from '@/lib/db/schema'
+⋮----
+type CreateReturnInput = {
+  orderId: string
+  returnDate: Date
+  reasonType: 'wrong_grade' | 'damaged' | 'quantity_error' | 'other'
+  items: Array<{
+    itemType: 'egg_grade_a' | 'egg_grade_b' | 'flock' | 'other'
+    itemRefId?: string
+    quantity: number
+    unit: 'butir' | 'ekor' | 'unit'
+  }>
+  notes?: string
+}
+⋮----
+export async function createSalesReturn(input: CreateReturnInput, userId: string, role: string)
+⋮----
+// Validate return quantities don't exceed original SO quantities
+⋮----
+// Generate return number
+⋮----
+export async function approveSalesReturn(returnId: string, userId: string, role: string)
+⋮----
+// Calculate credit amount: sum returnQty * pricePerUnit * (1 - discount/100) per item
+⋮----
+// Build inventory movements (IN) for egg return items only
+⋮----
+// Generate credit note invoice number
+⋮----
+// Build customer credit entry
+⋮----
+sourceInvoiceId: '', // will be overwritten in tx with actual invoice id
+⋮----
+export async function rejectSalesReturn(returnId: string, userId: string, role: string)
 ````
 
 ## File: lib/services/user.service.test.ts
@@ -3041,6 +3159,20 @@ onChange=
 {/* Also track waste metrics (hidden from tabs but included in Ayam tab context) */}
 ````
 
+## File: app/layout.tsx
+````typescript
+import type { Metadata } from "next"
+import { DM_Sans } from "next/font/google"
+⋮----
+import { ProgressBar } from '@/components/providers/progress-bar'
+⋮----
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>)
+````
+
 ## File: components/forms/login-form.tsx
 ````typescript
 // client: needs form state, submit handler, and eye toggle
@@ -3504,7 +3636,7 @@ export async function createStockItem(input: CreateStockItemInput): Promise<Stoc
 export async function toggleStockItemActive(itemId: string): Promise<void>
 ````
 
-## File: lib/services/stock.service.ts
+## File: app/(app)/admin/page.tsx
 ````typescript
 import {
   getStockBalance as _getStockBalance,
@@ -4046,7 +4178,7 @@ export async function markInvoiceSent(id: string): Promise<void>
 ````typescript
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 ⋮----
-assertCanEdit: vi.fn(), // no-op by default
+return feedKg / (total / 12) // kg feed per dozen eggs; threshold >2.1 = inefficient
 ⋮----
 import {
   validateStockNotBelowZero,
@@ -4758,65 +4890,6 @@ export async function updateDailyRecordAyam(
 ): Promise<DailyRecord>
 ````
 
-## File: lib/services/sales-order.service.ts
-````typescript
-import { generateOrderNumber } from '@/lib/utils/order-number'
-import { assertCanEdit } from '@/lib/services/lock-period.service'
-import type { NewSalesOrder, NewSalesOrderItem, NewInventoryMovement, NewInvoice } from '@/lib/db/schema'
-⋮----
-type CreateDraftInput = {
-  customerId: string
-  orderDate: Date
-  paymentMethod: 'cash' | 'credit'
-  items: Array<{
-    itemType: 'egg_grade_a' | 'egg_grade_b' | 'flock' | 'other'
-    itemRefId?: string
-    description?: string
-    quantity: number
-    unit: 'butir' | 'ekor' | 'unit'
-    pricePerUnit: number
-    discountPct?: number
-  }>
-  taxPct?: number
-  notes?: string
-  overrideReason?: string
-}
-⋮----
-export async function createDraftSO(input: CreateDraftInput, userId: string, role: string)
-⋮----
-// Calculate totals
-⋮----
-// Generate order number
-⋮----
-export async function confirmSO(orderId: string, userId: string, role: string)
-⋮----
-// Lock period check — use orderDate as the record date
-⋮----
-// Stock availability check before confirming
-⋮----
-export async function cancelSO(orderId: string, userId: string, role: string)
-⋮----
-// Lock period check — use orderDate as the record date
-⋮----
-export async function deleteDraftSO(orderId: string, userId: string, role: string)
-⋮----
-export async function fulfillSO(orderId: string, userId: string, role: string)
-⋮----
-// Check stock for egg items
-⋮----
-// Check credit limit for credit orders
-⋮----
-// Build inventory OUT movements for egg items
-⋮----
-// Assertion: movements filter uses same predicate — fires only if predicates diverge in future refactors
-⋮----
-// Build invoice
-⋮----
-// Guard: invoice number must be non-empty and total must be > 0
-⋮----
-// Build flock retirement updates for flock items
-````
-
 ## File: lib/services/sales-order.service.test.ts
 ````typescript
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -4849,6 +4922,61 @@ type CreateDraftInput = {
   notes?: string
   overrideReason?: string
 }
+````
+
+## File: components/layout/sidebar.tsx
+````typescript
+// client: needs useState for accordion open/close state
+⋮----
+import { useState } from 'react'
+import Link from 'next/link'
+import { LayoutDashboard, Egg, Package, DollarSign, Bird, Settings, LogOut, BarChart2, ChevronDown } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import type { SessionUser } from '@/lib/auth/get-session'
+import type { Notification } from '@/lib/services/notification.service'
+import { NotificationBell } from '@/components/ui/notification-bell'
+⋮----
+type NavSubItem = {
+  href: string
+  label: string
+  /** roles that can see this sub-item. undefined = all roles */
+  roles?: Array<'admin' | 'supervisor' | 'operator'>
+}
+⋮----
+/** roles that can see this sub-item. undefined = all roles */
+⋮----
+type NavItem =
+  | { kind: 'flat'; href: string; icon: LucideIcon; label: string; roles?: Array<'admin' | 'supervisor' | 'operator'> }
+  | { kind: 'accordion'; id: string; icon: LucideIcon; label: string; roles?: Array<'admin' | 'supervisor' | 'operator'>; children: NavSubItem[] }
+⋮----
+function getInitials(name: string)
+⋮----
+function getRoleLabel(role: string)
+⋮----
+function canSee(roles: Array<'admin' | 'supervisor' | 'operator'> | undefined, userRole: string): boolean
+⋮----
+// Prevents /admin matching /admin/kandang — requires trailing slash or exact match
+function isActive(currentPath: string, href: string): boolean
+⋮----
+function getDefaultOpenId(
+  sections: typeof NAV_SECTIONS,
+  currentPath: string,
+  userRole: string,
+): string | null
+⋮----
+function toggleAccordion(id: string)
+⋮----
+{/* Brand */}
+⋮----
+{/* Farm info box */}
+⋮----
+{/* Nav */}
+⋮----
+// accordion item
+⋮----
+{/* User card */}
+⋮----
+{/* Logout via GET route that calls supabase.auth.signOut() and redirects to /login */}
 ````
 
 ## File: components/layout/sidebar.tsx
