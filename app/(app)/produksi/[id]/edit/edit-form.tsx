@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { DailyRecord } from '@/lib/db/schema'
-import { updateDailyRecordAction } from '@/lib/actions/daily-record.actions'
+import { saveDailyRecordAction } from '@/lib/actions/daily-record.actions'
 import { correctDailyRecordAction } from '@/lib/actions/lock-period.actions'
 
 type Props = {
@@ -15,55 +15,87 @@ export function DailyRecordEditForm({ record, requireReason }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [deaths, setDeaths] = useState(record.deaths)
+  const [culled, setCulled] = useState(record.culled)
+  const [eggsCracked, setEggsCracked] = useState(record.eggsCracked)
+  const [eggsAbnormal, setEggsAbnormal] = useState(record.eggsAbnormal)
+  const [notes, setNotes] = useState(record.notes ?? '')
+  const [reason, setReason] = useState('')
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    if (!e.currentTarget.reportValidity()) return
     e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-
     startTransition(async () => {
       setError(null)
-      const result = requireReason
-        ? await correctDailyRecordAction(formData)
-        : await updateDailyRecordAction(formData)
 
-      if (result.success) {
-        router.push('/produksi')
-        router.refresh()
+      if (requireReason) {
+        const formData = new FormData()
+        formData.set('recordId', record.id)
+        formData.set('reason', reason)
+        formData.set('deaths', String(deaths))
+        formData.set('culled', String(culled))
+        formData.set('eggsCracked', String(eggsCracked))
+        formData.set('eggsAbnormal', String(eggsAbnormal))
+        const result = await correctDailyRecordAction(formData)
+        if (result.success) {
+          router.push('/produksi')
+          router.refresh()
+        } else {
+          setError(result.error)
+        }
       } else {
-        setError(result.error)
+        const result = await saveDailyRecordAction({
+          flockId: record.flockId,
+          recordDate: record.recordDate,
+          deaths,
+          culled,
+          eggsCracked,
+          eggsAbnormal,
+          notes: notes || undefined,
+          eggEntries: [],
+          feedEntries: [],
+          vaccineEntries: [],
+        })
+        if (result.success) {
+          router.push('/produksi')
+          router.refresh()
+        } else {
+          setError(result.error)
+        }
       }
     })
   }
 
+  const inputClass = 'w-full text-sm rounded-lg border px-3 py-2 bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--lf-blue)]'
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <input type="hidden" name="recordId" value={record.id} />
-
       <div className="grid grid-cols-2 gap-3">
-        {[
-          { name: 'eggsGradeA', label: 'Telur Grade A', defaultValue: record.eggsGradeA },
-          { name: 'eggsGradeB', label: 'Telur Grade B', defaultValue: record.eggsGradeB },
-          { name: 'eggsCracked', label: 'Telur Retak', defaultValue: record.eggsCracked },
-          { name: 'eggsAbnormal', label: 'Telur Abnormal', defaultValue: record.eggsAbnormal },
-          { name: 'deaths', label: 'Kematian', defaultValue: record.deaths },
-          { name: 'culled', label: 'Afkir', defaultValue: record.culled },
-          { name: 'feedKg', label: 'Pakan (kg)', defaultValue: record.feedKg ?? '' },
-          { name: 'avgWeightKg', label: 'BB Rata-rata (kg)', defaultValue: record.avgWeightKg ?? '' },
-        ].map(({ name, label, defaultValue }) => (
-          <div key={name}>
-            <label className="text-xs font-medium mb-1 block" style={{ color: '#5a6b5b' }}>{label}</label>
-            <input
-              type="number"
-              name={name}
-              defaultValue={String(defaultValue)}
-              min={0}
-              step={name.includes('Kg') ? '0.01' : '1'}
-              className="w-full text-sm rounded-lg border px-3 py-2"
-              style={{ borderColor: '#d0d8d0', color: '#2d3a2e' }}
-            />
-          </div>
-        ))}
+        <div>
+          <label className="text-xs font-medium mb-1 block" style={{ color: '#5a6b5b' }}>Kematian (ekor)</label>
+          <input type="number" min={0} value={deaths} onChange={(e) => setDeaths(Number(e.target.value))} className={inputClass} />
+        </div>
+        <div>
+          <label className="text-xs font-medium mb-1 block" style={{ color: '#5a6b5b' }}>Afkir (ekor)</label>
+          <input type="number" min={0} value={culled} onChange={(e) => setCulled(Number(e.target.value))} className={inputClass} />
+        </div>
+        <div>
+          <label className="text-xs font-medium mb-1 block" style={{ color: '#5a6b5b' }}>Telur Retak</label>
+          <input type="number" min={0} value={eggsCracked} onChange={(e) => setEggsCracked(Number(e.target.value))} className={inputClass} />
+        </div>
+        <div>
+          <label className="text-xs font-medium mb-1 block" style={{ color: '#5a6b5b' }}>Telur Abnormal</label>
+          <input type="number" min={0} value={eggsAbnormal} onChange={(e) => setEggsAbnormal(Number(e.target.value))} className={inputClass} />
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs font-medium mb-1 block" style={{ color: '#5a6b5b' }}>Catatan</label>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={3}
+          className="w-full text-sm rounded-lg border px-3 py-2 resize-none bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--lf-blue)]"
+        />
       </div>
 
       {requireReason && (
@@ -72,12 +104,12 @@ export function DailyRecordEditForm({ record, requireReason }: Props) {
             Alasan Koreksi <span style={{ color: '#c0392b' }}>*</span>
           </label>
           <textarea
-            name="reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
             required
             minLength={3}
             rows={3}
-            className="w-full text-sm rounded-lg border px-3 py-2 resize-none"
-            style={{ borderColor: '#d0d8d0', color: '#2d3a2e' }}
+            className="w-full text-sm rounded-lg border px-3 py-2 resize-none bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--lf-blue)]"
             placeholder="Jelaskan alasan koreksi data ini..."
           />
         </div>

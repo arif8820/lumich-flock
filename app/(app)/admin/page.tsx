@@ -1,7 +1,13 @@
 import Link from 'next/link'
-import { Users, Home, ShoppingBag, Settings, MessageSquare, Bell, Upload } from 'lucide-react'
+import { Users, Home, ShoppingBag, Settings, MessageSquare, Bell, Upload, Package } from 'lucide-react'
 
 const MENU = [
+  {
+    href: '/admin/stok-katalog',
+    icon: Package,
+    label: 'Katalog Stok',
+    desc: 'Kelola kategori dan item stok (telur, pakan, vaksin, dll)',
+  },
   {
     href: '/admin/users',
     icon: Users,

@@ -1,44 +1,26 @@
 'use client'
-// client: live auto-calc with useMemo + sessionStorage persistence
+// client: tabs, dynamic state, sessionStorage persistence
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createDailyRecordAction } from '@/lib/actions/daily-record.actions'
+import { saveDailyRecordAction } from '@/lib/actions/daily-record.actions'
 import type { FlockOption } from '@/lib/services/daily-record.service'
+import type { StockItem } from '@/lib/db/schema'
 
-// USED BY: [daily-record.service, daily-input-form] — count: 2
-function calcHDP(a: number, b: number, pop: number) {
-  return pop > 0 ? ((a + b) / pop) * 100 : 0
-}
-// USED BY: [daily-record.service, daily-input-form] — count: 2
-function calcFeedPerBird(feedKg: number, pop: number) {
-  return pop > 0 ? (feedKg / pop) * 1000 : 0
-}
-// USED BY: [daily-record.service, daily-input-form] — count: 2
-function calcFCR(feedKg: number, a: number, b: number) {
-  const total = a + b
-  return total > 0 ? feedKg / (total / 12) : 0
-}
+type StockItemWithBalance = StockItem & { balance: number }
 
 type Props = {
   flocks: FlockOption[]
   userRole: 'operator' | 'supervisor' | 'admin'
+  eggItems: StockItem[]
+  feedItems: StockItemWithBalance[]
+  vaccineItems: StockItemWithBalance[]
 }
 
-type FormValues = {
-  flockId: string
-  recordDate: string
-  deaths: string
-  culled: string
-  eggsGradeA: string
-  eggsGradeB: string
-  eggsCracked: string
-  eggsAbnormal: string
-  avgWeightKg: string
-  feedKg: string
-}
+type EggEntry = { stockItemId: string; qtyButir: number; qtyKg: number }
+type FeedEntry = { stockItemId: string; qtyUsed: number }
 
-const SESSION_KEY = 'daily-input-form'
+const SESSION_KEY = 'daily-input-form-v2'
 
 function todayUTC(): string {
   return new Date().toISOString().split('T')[0]!
@@ -51,78 +33,77 @@ function minDate(role: 'operator' | 'supervisor' | 'admin'): string {
   return d.toISOString().split('T')[0]!
 }
 
-function empty(flockId: string): FormValues {
-  return {
-    flockId,
-    recordDate: todayUTC(),
-    deaths: '0',
-    culled: '0',
-    eggsGradeA: '0',
-    eggsGradeB: '0',
-    eggsCracked: '0',
-    eggsAbnormal: '0',
-    avgWeightKg: '',
-    feedKg: '',
-  }
-}
+const TABS = [
+  { key: 'ayam', label: '🐓 Ayam' },
+  { key: 'telur', label: '🥚 Telur' },
+  { key: 'pakan', label: '🌾 Pakan' },
+  { key: 'vaksin', label: '💉 Vaksin' },
+] as const
 
-const inputClass =
-  'mt-1 w-full border border-[var(--lf-border)] rounded-lg px-3 py-2 text-sm bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--lf-blue)]'
+type TabKey = typeof TABS[number]['key']
 
-export function DailyInputForm({ flocks, userRole }: Props) {
+const inputClass = 'mt-1 w-full border border-[var(--lf-border)] rounded-lg px-3 py-2 text-sm bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--lf-blue)]'
+const numInputClass = 'w-full border border-[var(--lf-border)] rounded-lg px-2 py-1.5 text-sm text-right bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--lf-blue)]'
+
+export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineItems }: Props) {
   const router = useRouter()
   const defaultFlockId = flocks[0]?.id ?? ''
-  const [values, setValues] = useState<FormValues>(empty(defaultFlockId))
+
+  const [flockId, setFlockId] = useState(defaultFlockId)
+  const [recordDate, setRecordDate] = useState(todayUTC())
+  const [deaths, setDeaths] = useState(0)
+  const [culled, setCulled] = useState(0)
+  const [eggsCracked, setEggsCracked] = useState(0)
+  const [eggsAbnormal, setEggsAbnormal] = useState(0)
+  const [notes, setNotes] = useState('')
+  const [eggEntries, setEggEntries] = useState<EggEntry[]>(
+    eggItems.map((i) => ({ stockItemId: i.id, qtyButir: 0, qtyKg: 0 }))
+  )
+  const [feedEntries, setFeedEntries] = useState<FeedEntry[]>(
+    feedItems.map((i) => ({ stockItemId: i.id, qtyUsed: 0 }))
+  )
+  const [vaccineEntries, setVaccineEntries] = useState<FeedEntry[]>(
+    vaccineItems.map((i) => ({ stockItemId: i.id, qtyUsed: 0 }))
+  )
+
+  const [activeTab, setActiveTab] = useState<TabKey>('ayam')
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
-  const [restored, setRestored] = useState(false)
-  const [networkError, setNetworkError] = useState(false)
 
-  useEffect(() => {
-    const saved = sessionStorage.getItem(SESSION_KEY)
-    if (saved) {
-      /* eslint-disable react-hooks/set-state-in-effect */
-      try {
-        setValues(JSON.parse(saved) as FormValues)
-        setRestored(true)
-      } catch { /* ignore */ }
-      /* eslint-enable react-hooks/set-state-in-effect */
-    }
-  }, [])
+  const flock = flocks.find((f) => f.id === flockId)
+  const totalDepletion = deaths + culled
+  const depletionOverflow = totalDepletion > (flock?.currentPopulation ?? 0)
 
-  useEffect(() => {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(values))
-  }, [values])
-
-  const flock = flocks.find((f) => f.id === values.flockId)
-
-  const calc = useMemo(() => {
-    const d = parseInt(values.deaths) || 0
-    const c = parseInt(values.culled) || 0
-    const a = parseInt(values.eggsGradeA) || 0
-    const b = parseInt(values.eggsGradeB) || 0
-    const feed = parseFloat(values.feedKg) || 0
-    const currentPop = flock?.currentPopulation ?? 0
-    const totalDepletion = d + c
-    const depletionOverflow = totalDepletion > currentPop
-    const pop = Math.max(0, currentPop - totalDepletion)
-    return { totalDepletion, activePopulation: pop, hdp: calcHDP(a, b, pop), feedPerBird: calcFeedPerBird(feed, pop), fcr: calcFCR(feed, a, b), depletionOverflow }
-  }, [values, flock])
-
-  function field(k: keyof FormValues) {
-    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-      setValues((p) => ({ ...p, [k]: e.target.value }))
+  function updateEggButir(idx: number, val: number) {
+    setEggEntries((prev) => prev.map((e, i) => i === idx ? { ...e, qtyButir: val } : e))
+  }
+  function updateEggKg(idx: number, val: number) {
+    setEggEntries((prev) => prev.map((e, i) => i === idx ? { ...e, qtyKg: val } : e))
+  }
+  function updateFeed(idx: number, val: number) {
+    setFeedEntries((prev) => prev.map((e, i) => i === idx ? { ...e, qtyUsed: val } : e))
+  }
+  function updateVaccine(idx: number, val: number) {
+    setVaccineEntries((prev) => prev.map((e, i) => i === idx ? { ...e, qtyUsed: val } : e))
   }
 
   async function submitForm() {
-    if (calc.depletionOverflow) return
+    if (depletionOverflow) { setError('Total depletion melebihi populasi aktif'); return }
     setError(null)
-    setNetworkError(false)
     setPending(true)
     try {
-      const fd = new FormData()
-      Object.entries(values).forEach(([k, v]) => fd.append(k, v))
-      const result = await createDailyRecordAction(fd)
+      const result = await saveDailyRecordAction({
+        flockId,
+        recordDate,
+        deaths,
+        culled,
+        eggsCracked,
+        eggsAbnormal,
+        notes: notes || undefined,
+        eggEntries,
+        feedEntries,
+        vaccineEntries,
+      })
       if (!result.success) {
         setError(result.error)
       } else {
@@ -131,15 +112,10 @@ export function DailyInputForm({ flocks, userRole }: Props) {
         router.refresh()
       }
     } catch {
-      setNetworkError(true)
+      setError('Gagal terhubung ke server. Coba lagi.')
     } finally {
       setPending(false)
     }
-  }
-
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    void submitForm()
   }
 
   if (flocks.length === 0) {
@@ -147,122 +123,203 @@ export function DailyInputForm({ flocks, userRole }: Props) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-5">
-      {restored && (
-        <div className="flex items-center justify-between bg-[var(--lf-blue-pale)] rounded-lg px-4 py-2.5 text-sm border border-[var(--lf-blue-light)]">
-          <span style={{ color: 'var(--lf-blue-active)' }}>Data form dipulihkan dari sesi sebelumnya.</span>
-          <button type="button" onClick={() => { sessionStorage.removeItem(SESSION_KEY); setValues(empty(defaultFlockId)); setRestored(false) }}
-            className="text-xs underline ml-3" style={{ color: 'var(--lf-blue-active)' }}>Reset</button>
-        </div>
-      )}
-      {/* Flock + Date */}
-      <div className="bg-white rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)] space-y-4">
+    <div className="space-y-4">
+      {/* Header: Flock + Date */}
+      <div className="bg-white rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)] grid grid-cols-2 gap-3">
         <div>
           <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide">Flock</label>
-          <select name="flockId" value={values.flockId} onChange={field('flockId')} className={inputClass} required>
+          <select value={flockId} onChange={(e) => setFlockId(e.target.value)} className={inputClass}>
             {flocks.map((f) => (
               <option key={f.id} value={f.id}>{f.name} — {f.coopName}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide">Tanggal Produksi</label>
-          <input type="date" name="recordDate" value={values.recordDate} onChange={field('recordDate')}
-            max={todayUTC()} min={minDate(userRole)} className={inputClass} required />
+          <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide">Tanggal</label>
+          <input
+            type="date"
+            value={recordDate}
+            onChange={(e) => setRecordDate(e.target.value)}
+            max={todayUTC()}
+            min={minDate(userRole)}
+            className={inputClass}
+          />
         </div>
       </div>
 
-      {/* Depletion */}
-      <div className="bg-white rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)]">
-        <p className="text-xs font-medium text-[var(--lf-text-soft)] uppercase tracking-wide mb-3">Depletion</p>
-        <div className="grid grid-cols-2 gap-3">
-          {([['deaths', 'Kematian'], ['culled', 'Sortir']] as [keyof FormValues, string][]).map(([k, lbl]) => (
-            <div key={k}>
-              <label className="text-xs text-[var(--lf-text-mid)]">{lbl}</label>
-              <input type="number" name={k} min="0" value={values[k]} onChange={field(k)} className={inputClass} />
+      {/* Tab strip */}
+      <div className="flex gap-0 border-b border-[var(--lf-border)] bg-white rounded-t-xl overflow-x-auto">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setActiveTab(t.key)}
+            className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors ${
+              t.key === activeTab
+                ? 'border-[var(--lf-blue-active)] text-[var(--lf-blue-active)]'
+                : 'border-transparent text-[var(--lf-text-soft)] hover:text-[var(--lf-text-mid)]'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div className="bg-white rounded-b-xl rounded-tr-xl p-5 shadow-lf-sm border border-[var(--lf-border)] border-t-0 space-y-4">
+
+        {activeTab === 'ayam' && (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide">Kematian (ekor)</label>
+                <input type="number" min="0" value={deaths} onChange={(e) => setDeaths(Number(e.target.value))} className={inputClass} />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide">Afkir (ekor)</label>
+                <input type="number" min="0" value={culled} onChange={(e) => setCulled(Number(e.target.value))} className={inputClass} />
+              </div>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Eggs */}
-      <div className="bg-white rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)]">
-        <p className="text-xs font-medium text-[var(--lf-text-soft)] uppercase tracking-wide mb-3">Telur</p>
-        <div className="grid grid-cols-2 gap-3">
-          {([
-            ['eggsGradeA', 'Grade A'],
-            ['eggsGradeB', 'Grade B'],
-            ['eggsCracked', 'Retak'],
-            ['eggsAbnormal', 'Abnormal'],
-          ] as [keyof FormValues, string][]).map(([k, lbl]) => (
-            <div key={k}>
-              <label className="text-xs text-[var(--lf-text-mid)]">{lbl}</label>
-              <input type="number" name={k} min="0" value={values[k]} onChange={field(k)} className={inputClass} />
+            {depletionOverflow && (
+              <p className="text-sm font-medium" style={{ color: 'var(--lf-danger-text)' }}>
+                Total depletion ({totalDepletion}) melebihi populasi aktif ({flock?.currentPopulation ?? 0})
+              </p>
+            )}
+            <div>
+              <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide">Catatan</label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                className="mt-1 w-full border border-[var(--lf-border)] rounded-lg px-3 py-2 text-sm bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--lf-blue)]"
+              />
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Feed + Weight */}
-      <div className="bg-white rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)]">
-        <p className="text-xs font-medium text-[var(--lf-text-soft)] uppercase tracking-wide mb-3">Pakan & Bobot</p>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs text-[var(--lf-text-mid)]">Pakan (kg)</label>
-            <input type="number" name="feedKg" min="0" step="0.01" value={values.feedKg} onChange={field('feedKg')} className={inputClass} />
-          </div>
-          <div>
-            <label className="text-xs text-[var(--lf-text-mid)]">Rata-rata bobot (kg)</label>
-            <input type="number" name="avgWeightKg" min="0" step="0.001" value={values.avgWeightKg} onChange={field('avgWeightKg')} className={inputClass} />
-          </div>
-        </div>
-      </div>
-
-      {/* Auto-calc */}
-      <div className={`rounded-xl p-4 border ${calc.depletionOverflow ? 'bg-[var(--lf-danger-bg)] border-[var(--lf-danger-text)]' : 'bg-[var(--lf-blue-pale)] border-[var(--lf-blue-light)]'}`}>
-        <p className={`text-xs font-medium uppercase tracking-wide mb-3 ${calc.depletionOverflow ? 'text-[var(--lf-danger-text)]' : 'text-[var(--lf-blue-active)]'}`}>Kalkulasi Otomatis</p>
-        {calc.depletionOverflow && (
-          <p className="text-sm mb-3 font-medium" style={{ color: 'var(--lf-danger-text)' }}>
-            Peringatan: total depletion ({calc.totalDepletion}) melebihi populasi aktif ({flock?.currentPopulation ?? 0}). Tidak dapat menyimpan.
-          </p>
+          </>
         )}
-        <div className="grid grid-cols-2 gap-y-2 text-sm">
-          <span className="text-[var(--lf-text-mid)]">Depletion hari ini</span>
-          <span className={`font-medium text-right ${calc.depletionOverflow ? 'text-[var(--lf-danger-text)]' : 'text-[var(--lf-text-dark)]'}`}>{calc.totalDepletion}</span>
-          <span className="text-[var(--lf-text-mid)]">Populasi aktif</span>
-          <span className="font-medium text-right text-[var(--lf-text-dark)]">{calc.activePopulation.toLocaleString('id')}</span>
-          <span className="text-[var(--lf-text-mid)]">HDP%</span>
-          <span className="font-medium text-right text-[var(--lf-text-dark)]">{calc.hdp.toFixed(1)}%</span>
-          {values.feedKg && (
-            <>
-              <span className="text-[var(--lf-text-mid)]">Pakan/ekor</span>
-              <span className="font-medium text-right text-[var(--lf-text-dark)]">{calc.feedPerBird.toFixed(0)} g</span>
-              <span className="text-[var(--lf-text-mid)]">FCR</span>
-              <span className="font-medium text-right text-[var(--lf-text-dark)]">{calc.fcr.toFixed(2)}</span>
-            </>
-          )}
-        </div>
+
+        {activeTab === 'telur' && (
+          <div>
+            <div className="grid grid-cols-[1fr_80px_80px] gap-2 pb-2 border-b border-[var(--lf-border)] text-[10px] font-semibold uppercase tracking-wide text-[var(--lf-text-soft)]">
+              <span>SKU</span>
+              <span className="text-right">Butir</span>
+              <span className="text-right">Kg</span>
+            </div>
+            {eggItems.map((item, idx) => (
+              <div key={item.id} className="grid grid-cols-[1fr_80px_80px] gap-2 py-2 border-b border-[var(--lf-border)] last:border-0 items-center">
+                <span className="text-sm font-medium text-[var(--lf-text-dark)]">{item.name}</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={eggEntries[idx]?.qtyButir ?? 0}
+                  onChange={(e) => updateEggButir(idx, Number(e.target.value))}
+                  className={numInputClass}
+                />
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={eggEntries[idx]?.qtyKg ?? 0}
+                  onChange={(e) => updateEggKg(idx, Number(e.target.value))}
+                  className={numInputClass}
+                />
+              </div>
+            ))}
+            {eggItems.length === 0 && <p className="text-sm text-[var(--lf-text-soft)] py-4">Tidak ada SKU telur aktif.</p>}
+            {eggItems.length > 0 && (
+              <div className="grid grid-cols-[1fr_80px_80px] gap-2 pt-2 text-sm font-semibold">
+                <span className="text-[var(--lf-text-mid)]">Total</span>
+                <span className="text-right text-[var(--lf-blue-active)]">
+                  {eggEntries.reduce((s, e) => s + e.qtyButir, 0).toLocaleString('id')}
+                </span>
+                <span className="text-right text-[var(--lf-blue-active)]">
+                  {eggEntries.reduce((s, e) => s + e.qtyKg, 0).toFixed(2)}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'pakan' && (
+          <div>
+            {feedItems.length === 0 && <p className="text-sm text-[var(--lf-text-soft)] py-4">Tidak ada item pakan aktif.</p>}
+            <div className="grid grid-cols-[1fr_100px] gap-2 pb-2 border-b border-[var(--lf-border)] text-[10px] font-semibold uppercase tracking-wide text-[var(--lf-text-soft)]">
+              <span>Item</span>
+              <span className="text-right">Dipakai (kg)</span>
+            </div>
+            {feedItems.map((item, idx) => (
+              <div key={item.id} className="grid grid-cols-[1fr_100px] gap-2 py-2 border-b border-[var(--lf-border)] last:border-0 items-center">
+                <div>
+                  <p className="text-sm font-medium text-[var(--lf-text-dark)]">{item.name}</p>
+                  <p className="text-xs" style={{ color: 'var(--lf-teal)' }}>Stok: {item.balance.toLocaleString('id')} kg</p>
+                </div>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  max={item.balance}
+                  value={feedEntries[idx]?.qtyUsed ?? 0}
+                  onChange={(e) => updateFeed(idx, Number(e.target.value))}
+                  className={numInputClass}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {activeTab === 'vaksin' && (
+          <div>
+            {vaccineItems.length === 0 && <p className="text-sm text-[var(--lf-text-soft)] py-4">Tidak ada item vaksin aktif.</p>}
+            <div className="grid grid-cols-[1fr_100px] gap-2 pb-2 border-b border-[var(--lf-border)] text-[10px] font-semibold uppercase tracking-wide text-[var(--lf-text-soft)]">
+              <span>Item</span>
+              <span className="text-right">Dipakai (dosis)</span>
+            </div>
+            {vaccineItems.map((item, idx) => (
+              <div key={item.id} className="grid grid-cols-[1fr_100px] gap-2 py-2 border-b border-[var(--lf-border)] last:border-0 items-center">
+                <div>
+                  <p className="text-sm font-medium text-[var(--lf-text-dark)]">{item.name}</p>
+                  <p className="text-xs" style={{ color: 'var(--lf-teal)' }}>Stok: {item.balance.toLocaleString('id')} dosis</p>
+                </div>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  max={item.balance}
+                  value={vaccineEntries[idx]?.qtyUsed ?? 0}
+                  onChange={(e) => updateVaccine(idx, Number(e.target.value))}
+                  className={numInputClass}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Also track waste metrics (hidden from tabs but included in Ayam tab context) */}
+      {activeTab === 'ayam' && (
+        <div className="bg-white rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)] grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide">Telur Retak</label>
+            <input type="number" min="0" value={eggsCracked} onChange={(e) => setEggsCracked(Number(e.target.value))} className={inputClass} />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide">Telur Abnormal</label>
+            <input type="number" min="0" value={eggsAbnormal} onChange={(e) => setEggsAbnormal(Number(e.target.value))} className={inputClass} />
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="bg-[var(--lf-danger-bg)] rounded-lg px-4 py-3 text-sm" style={{ color: 'var(--lf-danger-text)' }}>{error}</div>
       )}
 
-      {networkError && (
-        <div className="bg-[var(--lf-danger-bg)] rounded-lg px-4 py-3 text-sm flex items-center justify-between" style={{ color: 'var(--lf-danger-text)' }}>
-          <span>Gagal terhubung ke server. Data tersimpan, coba lagi.</span>
-          <button type="button" onClick={submitForm}
-            className="ml-3 text-xs font-medium underline">Coba lagi</button>
-        </div>
-      )}
-
       <button
-        type="submit"
-        disabled={pending || calc.depletionOverflow}
+        type="button"
+        onClick={() => void submitForm()}
+        disabled={pending || depletionOverflow}
         className="w-full bg-gradient-to-r from-[#7aadd4] to-[#5090be] text-white font-medium rounded-xl py-3 shadow-lf-btn disabled:opacity-60"
       >
-        {pending ? 'Menyimpan...' : 'Simpan Data Produksi'}
+        {pending ? 'Menyimpan...' : 'Simpan'}
       </button>
-    </form>
+    </div>
   )
 }

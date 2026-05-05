@@ -1,17 +1,18 @@
 import {
   findDailyRecord,
-  insertDailyRecordWithMovements,
+  upsertDailyRecordTx,
   getTotalDepletionByFlock,
   getCumulativeDepletionByFlockUpTo,
   getProductionReport,
 } from '@/lib/db/queries/daily-record.queries'
+import { getStockBalance } from '@/lib/db/queries/inventory.queries'
 import { findAllActiveFlocks, findFlockById } from '@/lib/db/queries/flock.queries'
 import { findAssignedCoopIds } from '@/lib/db/queries/user-coop-assignment.queries'
 import { db } from '@/lib/db'
 import { dailyRecords } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { assertCanEdit } from '@/lib/services/lock-period.service'
-import type { DailyRecord, NewDailyRecord, NewInventoryMovement } from '@/lib/db/schema'
+import type { DailyRecord } from '@/lib/db/schema'
 
 export type Role = 'operator' | 'supervisor' | 'admin'
 
@@ -41,99 +42,139 @@ export function computeActivePopulation(
   return Math.max(0, initialCount - depletion)
 }
 
-export function computeHDP(eggsA: number, eggsB: number, population: number): number {
-  if (population <= 0) return 0
-  return ((eggsA + eggsB) / population) * 100
-}
+type EggEntry = { stockItemId: string; qtyButir: number; qtyKg: number }
+type FeedEntry = { stockItemId: string; qtyUsed: number }
+type VaccineEntry = { stockItemId: string; qtyUsed: number }
 
-export function computeFeedPerBird(feedKg: number, population: number): number {
-  if (population <= 0) return 0
-  return (feedKg / population) * 1000 // grams per bird
-}
-
-export function computeFCR(feedKg: number, eggsA: number, eggsB: number): number {
-  const total = eggsA + eggsB
-  if (total <= 0) return 0
-  return feedKg / (total / 12) // kg feed per dozen eggs; threshold >2.1 = inefficient
-}
-
-type CreateDailyRecordInput = {
+type SaveDailyRecordInput = {
   flockId: string
-  recordDate: Date
+  recordDate: string // YYYY-MM-DD
   deaths: number
   culled: number
-  eggsGradeA: number
-  eggsGradeB: number
   eggsCracked: number
   eggsAbnormal: number
-  avgWeightKg?: number
-  feedKg?: number
+  notes?: string
+  eggEntries: EggEntry[]
+  feedEntries: FeedEntry[]
+  vaccineEntries: VaccineEntry[]
 }
 
-export async function createDailyRecord(
-  input: CreateDailyRecordInput,
+export async function saveDailyRecord(
+  input: SaveDailyRecordInput,
   userId: string,
   role: Role,
   now: Date = new Date()
 ): Promise<DailyRecord> {
-  validateBackdate(input.recordDate, now, role)
-
-  const existing = await findDailyRecord(input.flockId, input.recordDate)
-  if (existing) throw new Error('Data untuk tanggal ini sudah ada')
+  const recordDate = new Date(input.recordDate)
+  validateBackdate(recordDate, now, role)
 
   const [flock, dep] = await Promise.all([
     findFlockById(input.flockId),
     getTotalDepletionByFlock(input.flockId),
   ])
   if (!flock) throw new Error('Flock tidak ditemukan')
-  const currentPop = Math.max(0, flock.initialCount - dep.deaths - dep.culled)
-  const todayDepletion = input.deaths + input.culled
-  if (todayDepletion > currentPop) {
-    throw new Error(`Total depletion (${todayDepletion}) melebihi populasi aktif (${currentPop})`)
+
+  const existing = await findDailyRecord(input.flockId, input.recordDate)
+  if (!existing) {
+    const currentPop = Math.max(0, flock.initialCount - dep.deaths - dep.culled)
+    const todayDepletion = input.deaths + input.culled
+    if (todayDepletion > currentPop) {
+      throw new Error(`Total depletion (${todayDepletion}) melebihi populasi aktif (${currentPop})`)
+    }
   }
 
-  const isLateInput = computeIsLateInput(input.recordDate, now)
-
-  const record: NewDailyRecord = {
-    flockId: input.flockId,
-    recordDate: input.recordDate,
-    deaths: input.deaths,
-    culled: input.culled,
-    eggsGradeA: input.eggsGradeA,
-    eggsGradeB: input.eggsGradeB,
-    eggsCracked: input.eggsCracked,
-    eggsAbnormal: input.eggsAbnormal,
-    avgWeightKg: input.avgWeightKg != null ? String(input.avgWeightKg) : null,
-    feedKg: input.feedKg != null ? String(input.feedKg) : null,
-    isLateInput,
-    createdBy: userId,
+  // Validate feed/vaccine stock
+  for (const entry of input.feedEntries) {
+    if (entry.qtyUsed <= 0) continue
+    const balance = await getStockBalance(entry.stockItemId)
+    if (entry.qtyUsed > balance) {
+      throw new Error(`Stok pakan tidak mencukupi (tersedia: ${balance})`)
+    }
+  }
+  for (const entry of input.vaccineEntries) {
+    if (entry.qtyUsed <= 0) continue
+    const balance = await getStockBalance(entry.stockItemId)
+    if (entry.qtyUsed > balance) {
+      throw new Error(`Stok vaksin tidak mencukupi (tersedia: ${balance})`)
+    }
   }
 
-  const movements: NewInventoryMovement[] = []
-  if (input.eggsGradeA > 0) {
-    movements.push({
+  const isLateInput = computeIsLateInput(recordDate, now)
+
+  return upsertDailyRecordTx({
+    record: {
       flockId: input.flockId,
-      movementType: 'in',
-      grade: 'A',
-      quantity: input.eggsGradeA,
-      source: 'production', sourceType: 'daily_records',
-      movementDate: input.recordDate,
+      recordDate: input.recordDate,
+      deaths: input.deaths,
+      culled: input.culled,
+      eggsCracked: input.eggsCracked,
+      eggsAbnormal: input.eggsAbnormal,
+      notes: input.notes ?? null,
+      isLateInput,
       createdBy: userId,
-    })
-  }
-  if (input.eggsGradeB > 0) {
-    movements.push({
-      flockId: input.flockId,
-      movementType: 'in',
-      grade: 'B',
-      quantity: input.eggsGradeB,
-      source: 'production', sourceType: 'daily_records',
-      movementDate: input.recordDate,
-      createdBy: userId,
-    })
-  }
-
-  return insertDailyRecordWithMovements(record, movements)
+    },
+    eggEntries: input.eggEntries
+      .filter((e) => e.qtyButir > 0 || e.qtyKg > 0)
+      .map((e) => ({
+        dailyRecordId: '', // will be set in tx
+        stockItemId: e.stockItemId,
+        qtyButir: e.qtyButir,
+        qtyKg: String(e.qtyKg),
+      })),
+    feedEntries: input.feedEntries
+      .filter((e) => e.qtyUsed > 0)
+      .map((e) => ({
+        dailyRecordId: '',
+        stockItemId: e.stockItemId,
+        qtyUsed: String(e.qtyUsed),
+      })),
+    vaccineEntries: input.vaccineEntries
+      .filter((e) => e.qtyUsed > 0)
+      .map((e) => ({
+        dailyRecordId: '',
+        stockItemId: e.stockItemId,
+        qtyUsed: String(e.qtyUsed),
+      })),
+    eggMovements: input.eggEntries
+      .filter((e) => e.qtyButir > 0)
+      .map((e) => ({
+        stockItemId: e.stockItemId,
+        flockId: input.flockId,
+        movementType: 'in' as const,
+        source: 'production' as const,
+        sourceType: 'daily_egg_records' as const,
+        sourceId: null,
+        quantity: e.qtyButir,
+        movementDate: input.recordDate,
+        createdBy: userId,
+      })),
+    feedMovements: input.feedEntries
+      .filter((e) => e.qtyUsed > 0)
+      .map((e) => ({
+        stockItemId: e.stockItemId,
+        flockId: input.flockId,
+        movementType: 'out' as const,
+        source: 'production' as const,
+        sourceType: 'daily_feed_records' as const,
+        sourceId: null,
+        quantity: Math.round(e.qtyUsed),
+        movementDate: input.recordDate,
+        createdBy: userId,
+      })),
+    vaccineMovements: input.vaccineEntries
+      .filter((e) => e.qtyUsed > 0)
+      .map((e) => ({
+        stockItemId: e.stockItemId,
+        flockId: input.flockId,
+        movementType: 'out' as const,
+        source: 'production' as const,
+        sourceType: 'daily_vaccine_records' as const,
+        sourceId: null,
+        quantity: Math.round(e.qtyUsed),
+        movementDate: input.recordDate,
+        createdBy: userId,
+      })),
+  })
 }
 
 export type FlockOption = {
@@ -164,37 +205,8 @@ export async function getFlockOptionsForInput(userId: string, role: Role): Promi
   )
 }
 
-type UpdateDailyRecordInput = Partial<Omit<CreateDailyRecordInput, 'flockId' | 'recordDate'>>
-
-export async function updateDailyRecord(
-  recordId: string,
-  input: UpdateDailyRecordInput,
-  userId: string,
-  role: Role,
-  now: Date = new Date()
-): Promise<DailyRecord> {
-  const [existing] = await db.select().from(dailyRecords).where(eq(dailyRecords.id, recordId)).limit(1)
-  if (!existing) throw new Error('Data harian tidak ditemukan')
-
-  // Lock period check — throws if role cannot edit this record date
-  assertCanEdit(new Date(existing.recordDate), role, now)
-
-  const updateSet: Partial<typeof existing> & { updatedBy?: string } = { updatedBy: userId }
-  if (input.deaths !== undefined) updateSet.deaths = input.deaths
-  if (input.culled !== undefined) updateSet.culled = input.culled
-  if (input.eggsGradeA !== undefined) updateSet.eggsGradeA = input.eggsGradeA
-  if (input.eggsGradeB !== undefined) updateSet.eggsGradeB = input.eggsGradeB
-  if (input.eggsCracked !== undefined) updateSet.eggsCracked = input.eggsCracked
-  if (input.eggsAbnormal !== undefined) updateSet.eggsAbnormal = input.eggsAbnormal
-  if (input.avgWeightKg !== undefined) updateSet.avgWeightKg = input.avgWeightKg != null ? String(input.avgWeightKg) : null
-  if (input.feedKg !== undefined) updateSet.feedKg = input.feedKg != null ? String(input.feedKg) : null
-
-  const [updated] = await db.update(dailyRecords).set(updateSet).where(eq(dailyRecords.id, recordId)).returning()
-  return updated!
-}
-
 export type EnrichedProductionRow = {
-  recordDate: Date
+  recordDate: string
   coopId: string
   coopName: string
   flockId: string
@@ -202,34 +214,25 @@ export type EnrichedProductionRow = {
   activePopulation: number
   deaths: number
   culled: number
-  eggsGradeA: number
-  eggsGradeB: number
-  totalEggs: number
-  feedKg: number
-  hdp: number
-  fcr: number
 }
 
 export type ProductionReportResult = {
   rows: EnrichedProductionRow[]
   kpi: {
-    avgHdp: number
-    totalEggs: number
-    totalFeedKg: number
     totalDeaths: number
+    totalCulled: number
   }
 }
 
 export async function getProductionReportData(
-  from: Date,
-  to: Date,
+  from: string,
+  to: string,
   role: Role
 ): Promise<ProductionReportResult> {
   if (role === 'operator') throw new Error('Akses ditolak')
 
   const rawRows = await getProductionReport(from, to)
 
-  // PERF: N+1 per flock-date row; batch if > 10 flocks per report
   const enriched: EnrichedProductionRow[] = await Promise.all(
     rawRows.map(async (row) => {
       const { deaths: cumDeaths, culled: cumCulled } = await getCumulativeDepletionByFlockUpTo(
@@ -237,9 +240,6 @@ export async function getProductionReportData(
         row.recordDate
       )
       const activePopulation = Math.max(0, row.flockInitialCount - cumDeaths - cumCulled)
-      const feedKgNum = Number(row.feedKg ?? 0)
-      const hdp = computeHDP(row.eggsGradeA, row.eggsGradeB, activePopulation)
-      const fcr = computeFCR(feedKgNum, row.eggsGradeA, row.eggsGradeB)
       return {
         recordDate: row.recordDate,
         coopId: row.coopId,
@@ -249,27 +249,40 @@ export async function getProductionReportData(
         activePopulation,
         deaths: row.deaths,
         culled: row.culled,
-        eggsGradeA: row.eggsGradeA,
-        eggsGradeB: row.eggsGradeB,
-        totalEggs: row.eggsGradeA + row.eggsGradeB,
-        feedKg: feedKgNum,
-        hdp,
-        fcr,
       }
     })
   )
 
-  const totalEggs = enriched.reduce((s, r) => s + r.totalEggs, 0)
-  const totalFeedKg = enriched.reduce((s, r) => s + r.feedKg, 0)
   const totalDeaths = enriched.reduce((s, r) => s + r.deaths, 0)
-  // Unweighted mean across all flock-day rows; does not account for different flock sizes
-  const avgHdp =
-    enriched.length > 0
-      ? enriched.reduce((s, r) => s + r.hdp, 0) / enriched.length
-      : 0
+  const totalCulled = enriched.reduce((s, r) => s + r.culled, 0)
 
   return {
     rows: enriched,
-    kpi: { avgHdp, totalEggs, totalFeedKg, totalDeaths },
+    kpi: { totalDeaths, totalCulled },
   }
+}
+
+export async function updateDailyRecordAyam(
+  recordId: string,
+  input: { deaths?: number; culled?: number; notes?: string },
+  userId: string,
+  role: Role,
+  now: Date = new Date()
+): Promise<DailyRecord> {
+  const [existing] = await db.select().from(dailyRecords).where(eq(dailyRecords.id, recordId)).limit(1)
+  if (!existing) throw new Error('Data harian tidak ditemukan')
+
+  assertCanEdit(new Date(existing.recordDate), role, now)
+
+  const updateSet: Record<string, unknown> = {}
+  if (input.deaths !== undefined) updateSet.deaths = input.deaths
+  if (input.culled !== undefined) updateSet.culled = input.culled
+  if (input.notes !== undefined) updateSet.notes = input.notes
+
+  const [updated] = await db
+    .update(dailyRecords)
+    .set(updateSet)
+    .where(eq(dailyRecords.id, recordId))
+    .returning()
+  return updated!
 }

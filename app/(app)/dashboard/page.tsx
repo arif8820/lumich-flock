@@ -58,13 +58,11 @@ export default async function DashboardPage({
       />
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        <KpiCard label="HDP%" value={`${kpis.hdpPercent.toFixed(1)}%`} />
-        <KpiCard label="FCR 7 Hari" value={kpis.fcr7Day.toFixed(2)} />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard label="Produksi Hari Ini" value={kpis.productionToday.toLocaleString('id')} unit="butir" />
-        <KpiCard label="Stok Siap Jual" value={kpis.stockReadyToSell.toLocaleString('id')} unit="butir" />
+        <KpiCard label="Stok Telur" value={kpis.stockTotalEggs.toLocaleString('id')} unit="butir" />
         <KpiCard label="Populasi Aktif" value={kpis.activePopulation.toLocaleString('id')} unit="ekor" />
-        <KpiCard label="Pakan/Ekor" value={kpis.feedPerBirdGrams.toFixed(0)} unit="g" />
+        <KpiCard label="Kematian Hari Ini" value={kpis.totalDeathsToday.toLocaleString('id')} unit="ekor" />
       </div>
 
       {/* Charts 2x2 */}
@@ -78,10 +76,8 @@ export default async function DashboardPage({
             <thead>
               <tr className="text-[10px] text-[var(--lf-text-soft)] uppercase tracking-wide border-b border-[var(--lf-border)]">
                 <th className="text-left pb-2">Tanggal</th>
-                <th className="text-right pb-2">Grade A</th>
-                <th className="text-right pb-2">Grade B</th>
                 <th className="text-right pb-2">Kematian</th>
-                <th className="text-right pb-2">FCR</th>
+                <th className="text-right pb-2">Afkir</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--lf-border)]">
@@ -93,12 +89,8 @@ export default async function DashboardPage({
                       <span className="ml-2 text-[10px] bg-[var(--lf-danger-bg)] rounded px-1.5 py-0.5" style={{ color: 'var(--lf-danger-text)' }}>Terlambat</span>
                     )}
                   </td>
-                  <td className="py-2 text-right text-[var(--lf-text-dark)]">{r.gradeA.toLocaleString('id')}</td>
-                  <td className="py-2 text-right text-[var(--lf-text-dark)]">{r.gradeB.toLocaleString('id')}</td>
                   <td className="py-2 text-right text-[var(--lf-text-mid)]">{r.deaths}</td>
-                  <td className="py-2 text-right font-medium" style={{ color: r.fcr > 2.1 ? 'var(--lf-danger-text)' : 'var(--lf-text-dark)' }}>
-                    {r.fcr.toFixed(2)}
-                  </td>
+                  <td className="py-2 text-right text-[var(--lf-text-mid)]">{r.culled}</td>
                 </tr>
               ))}
             </tbody>

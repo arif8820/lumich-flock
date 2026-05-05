@@ -1,6 +1,7 @@
 import { getSession } from '@/lib/auth/get-session'
 import { redirect, notFound } from 'next/navigation'
 import { findRegradeRequestById } from '@/lib/db/queries/inventory.queries'
+import { findItemById } from '@/lib/db/queries/stock-catalog.queries'
 import { approveRegradeRequestAction, rejectRegradeRequestAction } from '@/lib/actions/stock.actions'
 
 export default async function RegradeDetailPage({
@@ -17,6 +18,11 @@ export default async function RegradeDetailPage({
   const { error } = await searchParams
   const req = await findRegradeRequestById(id)
   if (!req) notFound()
+
+  const [fromItem, toItem] = await Promise.all([
+    findItemById(req.fromItemId),
+    findItemById(req.toItemId),
+  ])
 
   async function approve() {
     'use server'
@@ -54,7 +60,7 @@ export default async function RegradeDetailPage({
         </div>
         <div className="flex justify-between">
           <span className="text-[var(--lf-text-mid)]">Dari → Ke</span>
-          <span className="font-medium text-[var(--lf-text-dark)]">Grade {req.gradeFrom} → Grade {req.gradeTo}</span>
+          <span className="font-medium text-[var(--lf-text-dark)]">{fromItem?.name ?? req.fromItemId} → {toItem?.name ?? req.toItemId}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-[var(--lf-text-mid)]">Jumlah</span>

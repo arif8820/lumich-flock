@@ -17,7 +17,7 @@ const {
   fulfillSOTx,
   getCustomerOutstandingCredit,
 } = salesOrderQueries
-const { getStockBalanceByGrade } = inventoryQueries
+const { getStockBalance } = inventoryQueries
 const { countInvoicesThisMonth } = invoiceQueries
 
 type CreateDraftInput = {
@@ -122,11 +122,11 @@ export async function confirmSO(orderId: string, userId: string, role: string) {
   // Stock availability check before confirming
   const items = await findSalesOrderItems(orderId)
   for (const item of items) {
-    if (item.itemType === 'egg_grade_a' || item.itemType === 'egg_grade_b') {
-      const grade = item.itemType === 'egg_grade_a' ? 'A' : 'B'
-      const available = await getStockBalanceByGrade(grade)
+    if ((item.itemType === 'egg_grade_a' || item.itemType === 'egg_grade_b') && item.itemRefId) {
+      const available = await getStockBalance(item.itemRefId)
+      const gradeLabel = item.itemType === 'egg_grade_a' ? 'A' : 'B'
       if (available < item.quantity) {
-        throw new Error(`Stok tidak mencukupi: Grade ${grade} tersedia ${available} butir, dibutuhkan ${item.quantity} butir`)
+        throw new Error(`Stok tidak mencukupi: Grade ${gradeLabel} tersedia ${available} butir, dibutuhkan ${item.quantity} butir`)
       }
     }
   }
@@ -180,9 +180,8 @@ export async function fulfillSO(orderId: string, userId: string, role: string) {
 
   // Check stock for egg items
   for (const item of items) {
-    if (item.itemType === 'egg_grade_a' || item.itemType === 'egg_grade_b') {
-      const grade = item.itemType === 'egg_grade_a' ? 'A' : 'B'
-      const available = await getStockBalanceByGrade(grade)
+    if ((item.itemType === 'egg_grade_a' || item.itemType === 'egg_grade_b') && item.itemRefId) {
+      const available = await getStockBalance(item.itemRefId)
       if (available < item.quantity) {
         throw new Error('Stok tidak mencukupi saat transaksi diproses')
       }
@@ -201,16 +200,15 @@ export async function fulfillSO(orderId: string, userId: string, role: string) {
 
   // Build inventory OUT movements for egg items
   const movements: NewInventoryMovement[] = items
-    .filter((item) => item.itemType === 'egg_grade_a' || item.itemType === 'egg_grade_b')
+    .filter((item) => (item.itemType === 'egg_grade_a' || item.itemType === 'egg_grade_b') && item.itemRefId)
     .map((item) => ({
-      flockId: null,
+      stockItemId: item.itemRefId!,
       movementType: 'out' as const,
       source: 'sale' as const,
       sourceType: 'sales_order_items' as const,
       sourceId: orderId,
-      grade: item.itemType === 'egg_grade_a' ? 'A' as const : 'B' as const,
       quantity: item.quantity,
-      movementDate: new Date(),
+      movementDate: new Date().toISOString().slice(0, 10),
       createdBy: userId,
     }))
 

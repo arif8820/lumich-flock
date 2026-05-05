@@ -4,16 +4,8 @@
 import dynamic from 'next/dynamic'
 import type { DashboardChartPoint } from '@/lib/services/dashboard.service'
 
-const HdpLineChart = dynamic(
-  () => import('./hdp-line-chart').then((m) => m.HdpLineChart),
-  { ssr: false }
-)
-const FcrLineChart = dynamic(
-  () => import('./fcr-line-chart').then((m) => m.FcrLineChart),
-  { ssr: false }
-)
-const ProductionBarChart = dynamic(
-  () => import('./production-bar-chart').then((m) => m.ProductionBarChart),
+const DeathsBarChart = dynamic(
+  () => import('./deaths-bar-chart').then((m) => m.DeathsBarChart),
   { ssr: false }
 )
 const DepletionAreaChart = dynamic(
@@ -25,16 +17,8 @@ export function DashboardCharts({ data }: { data: DashboardChartPoint[] }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div className="bg-white rounded-2xl p-4 shadow-lf-sm border border-[var(--lf-border)]">
-        <p className="text-xs font-medium text-[var(--lf-text-soft)] uppercase tracking-wide mb-3">HDP% (7 Hari)</p>
-        <HdpLineChart data={data} />
-      </div>
-      <div className="bg-white rounded-2xl p-4 shadow-lf-sm border border-[var(--lf-border)]">
-        <p className="text-xs font-medium text-[var(--lf-text-soft)] uppercase tracking-wide mb-3">FCR (7 Hari)</p>
-        <FcrLineChart data={data} />
-      </div>
-      <div className="bg-white rounded-2xl p-4 shadow-lf-sm border border-[var(--lf-border)]">
-        <p className="text-xs font-medium text-[var(--lf-text-soft)] uppercase tracking-wide mb-3">Produksi Grade A / B</p>
-        <ProductionBarChart data={data} />
+        <p className="text-xs font-medium text-[var(--lf-text-soft)] uppercase tracking-wide mb-3">Kematian Harian</p>
+        <DeathsBarChart data={data} />
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-lf-sm border border-[var(--lf-border)]">
         <p className="text-xs font-medium text-[var(--lf-text-soft)] uppercase tracking-wide mb-3">Kumulatif Depletion</p>

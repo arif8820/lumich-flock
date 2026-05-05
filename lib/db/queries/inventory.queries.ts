@@ -1,42 +1,56 @@
 import { db } from '@/lib/db'
-import { inventoryMovements, stockAdjustments, regradeRequests } from '@/lib/db/schema'
-import { eq, and, desc, sql, sum } from 'drizzle-orm'
+import { inventoryMovements, stockAdjustments, regradeRequests, stockItems, stockCategories } from '@/lib/db/schema'
+import { eq, desc, sql, sum } from 'drizzle-orm'
 import type {
   NewInventoryMovement,
   StockAdjustment, NewStockAdjustment,
   RegradeRequest, NewRegradeRequest,
 } from '@/lib/db/schema'
 
-export async function getStockBalance(flockId: string, grade: 'A' | 'B'): Promise<number> {
+export type StockBalance = {
+  stockItemId: string
+  categoryId: string
+  categoryName: string
+  itemName: string
+  unit: string
+  balance: number
+}
+
+export async function getStockBalance(stockItemId: string): Promise<number> {
   const [row] = await db
     .select({
       balance: sum(sql<number>`CASE WHEN ${inventoryMovements.movementType} = 'in' THEN ${inventoryMovements.quantity} ELSE -${inventoryMovements.quantity} END`),
     })
     .from(inventoryMovements)
-    .where(and(eq(inventoryMovements.flockId, flockId), eq(inventoryMovements.grade, grade)))
+    .where(eq(inventoryMovements.stockItemId, stockItemId))
   return Number(row?.balance ?? '0')
 }
 
-export async function getStockBalanceByGrade(grade: 'A' | 'B'): Promise<number> {
-  const [row] = await db
-    .select({
-      balance: sum(sql<number>`CASE WHEN ${inventoryMovements.movementType} = 'in' THEN ${inventoryMovements.quantity} ELSE -${inventoryMovements.quantity} END`),
-    })
-    .from(inventoryMovements)
-    .where(eq(inventoryMovements.grade, grade))
-  return Number(row?.balance ?? '0')
-}
-
-export async function getAllStockBalances(): Promise<{ flockId: string; grade: 'A' | 'B'; balance: number }[]> {
+export async function getAllStockBalances(): Promise<StockBalance[]> {
   const rows = await db
     .select({
-      flockId: inventoryMovements.flockId,
-      grade: inventoryMovements.grade,
+      stockItemId: inventoryMovements.stockItemId,
+      categoryId: stockItems.categoryId,
+      categoryName: stockCategories.name,
+      itemName: stockItems.name,
+      unit: stockCategories.unit,
       balance: sum(sql<number>`CASE WHEN ${inventoryMovements.movementType} = 'in' THEN ${inventoryMovements.quantity} ELSE -${inventoryMovements.quantity} END`),
     })
     .from(inventoryMovements)
-    .groupBy(inventoryMovements.flockId, inventoryMovements.grade)
-  return rows.map((r) => ({ flockId: r.flockId ?? '', grade: r.grade as 'A' | 'B', balance: Number(r.balance ?? '0') }))
+    .innerJoin(stockItems, eq(inventoryMovements.stockItemId, stockItems.id))
+    .innerJoin(stockCategories, eq(stockItems.categoryId, stockCategories.id))
+    .groupBy(
+      inventoryMovements.stockItemId,
+      stockItems.categoryId,
+      stockCategories.name,
+      stockItems.name,
+      stockCategories.unit
+    )
+  return rows.map((r) => ({ ...r, balance: Number(r.balance ?? '0') }))
+}
+
+export async function insertInventoryMovement(data: NewInventoryMovement): Promise<void> {
+  await db.insert(inventoryMovements).values(data)
 }
 
 export async function insertStockAdjustmentWithMovement(
@@ -94,27 +108,27 @@ export async function approveRegradeRequestTx(requestId: string, reviewedBy: str
       .set({ status: 'APPROVED', reviewedBy, reviewedAt: new Date() })
       .where(eq(regradeRequests.id, requestId))
 
+    const today = new Date().toISOString().slice(0, 10)
+
     await tx.insert(inventoryMovements).values({
-      flockId: request.flockId,
+      stockItemId: request.fromItemId,
       movementType: 'out',
       source: 'regrade',
       sourceType: 'regrade_requests',
       sourceId: requestId,
-      grade: request.gradeFrom,
       quantity: request.quantity,
-      movementDate: new Date(),
+      movementDate: today,
       createdBy: reviewedBy,
     })
 
     await tx.insert(inventoryMovements).values({
-      flockId: request.flockId,
+      stockItemId: request.toItemId,
       movementType: 'in',
       source: 'regrade',
       sourceType: 'regrade_requests',
       sourceId: requestId,
-      grade: request.gradeTo,
       quantity: request.quantity,
-      movementDate: new Date(),
+      movementDate: today,
       createdBy: reviewedBy,
     })
   })

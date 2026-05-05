@@ -8,6 +8,8 @@ import { db } from '@/lib/db'
 import {
   flocks,
   dailyRecords,
+  dailyEggRecords,
+  dailyFeedRecords,
   invoices,
 } from '@/lib/db/schema'
 import { eq, isNull, desc, and, lte, sql, inArray } from 'drizzle-orm'
@@ -16,7 +18,7 @@ import { getAppSetting } from '@/lib/services/app-settings.service'
 import { findActiveCooldown, upsertCooldown } from '@/lib/db/queries/alert-cooldown.queries'
 import { createNotification } from '@/lib/db/queries/notification.queries'
 import { getPhaseForWeeks } from '@/lib/services/flock-phase.service'
-import { getStockBalanceByGrade } from '@/lib/db/queries/inventory.queries'
+import { getAllStockBalances } from '@/lib/db/queries/inventory.queries'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -31,6 +33,22 @@ function weeksOld(arrivalDate: Date): number {
 async function getNumericSetting(key: string, fallback: number): Promise<number> {
   const val = await getAppSetting(key)
   return val != null ? parseFloat(val) : fallback
+}
+
+async function getTotalEggsForRecord(dailyRecordId: string): Promise<number> {
+  const [row] = await db
+    .select({ total: sql<string>`COALESCE(SUM(${dailyEggRecords.qtyButir}), 0)` })
+    .from(dailyEggRecords)
+    .where(eq(dailyEggRecords.dailyRecordId, dailyRecordId))
+  return Number(row?.total ?? 0)
+}
+
+async function getTotalFeedKgForRecord(dailyRecordId: string): Promise<number> {
+  const [row] = await db
+    .select({ total: sql<string>`COALESCE(SUM(${dailyFeedRecords.qtyUsed}), 0)` })
+    .from(dailyFeedRecords)
+    .where(eq(dailyFeedRecords.dailyRecordId, dailyRecordId))
+  return Number(row?.total ?? 0)
 }
 
 // ─── alert conditions ─────────────────────────────────────────────────────────
@@ -104,8 +122,11 @@ async function checkHdpDropAlerts(hdpDropThreshold: number): Promise<void> {
       Number(depResult[0]?.totalDeaths ?? 0) + Number(depResult[0]?.totalCulled ?? 0)
     const livePop = Math.max(1, flock.initialCount - totalDepletion)
 
-    const hdpToday = ((today!.eggsGradeA + today!.eggsGradeB) / livePop) * 100
-    const hdpYesterday = ((yesterday!.eggsGradeA + yesterday!.eggsGradeB) / livePop) * 100
+    const eggsToday = await getTotalEggsForRecord(today!.id)
+    const eggsYesterday = await getTotalEggsForRecord(yesterday!.id)
+
+    const hdpToday = (eggsToday / livePop) * 100
+    const hdpYesterday = (eggsYesterday / livePop) * 100
 
     if (hdpYesterday <= 0) continue
     const dropPct = ((hdpYesterday - hdpToday) / hdpYesterday) * 100
@@ -202,11 +223,14 @@ async function checkFcrAlerts(fcrThreshold: number): Promise<void> {
       .orderBy(desc(dailyRecords.recordDate))
       .limit(1)
 
-    if (!latest || !latest.feedKg) continue
+    if (!latest) continue
 
-    const feedKg = Number(latest.feedKg)
-    const totalEggs = latest.eggsGradeA + latest.eggsGradeB
+    const feedKg = await getTotalFeedKgForRecord(latest.id)
+    if (feedKg <= 0) continue
+
+    const totalEggs = await getTotalEggsForRecord(latest.id)
     if (totalEggs <= 0) continue
+
     const fcr = feedKg / (totalEggs / 12)
 
     if (fcr <= fcrThreshold) continue
@@ -265,15 +289,16 @@ async function checkOverdueInvoiceAlerts(overdueDelayDays: number): Promise<void
 }
 
 /**
- * Stock overstock alert — fires if total stock (grade A + B) > threshold.
+ * Stock overstock alert — fires if total Telur stock > threshold.
  * Cooldown: 24h (fixed entity id '00000000-0000-0000-0000-000000000001').
  */
 async function checkStockAlerts(threshold: number): Promise<void> {
-  const balanceA = await getStockBalanceByGrade('A')
-  const balanceB = await getStockBalanceByGrade('B')
-  const totalBalance = balanceA + balanceB
+  const balances = await getAllStockBalances()
+  const totalEggs = balances
+    .filter((b) => b.categoryName === 'Telur')
+    .reduce((sum, b) => sum + b.balance, 0)
 
-  if (totalBalance <= threshold) return
+  if (totalEggs <= threshold) return
 
   const alertType = 'stock_warning'
   const fixedEntityId = '00000000-0000-0000-0000-000000000001'
@@ -284,7 +309,7 @@ async function checkStockAlerts(threshold: number): Promise<void> {
     await createNotification({
       type: 'stock_warning',
       title: 'Stok Terlalu Tinggi',
-      body: `Total stok saat ini ${totalBalance} butir melebihi batas ${threshold} butir`,
+      body: `Total stok telur saat ini ${totalEggs} butir melebihi batas ${threshold} butir`,
       targetRole: 'all',
     }, tx)
     await upsertCooldown(alertType, 'stock', fixedEntityId, tx)

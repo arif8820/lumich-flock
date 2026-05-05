@@ -130,7 +130,7 @@ describe('import.service -- parseFlockscsv', () => {
 })
 
 describe('import.service -- parseDailyRecordsCsv', () => {
-  const HEADER = 'flock_id,record_date,deaths,culled,eggs_grade_a,eggs_grade_b,eggs_cracked,eggs_abnormal,avg_weight_kg,feed_kg\n'
+  const HEADER = 'flock_id,record_date,deaths,culled,eggs_cracked,eggs_abnormal\n'
 
   it('parses a valid row when flock exists and no duplicate', async () => {
     let callCount = 0
@@ -139,22 +139,23 @@ describe('import.service -- parseDailyRecordsCsv', () => {
       callCount++
       return Promise.resolve(result)
     })
-    const csv = HEADER + 'uuid-flock-1,2026-04-01,2,0,4000,200,10,5,1.8,120\n'
+    const csv = HEADER + 'uuid-flock-1,2026-04-01,2,0,10,5\n'
     const { valid, errors } = await parseDailyRecordsCsv(csv)
     expect(errors).toHaveLength(0)
-    expect(valid[0]!.data.eggsGradeA).toBe(4000)
-    expect(valid[0]!.data.feedKg).toBe('120')
+    expect(valid[0]!.data.deaths).toBe(2)
+    expect(valid[0]!.data.eggsCracked).toBe(10)
+    expect(valid[0]!.data.eggsAbnormal).toBe(5)
   })
 
   it('rejects missing flock_id', async () => {
-    const csv = HEADER + ',2026-04-01,2,0,4000,200,10,5,,\n'
+    const csv = HEADER + ',2026-04-01,2,0,,\n'
     const { errors } = await parseDailyRecordsCsv(csv)
     expect(errors[0]!.errors[0]).toMatch(/flock_id/)
   })
 
   it('rejects flock_id not in DB', async () => {
     _limitResult = []
-    const csv = HEADER + 'nonexistent-flock,2026-04-01,2,0,4000,200,10,5,,\n'
+    const csv = HEADER + 'nonexistent-flock,2026-04-01,2,0,,\n'
     const { errors } = await parseDailyRecordsCsv(csv)
     expect(errors[0]!.errors[0]).toMatch(/flock_id/)
   })
@@ -166,7 +167,7 @@ describe('import.service -- parseDailyRecordsCsv', () => {
       callCount++
       return Promise.resolve(result)
     })
-    const csv = HEADER + 'uuid-flock-1,2026-04-01,2,0,4000,200,10,5,,\n'
+    const csv = HEADER + 'uuid-flock-1,2026-04-01,2,0,,\n'
     const { errors } = await parseDailyRecordsCsv(csv)
     expect(errors[0]!.errors[0]).toMatch(/sudah ada/)
   })
@@ -191,32 +192,52 @@ describe('import.service -- parseCustomersCsv', () => {
 })
 
 describe('import.service -- parseOpeningStockCsv', () => {
-  const HEADER = 'flock_id,grade,quantity,movement_date\n'
+  const HEADER = 'stock_item_id,quantity,movement_date\n'
 
-  it('parses a valid row when no prior import exists', async () => {
-    _whereNoLimitResult = [{ count: '0' }]
-    const csv = HEADER + 'uuid-flock-1,A,10000,2026-01-01\n'
+  it('parses a valid row when stock item exists and no prior import', async () => {
+    let callCount = 0
+    setWhereMock(() => {
+      // first call: stockItems lookup → found; second call: existing import count → 0
+      const result = callCount === 0 ? [{ id: 'uuid-item-1' }] : [{ count: '0' }]
+      callCount++
+      return Promise.resolve(result)
+    })
+    const csv = HEADER + 'uuid-item-1,10000,2026-01-01\n'
     const { valid, errors } = await parseOpeningStockCsv(csv)
     expect(errors).toHaveLength(0)
-    expect(valid[0]!.data.grade).toBe('A')
+    expect(valid[0]!.data.stockItemId).toBe('uuid-item-1')
     expect(valid[0]!.data.quantity).toBe(10000)
+    expect(valid[0]!.data.movementType).toBe('in')
+    expect(valid[0]!.data.source).toBe('import')
   })
 
   it('rejects when prior import exists for same date', async () => {
-    _whereNoLimitResult = [{ count: '3' }]
-    const csv = HEADER + 'uuid-flock-1,A,10000,2026-01-01\n'
+    let callCount = 0
+    setWhereMock(() => {
+      const result = callCount === 0 ? [{ id: 'uuid-item-1' }] : [{ count: '3' }]
+      callCount++
+      return Promise.resolve(result)
+    })
+    const csv = HEADER + 'uuid-item-1,10000,2026-01-01\n'
     const { errors } = await parseOpeningStockCsv(csv)
     expect(errors[0]!.errors[0]).toMatch(/sudah ada/)
   })
 
-  it('rejects invalid grade', async () => {
-    const csv = HEADER + 'uuid-flock-1,C,10000,2026-01-01\n'
+  it('rejects missing stock_item_id', async () => {
+    _whereNoLimitResult = [{ count: '0' }]
+    const csv = HEADER + ',10000,2026-01-01\n'
     const { errors } = await parseOpeningStockCsv(csv)
-    expect(errors[0]!.errors.some((e) => e.includes('grade'))).toBe(true)
+    expect(errors[0]!.errors[0]).toMatch(/stock_item_id/)
   })
 
   it('rejects zero quantity', async () => {
-    const csv = HEADER + 'uuid-flock-1,A,0,2026-01-01\n'
+    let callCount = 0
+    setWhereMock(() => {
+      const result = callCount === 0 ? [{ id: 'uuid-item-1' }] : [{ count: '0' }]
+      callCount++
+      return Promise.resolve(result)
+    })
+    const csv = HEADER + 'uuid-item-1,0,2026-01-01\n'
     const { errors } = await parseOpeningStockCsv(csv)
     expect(errors[0]!.errors.some((e) => e.includes('quantity'))).toBe(true)
   })
@@ -227,6 +248,6 @@ describe('import.service -- getCsvTemplate', () => {
     expect(getCsvTemplate('flocks')).toContain('coop_id')
     expect(getCsvTemplate('daily_records')).toContain('flock_id')
     expect(getCsvTemplate('customers')).toContain('name')
-    expect(getCsvTemplate('opening_stock')).toContain('grade')
+    expect(getCsvTemplate('opening_stock')).toContain('stock_item_id')
   })
 })

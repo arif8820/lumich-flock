@@ -43,6 +43,20 @@
       "when": 1746000000000,
       "tag": "0005_sprint7_8_phase4_operations",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777849210677,
+      "tag": "0006_dry_sir_ram",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1777928984775,
+      "tag": "0007_plain_centennial",
+      "breakpoints": true
     }
   ]
 }

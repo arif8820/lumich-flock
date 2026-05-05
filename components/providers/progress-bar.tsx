@@ -1,24 +1,25 @@
 'use client'
-// client: needs usePathname + useState to detect navigation and show overlay
+// client: needs usePathname + useSearchParams + useState to detect navigation and show overlay
 
 import { useEffect, useRef, useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 
 export function ProgressBar() {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
-  const prevPathname = useRef(pathname)
+  const prevKey = useRef(`${pathname}?${searchParams}`)
   // track pending hide timeout so fast navigations don't flicker
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    if (pathname !== prevPathname.current) {
-      // pathname changed = navigation complete
-      prevPathname.current = pathname
+    const currentKey = `${pathname}?${searchParams}`
+    if (currentKey !== prevKey.current) {
+      prevKey.current = currentKey
       if (hideTimer.current) clearTimeout(hideTimer.current)
       hideTimer.current = setTimeout(() => setLoading(false), 150)
     }
-  }, [pathname])
+  }, [pathname, searchParams])
 
   // intercept link clicks to show overlay immediately
   useEffect(() => {
