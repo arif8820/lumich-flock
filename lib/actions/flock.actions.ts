@@ -30,10 +30,9 @@ async function requireSupervisorOrAdmin(): Promise<{ success: false; error: stri
 }
 
 export async function createFlockAction(formData: FormData): Promise<ActionResult<{ id: string }>> {
-  const guard = await requireSupervisorOrAdmin()
-  if (guard) return guard
-
   const session = await getSession()
+  if (!session || session.role === 'operator') return { success: false, error: 'Akses ditolak' }
+
   const parsed = flockSchema.safeParse({
     coopId: formData.get('coopId'),
     name: formData.get('name'),
@@ -47,7 +46,7 @@ export async function createFlockAction(formData: FormData): Promise<ActionResul
   if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
 
   try {
-    const flock = await createFlock({ ...parsed.data, createdBy: session!.id })
+    const flock = await createFlock({ ...parsed.data, createdBy: session.id })
     return { success: true, data: { id: flock.id } }
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Gagal membuat flock'

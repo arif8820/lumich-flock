@@ -7,6 +7,7 @@ type CreateFlockDeliveryInput = {
   flockId: string
   deliveryDate: Date
   quantity: number
+  ageAtArrivalDays?: number
   notes?: string
   createdBy: string
 }
@@ -33,6 +34,7 @@ export async function createFlockDelivery(
     flockId: input.flockId,
     deliveryDate: input.deliveryDate,
     quantity: input.quantity,
+    ageAtArrivalDays: input.ageAtArrivalDays ?? null,
     notes: input.notes ?? null,
     createdBy: input.createdBy,
   })

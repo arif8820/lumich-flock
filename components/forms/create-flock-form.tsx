@@ -8,8 +8,13 @@ import { createFlockAction } from '@/lib/actions/flock.actions'
 const inputClass = 'mt-1 w-full border border-[var(--lf-border)] rounded-lg px-3 py-2 text-sm bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--lf-blue)]'
 const labelClass = 'block text-xs font-medium text-[var(--lf-text-mid)]'
 
+// USED BY: [add-delivery-form, create-flock-form] — count: 2
 function todayISO() {
-  return new Date().toISOString().split('T')[0]!
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 interface Props {

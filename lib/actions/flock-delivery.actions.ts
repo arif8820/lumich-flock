@@ -8,6 +8,7 @@ const flockDeliverySchema = z.object({
   flockId: z.string().uuid('Flock tidak valid'),
   deliveryDate: z.coerce.date(),
   quantity: z.coerce.number().int().positive('Jumlah DOC harus positif'),
+  ageAtArrivalDays: z.coerce.number().int().nonnegative().optional(),
   notes: z.string().optional(),
 })
 
@@ -23,6 +24,7 @@ export async function createFlockDeliveryAction(formData: FormData): Promise<Act
     flockId: formData.get('flockId'),
     deliveryDate: formData.get('deliveryDate'),
     quantity: formData.get('quantity'),
+    ageAtArrivalDays: formData.get('ageAtArrivalDays') || undefined,
     notes: formData.get('notes') || undefined,
   })
   if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
