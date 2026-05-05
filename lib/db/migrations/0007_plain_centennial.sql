@@ -1,0 +1,1 @@
+ALTER TABLE "inventory_movements" ALTER COLUMN "source_type" DROP NOT NULL;

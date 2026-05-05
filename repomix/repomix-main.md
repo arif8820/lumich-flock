@@ -47,6 +47,7 @@ app/(app)/admin/page.tsx
 app/(app)/admin/pelanggan/page.tsx
 app/(app)/admin/settings/alerts/page.tsx
 app/(app)/admin/settings/wa-template/page.tsx
+app/(app)/admin/stok-katalog/page.tsx
 app/(app)/admin/users/[id]/kandang/page.tsx
 app/(app)/admin/users/page.tsx
 app/(app)/dashboard/page.tsx
@@ -64,8 +65,10 @@ app/(app)/penjualan/page.tsx
 app/(app)/penjualan/return/[id]/page.tsx
 app/(app)/produksi/[id]/edit/edit-form.tsx
 app/(app)/produksi/[id]/edit/page.tsx
+app/(app)/produksi/flock-filter.tsx
 app/(app)/produksi/input/page.tsx
 app/(app)/produksi/page.tsx
+app/(app)/stok/beli/page.tsx
 app/(app)/stok/page.tsx
 app/(app)/stok/regrade/[id]/page.tsx
 app/(app)/stok/regrade/page.tsx
@@ -97,14 +100,17 @@ components/forms/edit-customer-form.tsx
 components/forms/flock-list-client.tsx
 components/forms/login-form.tsx
 components/forms/production-report-filter.tsx
+components/forms/stock-item-cascade-form.tsx
 components/forms/user-management-client.tsx
 components/layout/app-shell.tsx
 components/layout/bottom-nav.tsx
 components/layout/sidebar.tsx
 components/pdf/invoice-pdf-document.tsx
+components/providers/progress-bar.tsx
 components/ui/badge.tsx
 components/ui/button.tsx
 components/ui/charts/dashboard-charts.tsx
+components/ui/charts/deaths-bar-chart.tsx
 components/ui/charts/depletion-area-chart.tsx
 components/ui/charts/fcr-line-chart.tsx
 components/ui/charts/hdp-line-chart.tsx
@@ -138,6 +144,7 @@ lib/actions/lock-period.actions.ts
 lib/actions/notification.actions.ts
 lib/actions/sales-order.actions.ts
 lib/actions/sales-return.actions.ts
+lib/actions/stock-catalog.actions.ts
 lib/actions/stock.actions.ts
 lib/actions/user-coop-assignment.actions.ts
 lib/actions/user.actions.ts
@@ -162,6 +169,7 @@ lib/db/queries/notification.queries.ts
 lib/db/queries/payment.queries.ts
 lib/db/queries/sales-order.queries.ts
 lib/db/queries/sales-return.queries.ts
+lib/db/queries/stock-catalog.queries.ts
 lib/db/queries/user-coop-assignment.queries.ts
 lib/db/queries/user.queries.ts
 lib/db/schema/alert-cooldowns.ts
@@ -170,12 +178,14 @@ lib/db/schema/coops.ts
 lib/db/schema/correction-records.ts
 lib/db/schema/customer-credits.ts
 lib/db/schema/customers.ts
+lib/db/schema/daily-egg-records.ts
+lib/db/schema/daily-feed-records.ts
 lib/db/schema/daily-records.ts
+lib/db/schema/daily-vaccine-records.ts
 lib/db/schema/flock-phases.ts
 lib/db/schema/flocks.ts
 lib/db/schema/index.ts
 lib/db/schema/inventory-movements.ts
-lib/db/schema/inventory-snapshots.ts
 lib/db/schema/invoices.ts
 lib/db/schema/notification-reads.ts
 lib/db/schema/notifications.ts
@@ -186,6 +196,8 @@ lib/db/schema/sales-orders.ts
 lib/db/schema/sales-return-items.ts
 lib/db/schema/sales-returns.ts
 lib/db/schema/stock-adjustments.ts
+lib/db/schema/stock-categories.ts
+lib/db/schema/stock-items.ts
 lib/db/schema/user-coop-assignments.ts
 lib/db/schema/users.ts
 lib/db/seed-sales.ts
@@ -216,6 +228,7 @@ lib/services/sales-order.service.test.ts
 lib/services/sales-order.service.ts
 lib/services/sales-return.service.test.ts
 lib/services/sales-return.service.ts
+lib/services/stock-catalog.service.ts
 lib/services/stock.service.test.ts
 lib/services/stock.service.ts
 lib/services/user.service.test.ts
@@ -321,57 +334,160 @@ import { FlockListClient } from '@/components/forms/flock-list-client'
 export default async function FlockPage()
 ````
 
-## File: app/(app)/produksi/input/page.tsx
+## File: app/(app)/laporan/page.tsx
 ````typescript
-import { getSession } from '@/lib/auth/get-session'
 import { redirect } from 'next/navigation'
-import { getFlockOptionsForInput } from '@/lib/services/daily-record.service'
-import { DailyInputForm } from '@/components/forms/daily-input-form'
+import { getSession } from '@/lib/auth/get-session'
+import { getAgingData } from '@/lib/services/invoice.service'
+import { KpiCard } from '@/components/ui/kpi-card'
 ⋮----
-export default async function ProduksiInputPage()
+function formatRupiah(n: number): string
+⋮----
+function formatDate(d: Date): string
+⋮----
+function getDaysOverdueStyle(bucket: string): React.CSSProperties
+⋮----
+// DB error — render empty state
+⋮----
+{/* Page header */}
+⋮----
+{/* KPI Row */}
+⋮----
+{/* Aging Table */}
+⋮----
+<td className="px-4 py-3 text-sm text-right" style=
+⋮----
+<td className="px-4 py-3 text-sm" style=
 ````
 
-## File: app/(app)/stok/page.tsx
+## File: app/(app)/penjualan/[id]/page.tsx
 ````typescript
-import { getSession } from '@/lib/auth/get-session'
 import { redirect } from 'next/navigation'
-import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
-import { getAllStockBalances } from '@/lib/db/queries/inventory.queries'
+import { getSession } from '@/lib/auth/get-session'
+import {
+  findSalesOrderById,
+  findSalesOrderItems,
+} from '@/lib/db/queries/sales-order.queries'
+import {
+  confirmSOAction,
+  cancelSOAction,
+  deleteDraftSOAction,
+  fulfillSOAction,
+} from '@/lib/actions/sales-order.actions'
+import { findSalesReturnsByOrderId } from '@/lib/db/queries/sales-return.queries'
+import { SOStatusBadge } from '@/components/ui/so-status-badge'
+import { Button } from '@/components/ui/button'
+⋮----
+async function confirmAction()
+async function cancelAction()
+async function deleteAction()
+async function fulfillAction()
+⋮----
+{/* SO Items */}
+⋮----
+{/* Sales Returns */}
+⋮----
+{/* Status Actions */}
+````
+
+## File: app/(app)/penjualan/[id]/return/new/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { findSalesOrderById, findSalesOrderItems } from '@/lib/db/queries/sales-order.queries'
+import { CreateReturnClient } from '@/components/forms/create-return-client'
+⋮----
+export default async function CreateReturnPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+})
+````
+
+## File: app/(app)/penjualan/invoices/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { listInvoices } from '@/lib/db/queries/invoice.queries'
+import { InvoiceStatusBadge } from '@/components/ui/invoice-status-badge'
+import { Button } from '@/components/ui/button'
+import type { Invoice } from '@/lib/db/schema'
+⋮----
+{/* Header */}
+⋮----
+{/* Status filter buttons */}
+⋮----
+{/* Table */}
+⋮----
+{/* Pagination */}
+````
+
+## File: app/(app)/penjualan/new/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { getAllCustomers } from '@/lib/services/customer.service'
+import { CreateSOClient } from '@/components/forms/create-so-client'
+⋮----
+export default async function CreateSOPage()
+````
+
+## File: app/(app)/penjualan/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { getSession } from '@/lib/auth/get-session'
+import { listSalesOrders } from '@/lib/db/queries/sales-order.queries'
+import { listSalesReturnsWithOrder } from '@/lib/db/queries/sales-return.queries'
+import { SOStatusBadge } from '@/components/ui/so-status-badge'
+import { Button } from '@/components/ui/button'
+⋮----
+// USED BY: [penjualan/page, return/[id]/page] — count: 2
+⋮----
+{/* Page header */}
+⋮----
+{/* Tab strip */}
+⋮----
+{/* SO Tab Content */}
+⋮----
+{/* SO Status Filter */}
+⋮----
+{/* SO Table */}
+⋮----
+{/* SO Pagination */}
+⋮----
+{/* Return Tab Content */}
+⋮----
+{/* Return Status Filter */}
+⋮----
+{/* Return Table */}
+⋮----
+{/* Return Pagination */}
 ````
 
-## File: app/(app)/stok/regrade/[id]/page.tsx
+## File: app/(app)/penjualan/return/[id]/page.tsx
 ````typescript
-import { getSession } from '@/lib/auth/get-session'
-import { redirect, notFound } from 'next/navigation'
-import { findRegradeRequestById } from '@/lib/db/queries/inventory.queries'
-import { approveRegradeRequestAction, rejectRegradeRequestAction } from '@/lib/actions/stock.actions'
-⋮----
-async function approve()
-⋮----
-async function reject()
-````
-
-## File: app/(app)/stok/regrade/page.tsx
-````typescript
-import { getSession } from '@/lib/auth/get-session'
 import { redirect } from 'next/navigation'
-import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
-import { findPendingRegradeRequests } from '@/lib/db/queries/inventory.queries'
-import { submitRegradeRequestAction } from '@/lib/actions/stock.actions'
-import Link from 'next/link'
-⋮----
-async function handleSubmit(formData: FormData)
-````
-
-## File: app/(app)/stok/sesuaikan/page.tsx
-````typescript
 import { getSession } from '@/lib/auth/get-session'
-import { redirect } from 'next/navigation'
-import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
-import { createStockAdjustmentAction } from '@/lib/actions/stock.actions'
+import {
+  findSalesReturnById,
+  findSalesReturnItems,
+} from '@/lib/db/queries/sales-return.queries'
+import { findSalesOrderById } from '@/lib/db/queries/sales-order.queries'
+import {
+  approveSalesReturnAction,
+  rejectSalesReturnAction,
+} from '@/lib/actions/sales-return.actions'
+import { Button } from '@/components/ui/button'
 ⋮----
-async function handleSubmit(formData: FormData)
+// USED BY: [penjualan/page, return/[id]/page] — count: 2
+⋮----
+async function approveAction()
+async function rejectAction()
+⋮----
+{/* Return Items */}
+⋮----
+{/* Admin Actions - only for pending returns */}
 ````
 
 ## File: app/(auth)/layout.tsx
@@ -391,30 +507,12 @@ import { Bird } from 'lucide-react'
 {/* Footer */}
 ````
 
-## File: app/globals.css
-````css
-@theme inline {
+## File: app/api/laporan/aging-csv/route.ts
+````typescript
+import { getSession } from '@/lib/auth/get-session'
+import { getAgingData } from '@/lib/services/invoice.service'
 ⋮----
-:root {
-⋮----
-/* LumichFlock design tokens */
-⋮----
-/* shadcn vars — mapped to LumichFlock tokens */
-⋮----
-@layer utilities {
-⋮----
-.shadow-lf-sm   { box-shadow: 0 1px 4px rgba(45,58,46,0.06), 0 2px 12px rgba(45,58,46,0.04); }
-.shadow-lf-md   { box-shadow: 0 2px 8px rgba(45,58,46,0.08), 0 8px 24px rgba(45,58,46,0.06); }
-.shadow-lf-btn  { box-shadow: 0 4px 12px rgba(122,173,212,0.35); }
-.shadow-lf-logo { box-shadow: 0 4px 16px rgba(122,173,212,0.35); }
-⋮----
-@layer base {
-⋮----
-* {
-body {
-html {
-⋮----
-@apply font-sans;
+export async function GET(): Promise<Response>
 ````
 
 ## File: app/page.tsx
@@ -557,6 +655,98 @@ interface Props {
 async function onSubmit(e: React.FormEvent)
 ````
 
+## File: components/forms/create-return-client.tsx
+````typescript
+// client: needs useState for form state
+⋮----
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createSalesReturnAction } from '@/lib/actions/sales-return.actions'
+import { Button } from '@/components/ui/button'
+import { ReturnItemRow } from '@/components/ui/return-item-row'
+import type { SalesOrderItem } from '@/lib/db/schema'
+⋮----
+type ReturnItem = {
+  itemType: 'egg_grade_a' | 'egg_grade_b' | 'flock' | 'other'
+  itemRefId?: string
+  quantity: number
+  unit: 'butir' | 'ekor' | 'unit'
+}
+⋮----
+type ReturnInput = {
+  returnDate: string
+  reasonType: 'wrong_grade' | 'damaged' | 'quantity_error' | 'other'
+  notes?: string
+  items: ReturnItem[]
+}
+⋮----
+interface Props {
+  orderId: string
+  soItems: SalesOrderItem[]
+}
+⋮----
+const addItem = (originalItem: SalesOrderItem) =>
+⋮----
+const updateItem = (index: number, field: keyof ReturnItem, value: unknown) =>
+⋮----
+const removeItem = (index: number) =>
+⋮----
+const handleSubmit = async (e: React.FormEvent) =>
+⋮----
+{/* Available SO items to add to return */}
+⋮----
+onQuantityChange=
+````
+
+## File: components/forms/create-so-client.tsx
+````typescript
+// client: needs useState, useEffect for sessionStorage draft persistence
+⋮----
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { createDraftSOAction } from '@/lib/actions/sales-order.actions'
+import { Button } from '@/components/ui/button'
+import { SOItemRow } from '@/components/ui/so-item-row'
+import { SOSummaryFooter } from '@/components/ui/so-summary-footer'
+import type { Customer } from '@/lib/db/schema'
+⋮----
+type SalesOrderItem = {
+  itemType: 'egg_grade_a' | 'egg_grade_b' | 'flock' | 'other'
+  itemRefId?: string
+  description?: string
+  quantity: number
+  unit: 'butir' | 'ekor' | 'unit'
+  pricePerUnit: number
+  discountPct: number
+}
+⋮----
+type DraftSO = {
+  customerId?: string
+  orderDate: string
+  paymentMethod: 'cash' | 'credit'
+  taxPct: number
+  notes?: string
+  overrideReason?: string
+  items: SalesOrderItem[]
+}
+⋮----
+interface Props {
+  customers: Customer[]
+  role: string
+}
+⋮----
+const addItem = () =>
+⋮----
+const updateItem = (index: number, field: keyof SalesOrderItem, value: unknown) =>
+⋮----
+const removeItem = (index: number) =>
+⋮----
+const handleSubmit = async (e: React.FormEvent) =>
+⋮----
+onPriceChange=
+onDiscountChange=
+````
+
 ## File: components/forms/create-user-form.tsx
 ````typescript
 // client: form state, submit handler, eye toggle
@@ -596,70 +786,6 @@ onSuccess=
 onClick=
 ⋮----
 onCancel=
-````
-
-## File: components/forms/daily-input-form.tsx
-````typescript
-// client: live auto-calc with useMemo + sessionStorage persistence
-⋮----
-import { useState, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
-import { createDailyRecordAction } from '@/lib/actions/daily-record.actions'
-import type { FlockOption } from '@/lib/services/daily-record.service'
-⋮----
-// USED BY: [daily-record.service, daily-input-form] — count: 2
-function calcHDP(a: number, b: number, pop: number)
-// USED BY: [daily-record.service, daily-input-form] — count: 2
-function calcFeedPerBird(feedKg: number, pop: number)
-// USED BY: [daily-record.service, daily-input-form] — count: 2
-function calcFCR(feedKg: number, a: number, b: number)
-⋮----
-type Props = {
-  flocks: FlockOption[]
-  userRole: 'operator' | 'supervisor' | 'admin'
-}
-⋮----
-type FormValues = {
-  flockId: string
-  recordDate: string
-  deaths: string
-  culled: string
-  eggsGradeA: string
-  eggsGradeB: string
-  eggsCracked: string
-  eggsAbnormal: string
-  avgWeightKg: string
-  feedKg: string
-}
-⋮----
-function todayUTC(): string
-⋮----
-function minDate(role: 'operator' | 'supervisor' | 'admin'): string
-⋮----
-function empty(flockId: string): FormValues
-⋮----
-/* eslint-disable react-hooks/set-state-in-effect */
-⋮----
-} catch { /* ignore */ }
-/* eslint-enable react-hooks/set-state-in-effect */
-⋮----
-function field(k: keyof FormValues)
-⋮----
-async function submitForm()
-⋮----
-function onSubmit(e: React.FormEvent<HTMLFormElement>)
-⋮----
-{/* Flock + Date */}
-⋮----
-max=
-⋮----
-{/* Depletion */}
-⋮----
-{/* Eggs */}
-⋮----
-{/* Feed + Weight */}
-⋮----
-{/* Auto-calc */}
 ````
 
 ## File: components/forms/edit-coop-form.tsx
@@ -879,6 +1005,13 @@ className=
 import { cn } from "@/lib/utils"
 ````
 
+## File: components/ui/invoice-status-badge.tsx
+````typescript
+import type { Invoice } from '@/lib/db/schema'
+⋮----
+export function InvoiceStatusBadge(
+````
+
 ## File: components/ui/kpi-card.tsx
 ````typescript
 import { cn } from '@/lib/utils'
@@ -904,6 +1037,19 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 ````
 
+## File: components/ui/return-item-row.tsx
+````typescript
+import type { SalesReturnItem } from '@/lib/db/schema'
+⋮----
+interface ReturnItemRowProps {
+  item: SalesReturnItem
+  index: number
+  originalQuantity?: number
+  onRemove?: (index: number) => void
+  onQuantityChange?: (index: number, quantity: number) => void
+}
+````
+
 ## File: components/ui/sheet.tsx
 ````typescript
 // client: uses Radix Sheet which requires focus trap and portal
@@ -914,6 +1060,41 @@ import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 ⋮----
 className=
+````
+
+## File: components/ui/so-item-row.tsx
+````typescript
+import type { SalesOrderItem } from '@/lib/db/schema'
+⋮----
+interface SOItemRowProps {
+  item: SalesOrderItem
+  index: number
+  onRemove?: (index: number) => void
+  onQuantityChange?: (index: number, quantity: number) => void
+  onPriceChange?: (index: number, price: number) => void
+  onDiscountChange?: (index: number, discount: number) => void
+}
+````
+
+## File: components/ui/so-status-badge.tsx
+````typescript
+import type { SalesOrder } from '@/lib/db/schema'
+⋮----
+interface SOStatusBadgeProps {
+  status: SalesOrder['status']
+}
+⋮----
+export function SOStatusBadge(
+````
+
+## File: components/ui/so-summary-footer.tsx
+````typescript
+interface SOSummaryFooterProps {
+  subtotal: number
+  taxPct: number
+  taxAmount: number
+  totalAmount: number
+}
 ````
 
 ## File: components/ui/sonner.tsx
@@ -941,17 +1122,6 @@ import { cn } from "@/lib/utils"
 ## File: drizzle.config.ts
 ````typescript
 import { defineConfig } from 'drizzle-kit'
-````
-
-## File: eslint.config.mjs
-````javascript
-// Override default ignores of eslint-config-next.
-⋮----
-// Default ignores of eslint-config-next:
-⋮----
-// Git worktrees created by superpowers:using-git-worktrees
-⋮----
-// Brainstorming canvas — not app code
 ````
 
 ## File: lib/actions/customer.actions.ts
@@ -1100,6 +1270,47 @@ export async function updateCoop(id: string, data: Partial<NewCoop>): Promise<Co
 export async function deleteCoop(id: string): Promise<void>
 ````
 
+## File: lib/db/queries/customer-credit.queries.ts
+````typescript
+import { db, DrizzleTx } from '@/lib/db'
+import { customerCredits } from '@/lib/db/schema'
+import { eq, sql, desc, and } from 'drizzle-orm'
+import type { CustomerCredit, NewCustomerCredit } from '@/lib/db/schema'
+⋮----
+export async function listCreditsByCustomer(customerId: string): Promise<CustomerCredit[]>
+⋮----
+export async function getAvailableCredit(customerId: string): Promise<number>
+⋮----
+export async function findCreditById(id: string, tx?: DrizzleTx): Promise<CustomerCredit | null>
+⋮----
+export async function createCustomerCredit(
+  credit: NewCustomerCredit,
+  tx?: DrizzleTx
+): Promise<void>
+⋮----
+export async function updateCreditUsedAmount(
+  creditId: string,
+  additionalUsed: number,
+  tx?: DrizzleTx
+): Promise<void>
+````
+
+## File: lib/db/queries/customer.queries.ts
+````typescript
+import { db } from '@/lib/db'
+import { customers } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
+import type { Customer, NewCustomer } from '@/lib/db/schema'
+⋮----
+export async function findCustomerById(id: string): Promise<Customer | null>
+⋮----
+export async function listCustomers(): Promise<Customer[]>
+⋮----
+export async function insertCustomer(data: NewCustomer): Promise<Customer>
+⋮----
+export async function updateCustomer(id: string, data: Partial<NewCustomer>): Promise<Customer | null>
+````
+
 ## File: lib/db/queries/flock-phase.queries.ts
 ````typescript
 import { db } from '@/lib/db'
@@ -1130,6 +1341,76 @@ export async function findFlockById(id: string): Promise<Flock | null>
 export async function insertFlock(data: NewFlock): Promise<Flock>
 ⋮----
 export async function updateFlock(id: string, data: Partial<NewFlock>): Promise<Flock | null>
+````
+
+## File: lib/db/queries/payment.queries.ts
+````typescript
+import { db, DrizzleTx } from '@/lib/db'
+import { payments } from '@/lib/db/schema'
+import { eq, sql, asc } from 'drizzle-orm'
+import type { Payment, NewPayment } from '@/lib/db/schema'
+⋮----
+export async function createPayment(payment: NewPayment, tx?: DrizzleTx): Promise<Payment>
+⋮----
+export async function listPaymentsByInvoice(invoiceId: string): Promise<Payment[]>
+⋮----
+export async function sumPaymentsByInvoice(invoiceId: string, tx?: DrizzleTx): Promise<number>
+````
+
+## File: lib/db/queries/sales-return.queries.ts
+````typescript
+import { db } from '@/lib/db'
+import { salesReturns, salesReturnItems, salesOrders, inventoryMovements, invoices, customerCredits } from '@/lib/db/schema'
+import { eq, desc, sql, count, getTableColumns } from 'drizzle-orm'
+import type { SalesReturn, SalesReturnItem, NewSalesReturn, NewSalesReturnItem, NewInventoryMovement, NewInvoice, NewCustomerCredit } from '@/lib/db/schema'
+⋮----
+export async function findSalesReturnById(id: string): Promise<SalesReturn | null>
+⋮----
+export async function findSalesReturnItems(returnId: string): Promise<SalesReturnItem[]>
+⋮----
+export async function countSalesReturnsThisMonth(prefix: string): Promise<number>
+⋮----
+export async function insertSalesReturnWithItems(
+  ret: NewSalesReturn,
+  items: Omit<NewSalesReturnItem, 'returnId'>[]
+): Promise<SalesReturn>
+⋮----
+export async function approveSalesReturnTx(
+  returnId: string,
+  userId: string,
+  movements: NewInventoryMovement[],
+  creditNoteInvoice: NewInvoice,
+  customerCredit: NewCustomerCredit
+): Promise<void>
+⋮----
+// Insert inventory movements
+⋮----
+// Insert credit note invoice
+⋮----
+// Insert customer credit with created invoice id
+⋮----
+// Update return status
+⋮----
+export async function rejectSalesReturn(
+  returnId: string,
+  userId: string
+): Promise<void>
+⋮----
+export async function findSalesReturnsByOrderId(orderId: string): Promise<SalesReturn[]>
+⋮----
+export type SalesReturnWithOrder = SalesReturn & { orderNumber: string | null }
+⋮----
+export async function listSalesReturnsWithOrder(
+  page: number = 1,
+  pageSize: number = 20,
+  status?: string
+): Promise<
+⋮----
+export async function listSalesReturns(
+  page: number = 1,
+  pageSize: number = 20,
+  status?: string
+): Promise<
 ````
 
 ## File: lib/db/queries/user-coop-assignment.queries.ts
@@ -1208,15 +1489,6 @@ export type FlockPhase = typeof flockPhases.$inferSelect
 export type NewFlockPhase = typeof flockPhases.$inferInsert
 ````
 
-## File: lib/db/schema/inventory-snapshots.ts
-````typescript
-import { pgTable, uuid, integer, date, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
-import { flocks } from './flocks'
-⋮----
-export type InventorySnapshot = typeof inventorySnapshots.$inferSelect
-export type NewInventorySnapshot = typeof inventorySnapshots.$inferInsert
-````
-
 ## File: lib/db/schema/notification-reads.ts
 ````typescript
 import { pgTable, uuid, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
@@ -1245,18 +1517,6 @@ export type Payment = typeof payments.$inferSelect
 export type NewPayment = typeof payments.$inferInsert
 ````
 
-## File: lib/db/schema/regrade-requests.ts
-````typescript
-import { pgTable, uuid, integer, date, timestamp, text } from 'drizzle-orm/pg-core'
-import { flocks } from './flocks'
-import { users } from './users'
-⋮----
-quantity: integer('quantity').notNull(), // always positive
-⋮----
-export type RegradeRequest = typeof regradeRequests.$inferSelect
-export type NewRegradeRequest = typeof regradeRequests.$inferInsert
-````
-
 ## File: lib/db/schema/sales-order-items.ts
 ````typescript
 import { pgTable, uuid, text, integer, numeric, pgEnum } from 'drizzle-orm/pg-core'
@@ -1264,6 +1524,16 @@ import { salesOrders } from './sales-orders'
 ⋮----
 export type SalesOrderItem = typeof salesOrderItems.$inferSelect
 export type NewSalesOrderItem = typeof salesOrderItems.$inferInsert
+````
+
+## File: lib/db/schema/sales-orders.ts
+````typescript
+import { pgTable, uuid, text, numeric, date, timestamp, pgEnum } from 'drizzle-orm/pg-core'
+import { customers } from './customers'
+import { users } from './users'
+⋮----
+export type SalesOrder = typeof salesOrders.$inferSelect
+export type NewSalesOrder = typeof salesOrders.$inferInsert
 ````
 
 ## File: lib/db/schema/sales-return-items.ts
@@ -1287,18 +1557,6 @@ export type SalesReturn = typeof salesReturns.$inferSelect
 export type NewSalesReturn = typeof salesReturns.$inferInsert
 ````
 
-## File: lib/db/schema/stock-adjustments.ts
-````typescript
-import { pgTable, uuid, integer, date, timestamp, text } from 'drizzle-orm/pg-core'
-import { flocks } from './flocks'
-import { users } from './users'
-⋮----
-quantity: integer('quantity').notNull(), // signed: positive = add, negative = remove
-⋮----
-export type StockAdjustment = typeof stockAdjustments.$inferSelect
-export type NewStockAdjustment = typeof stockAdjustments.$inferInsert
-````
-
 ## File: lib/db/schema/user-coop-assignments.ts
 ````typescript
 import { pgTable, uuid, timestamp, unique } from 'drizzle-orm/pg-core'
@@ -1317,12 +1575,19 @@ export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
 ````
 
-## File: lib/db/seed.ts
+## File: lib/db/seed-sales.ts
 ````typescript
 import { db } from './index'
-import { flockPhases } from './schema'
+import { customers, flocks, inventoryMovements } from './schema'
+import { eq, and } from 'drizzle-orm'
 ⋮----
-async function seed()
+async function seedSalesTestData()
+⋮----
+// Check if customers exist
+⋮----
+// Check if flock exists
+⋮----
+// Check if stock exists
 ````
 
 ## File: lib/mock/dashboard.mock.ts
@@ -1383,6 +1648,43 @@ export async function updateCoop(id: string, input: Partial<CreateCoopInput>): P
 export async function deactivateCoop(id: string): Promise<void>
 ⋮----
 export async function activateCoop(id: string): Promise<void>
+````
+
+## File: lib/services/customer.service.ts
+````typescript
+import {
+  listCustomers as findAllCustomers,
+  findCustomerById,
+  insertCustomer,
+  updateCustomer,
+} from '@/lib/db/queries/customer.queries'
+import type { Customer } from '@/lib/db/schema'
+⋮----
+type CreateCustomerInput = {
+  name: string
+  type?: 'retail' | 'wholesale' | 'distributor'
+  phone?: string
+  address?: string
+  creditLimit?: number
+  paymentTerms?: number
+  notes?: string
+  createdBy: string
+}
+⋮----
+export async function createCustomer(input: CreateCustomerInput): Promise<Customer>
+⋮----
+export async function getAllCustomers(): Promise<Customer[]>
+⋮----
+export async function getCustomerById(id: string): Promise<Customer | null>
+⋮----
+export async function updateCustomerById(
+  id: string,
+  input: Partial<Omit<CreateCustomerInput, 'createdBy'>>
+): Promise<Customer | null>
+⋮----
+export async function deactivateCustomer(id: string): Promise<void>
+⋮----
+export async function activateCustomer(id: string): Promise<void>
 ````
 
 ## File: lib/services/flock-phase.service.test.ts
@@ -1533,11 +1835,31 @@ import { twMerge } from "tailwind-merge"
 export function cn(...inputs: ClassValue[])
 ````
 
+## File: lib/utils/order-number.test.ts
+````typescript
+import { describe, it, expect, vi } from 'vitest'
+import { generateOrderNumber } from './order-number'
+````
+
+## File: lib/utils/order-number.ts
+````typescript
+// USED BY: [sales-order.service, sales-return.service, invoice creation] — count: 3+
+export function generateOrderNumber(
+  prefix: 'SO' | 'RTN' | 'INV' | 'RCP' | 'CN',
+  lastSeq: number
+): string
+````
+
 ## File: next.config.ts
 ````typescript
 import type { NextConfig } from "next";
 ⋮----
 /* config options here */
+````
+
+## File: playwright.config.ts
+````typescript
+import { defineConfig } from '@playwright/test';
 ````
 
 ## File: postcss.config.mjs
@@ -1663,65 +1985,6 @@ import { defineConfig } from 'vitest/config'
 import tsconfigPaths from 'vite-tsconfig-paths'
 ````
 
-## File: .gitignore
-````
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-!.env.example
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-# project-specific
-.worktrees/
-.superpowers/
-.env.local
-.scratch/
-.playwright-mcp/
-.claude/
-design/
-
-# superpowers
-docs/superpowers/*PORT=5555
-nohup.out
-````
-
 ## File: app/(app)/admin/import/import-panel.tsx
 ````typescript
 'use client' // client: file upload, multi-step state, CSV preview
@@ -1769,24 +2032,6 @@ import { ImportPanel } from './import-panel'
 export default async function ImportPage()
 ````
 
-## File: app/(app)/produksi/[id]/edit/edit-form.tsx
-````typescript
-'use client' // client: needs useState for error/success state and form submission
-⋮----
-import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
-import type { DailyRecord } from '@/lib/db/schema'
-import { updateDailyRecordAction } from '@/lib/actions/daily-record.actions'
-import { correctDailyRecordAction } from '@/lib/actions/lock-period.actions'
-⋮----
-type Props = {
-  record: DailyRecord
-  requireReason: boolean
-}
-⋮----
-function handleSubmit(e: React.FormEvent<HTMLFormElement>)
-````
-
 ## File: app/(app)/produksi/[id]/edit/page.tsx
 ````typescript
 import { getSession } from '@/lib/auth/get-session'
@@ -1802,15 +2047,94 @@ type Props = { params: Promise<{ id: string }> }
 // Non-admin, locked record → redirect away
 ````
 
-## File: app/(app)/produksi/page.tsx
+## File: app/(app)/produksi/flock-filter.tsx
+````typescript
+// client: needs onChange for URL navigation and derived coop/flock state
+⋮----
+import { useRouter, usePathname } from 'next/navigation'
+import { useState } from 'react'
+⋮----
+interface FlockOption {
+  id: string
+  name: string
+  coopId: string
+  coopName: string
+}
+⋮----
+interface Props {
+  flocks: FlockOption[]
+  selectedFlockId?: string
+  selectedCoopId?: string
+}
+⋮----
+export default function FlockFilter(
+⋮----
+function navigate(newCoopId: string, newFlockId: string)
+⋮----
+function handleCoopChange(e: React.ChangeEvent<HTMLSelectElement>)
+⋮----
+function handleFlockChange(e: React.ChangeEvent<HTMLSelectElement>)
+````
+
+## File: app/(app)/produksi/input/page.tsx
 ````typescript
 import { getSession } from '@/lib/auth/get-session'
 import { redirect } from 'next/navigation'
-import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
-import { findRecentDailyRecords } from '@/lib/db/queries/daily-record.queries'
+import { getFlockOptionsForInput } from '@/lib/services/daily-record.service'
+import { getActiveEggItems, getActiveFeedItems, getActiveVaccineItems } from '@/lib/services/stock-catalog.service'
+import { getAllStockBalances } from '@/lib/db/queries/inventory.queries'
+import { DailyInputForm } from '@/components/forms/daily-input-form'
+⋮----
+export default async function ProduksiInputPage()
+````
+
+## File: app/(app)/stok/beli/page.tsx
+````typescript
+import { getSession } from '@/lib/auth/get-session'
+import { redirect } from 'next/navigation'
+import { getCategoriesWithActiveItems } from '@/lib/services/stock-catalog.service'
+import { createStockPurchaseAction } from '@/lib/actions/stock.actions'
+import StockItemCascadeForm from '@/components/forms/stock-item-cascade-form'
+⋮----
+// Exclude Telur — eggs enter via production input, not purchase
+⋮----
+async function handleSubmit(formData: FormData)
+````
+
+## File: app/(app)/stok/regrade/[id]/page.tsx
+````typescript
+import { getSession } from '@/lib/auth/get-session'
+import { redirect, notFound } from 'next/navigation'
+import { findRegradeRequestById } from '@/lib/db/queries/inventory.queries'
+import { findItemById } from '@/lib/db/queries/stock-catalog.queries'
+import { approveRegradeRequestAction, rejectRegradeRequestAction } from '@/lib/actions/stock.actions'
+⋮----
+async function approve()
+⋮----
+async function reject()
+````
+
+## File: app/(app)/stok/regrade/page.tsx
+````typescript
+import { getSession } from '@/lib/auth/get-session'
+import { redirect } from 'next/navigation'
+import { getActiveEggItems } from '@/lib/services/stock-catalog.service'
+import { findPendingRegradeRequests } from '@/lib/db/queries/inventory.queries'
+import { submitRegradeRequestAction } from '@/lib/actions/stock.actions'
 import Link from 'next/link'
 ⋮----
-function isWithinLockWindow(recordDate: Date, now: Date, days: number): boolean
+async function handleSubmit(formData: FormData)
+````
+
+## File: app/(app)/stok/sesuaikan/page.tsx
+````typescript
+import { getSession } from '@/lib/auth/get-session'
+import { redirect } from 'next/navigation'
+import { getCategoriesWithActiveItems } from '@/lib/services/stock-catalog.service'
+import { createStockAdjustmentAction } from '@/lib/actions/stock.actions'
+import StockItemCascadeForm from '@/components/forms/stock-item-cascade-form'
+⋮----
+async function handleSubmit(formData: FormData)
 ````
 
 ## File: app/(auth)/logout/route.ts
@@ -1824,108 +2148,68 @@ export async function GET(request: NextRequest)
 // Use request origin so redirect works regardless of port (dev vs prod)
 ````
 
-## File: app/layout.tsx
-````typescript
-import type { Metadata } from "next"
-import { DM_Sans } from "next/font/google"
+## File: app/globals.css
+````css
+@theme inline {
 ⋮----
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>)
+:root {
+⋮----
+/* LumichFlock design tokens */
+⋮----
+/* shadcn vars — mapped to LumichFlock tokens */
+⋮----
+@layer utilities {
+⋮----
+.shadow-lf-sm   { box-shadow: 0 1px 4px rgba(45,58,46,0.06), 0 2px 12px rgba(45,58,46,0.04); }
+.shadow-lf-md   { box-shadow: 0 2px 8px rgba(45,58,46,0.08), 0 8px 24px rgba(45,58,46,0.06); }
+.shadow-lf-btn  { box-shadow: 0 4px 12px rgba(122,173,212,0.35); }
+.shadow-lf-logo { box-shadow: 0 4px 16px rgba(122,173,212,0.35); }
+.press-feedback {
+⋮----
+&:active { transform: scale(0.97); filter: brightness(0.93); }
+⋮----
+@layer base {
+⋮----
+* {
+body {
+html {
+⋮----
+@apply font-sans;
 ````
 
-## File: components/forms/create-return-client.tsx
+## File: components/forms/stock-item-cascade-form.tsx
 ````typescript
-// client: needs useState for form state
+// client: needs onChange to cascade category→item dropdown
 ⋮----
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createSalesReturnAction } from '@/lib/actions/sales-return.actions'
-import { Button } from '@/components/ui/button'
-import { ReturnItemRow } from '@/components/ui/return-item-row'
-import type { SalesOrderItem } from '@/lib/db/schema'
+import type { StockCategory, StockItem } from '@/lib/db/schema'
 ⋮----
-type ReturnItem = {
-  itemType: 'egg_grade_a' | 'egg_grade_b' | 'flock' | 'other'
-  itemRefId?: string
-  quantity: number
-  unit: 'butir' | 'ekor' | 'unit'
+type Props = {
+  categories: (StockCategory & { items?: StockItem[] })[]
+  action: (formData: FormData) => Promise<void>
+  extraFields?: React.ReactNode
+  submitLabel: string
 }
 ⋮----
-type ReturnInput = {
-  returnDate: string
-  reasonType: 'wrong_grade' | 'damaged' | 'quantity_error' | 'other'
-  notes?: string
-  items: ReturnItem[]
-}
-⋮----
-interface Props {
-  orderId: string
-  soItems: SalesOrderItem[]
-}
-⋮----
-const addItem = (originalItem: SalesOrderItem) =>
-⋮----
-const updateItem = (index: number, field: keyof ReturnItem, value: unknown) =>
-⋮----
-const removeItem = (index: number) =>
-⋮----
-const handleSubmit = async (e: React.FormEvent) =>
-⋮----
-{/* Available SO items to add to return */}
-⋮----
-onQuantityChange=
+export default function StockItemCascadeForm(
 ````
 
-## File: components/forms/create-so-client.tsx
+## File: components/providers/progress-bar.tsx
 ````typescript
-// client: needs useState, useEffect for sessionStorage draft persistence
+// client: needs usePathname + useState to detect navigation and show overlay
 ⋮----
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { createDraftSOAction } from '@/lib/actions/sales-order.actions'
-import { Button } from '@/components/ui/button'
-import { SOItemRow } from '@/components/ui/so-item-row'
-import { SOSummaryFooter } from '@/components/ui/so-summary-footer'
-import type { Customer } from '@/lib/db/schema'
+import { useEffect, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
 ⋮----
-type SalesOrderItem = {
-  itemType: 'egg_grade_a' | 'egg_grade_b' | 'flock' | 'other'
-  itemRefId?: string
-  description?: string
-  quantity: number
-  unit: 'butir' | 'ekor' | 'unit'
-  pricePerUnit: number
-  discountPct: number
-}
+export function ProgressBar()
 ⋮----
-type DraftSO = {
-  customerId?: string
-  orderDate: string
-  paymentMethod: 'cash' | 'credit'
-  taxPct: number
-  notes?: string
-  overrideReason?: string
-  items: SalesOrderItem[]
-}
+// track pending hide timeout so fast navigations don't flicker
 ⋮----
-interface Props {
-  customers: Customer[]
-  role: string
-}
+// pathname changed = navigation complete
 ⋮----
-const addItem = () =>
+// intercept link clicks to show overlay immediately
 ⋮----
-const updateItem = (index: number, field: keyof SalesOrderItem, value: unknown) =>
-⋮----
-const removeItem = (index: number) =>
-⋮----
-const handleSubmit = async (e: React.FormEvent) =>
-⋮----
-onPriceChange=
-onDiscountChange=
+function handleClick(e: MouseEvent)
 ````
 
 ## File: components/ui/button.tsx
@@ -1945,55 +2229,24 @@ export interface ButtonProps
 }
 ````
 
-## File: components/ui/charts/dashboard-charts.tsx
+## File: components/ui/charts/deaths-bar-chart.tsx
 ````typescript
-// client: dynamic ssr:false requires Client Component in Next.js 15
+// client: Recharts requires DOM APIs
 ⋮----
-import dynamic from 'next/dynamic'
-import type { DashboardChartPoint } from '@/lib/services/dashboard.service'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 ⋮----
-export function DashboardCharts(
+type DataPoint = { date: string; deaths: number }
 ````
 
-## File: components/ui/invoice-status-badge.tsx
-````typescript
-import type { Invoice } from '@/lib/db/schema'
+## File: eslint.config.mjs
+````javascript
+// Override default ignores of eslint-config-next.
 ⋮----
-export function InvoiceStatusBadge(
-````
-
-## File: components/ui/return-item-row.tsx
-````typescript
-import type { SalesReturnItem } from '@/lib/db/schema'
+// Default ignores of eslint-config-next:
 ⋮----
-interface ReturnItemRowProps {
-  item: SalesReturnItem
-  index: number
-  originalQuantity?: number
-  onRemove?: (index: number) => void
-  onQuantityChange?: (index: number, quantity: number) => void
-}
-````
-
-## File: components/ui/so-status-badge.tsx
-````typescript
-import type { SalesOrder } from '@/lib/db/schema'
+// Git worktrees created by superpowers:using-git-worktrees
 ⋮----
-interface SOStatusBadgeProps {
-  status: SalesOrder['status']
-}
-⋮----
-export function SOStatusBadge(
-````
-
-## File: components/ui/so-summary-footer.tsx
-````typescript
-interface SOSummaryFooterProps {
-  subtotal: number
-  taxPct: number
-  taxAmount: number
-  totalAmount: number
-}
+// Brainstorming canvas — not app code
 ````
 
 ## File: lib/actions/coop.actions.ts
@@ -2016,27 +2269,6 @@ export async function deactivateCoopAction(id: string): Promise<ActionResult>
 export async function activateCoopAction(id: string): Promise<ActionResult>
 ⋮----
 export async function getCoopsAction(): Promise<ActionResult<Awaited<ReturnType<typeof getAllCoops>>>>
-````
-
-## File: lib/actions/lock-period.actions.ts
-````typescript
-import { z } from 'zod'
-import { getSession } from '@/lib/auth/get-session'
-import { correctDailyRecord } from '@/lib/services/lock-period.service'
-import { findCorrectionsByEntity } from '@/lib/db/queries/correction-record.queries'
-import type { CorrectionRecordWithUser } from '@/lib/db/queries/correction-record.queries'
-⋮----
-type ActionResult<T = void> =
-  | { success: true; data: T }
-  | { success: false; error: string }
-⋮----
-export async function correctDailyRecordAction(
-  formData: FormData
-): Promise<ActionResult<
-⋮----
-export async function getCorrectionHistoryAction(
-  entityId: string
-): Promise<ActionResult<CorrectionRecordWithUser[]>>
 ````
 
 ## File: lib/actions/notification.actions.ts
@@ -2063,6 +2295,68 @@ export async function markNotificationReadAction(
 ): Promise<ActionResult>
 ⋮----
 export async function markAllNotificationsReadAction(): Promise<ActionResult>
+````
+
+## File: lib/actions/sales-order.actions.ts
+````typescript
+import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
+import { getSession } from '@/lib/auth/get-session'
+import { requireSupervisorOrAdmin } from '@/lib/auth/guards'
+import {
+  createDraftSO,
+  confirmSO,
+  cancelSO,
+  deleteDraftSO,
+  fulfillSO,
+} from '@/lib/services/sales-order.service'
+⋮----
+type ActionResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+⋮----
+export async function createDraftSOAction(formData: FormData): Promise<ActionResult<
+⋮----
+// Parse items array from FormData
+⋮----
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let items: any[] // any: raw JSON from FormData, validated by zod immediately after
+⋮----
+export async function confirmSOAction(orderId: string): Promise<ActionResult<undefined>>
+⋮----
+export async function cancelSOAction(orderId: string): Promise<ActionResult<undefined>>
+⋮----
+export async function deleteDraftSOAction(orderId: string): Promise<ActionResult<undefined>>
+⋮----
+export async function fulfillSOAction(orderId: string): Promise<ActionResult<undefined>>
+````
+
+## File: lib/actions/sales-return.actions.ts
+````typescript
+import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
+import { getSession } from '@/lib/auth/get-session'
+import { requireSupervisorOrAdmin, requireAdmin } from '@/lib/auth/guards'
+import {
+  createSalesReturn,
+  approveSalesReturn,
+  rejectSalesReturn,
+} from '@/lib/services/sales-return.service'
+⋮----
+type ActionResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+⋮----
+export async function createSalesReturnAction(formData: FormData): Promise<ActionResult<
+⋮----
+// Parse items array from FormData
+⋮----
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let items: any[] // any: raw JSON from FormData, validated by zod immediately after
+⋮----
+export async function approveSalesReturnAction(returnId: string): Promise<ActionResult<undefined>>
+⋮----
+export async function rejectSalesReturnAction(returnId: string): Promise<ActionResult<undefined>>
 ````
 
 ## File: lib/actions/user.actions.ts
@@ -2156,71 +2450,157 @@ export async function upsertCooldown(
 ): Promise<void>
 ````
 
-## File: lib/db/queries/customer.queries.ts
+## File: lib/db/queries/invoice.queries.ts
 ````typescript
-import { db } from '@/lib/db'
-import { customers } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
-import type { Customer, NewCustomer } from '@/lib/db/schema'
+import { db, DrizzleTx } from '@/lib/db'
+import { invoices, customers, salesOrders, payments, customerCredits } from '@/lib/db/schema'
+import { eq, and, asc, desc, count, getTableColumns, sql, inArray } from 'drizzle-orm'
+import type { Invoice, Customer, Payment, CustomerCredit } from '@/lib/db/schema'
 ⋮----
-export async function findCustomerById(id: string): Promise<Customer | null>
+export async function countInvoicesThisMonth(prefix: string): Promise<number>
 ⋮----
-export async function listCustomers(): Promise<Customer[]>
+export async function findInvoiceByOrderId(orderId: string): Promise<Invoice | null>
 ⋮----
-export async function insertCustomer(data: NewCustomer): Promise<Customer>
+export type InvoiceWithCustomer = Invoice & { customerName: string | null; orderNumber: string | null }
 ⋮----
-export async function updateCustomer(id: string, data: Partial<NewCustomer>): Promise<Customer | null>
+export type InvoiceDetails = Invoice & {
+  customer: Customer
+  orderNumber: string | null
+  payments: Payment[]
+  availableCredits: CustomerCredit[]
+}
+⋮----
+export type AgingBucket = '0-7' | '8-14' | '15-30' | '>30'
+⋮----
+export type AgingRow = {
+  invoiceId: string
+  invoiceNumber: string
+  customerId: string
+  customerName: string
+  issueDate: Date
+  dueDate: Date
+  totalAmount: number
+  paidAmount: number
+  outstanding: number
+  daysOverdue: number
+  bucket: AgingBucket
+}
+⋮----
+export async function listInvoices(
+  page: number = 1,
+  pageSize: number = 20,
+  status?: Invoice['status'],
+  customerId?: string
+): Promise<
+⋮----
+export async function getInvoiceWithDetails(id: string): Promise<InvoiceDetails | null>
+⋮----
+// Query 1: invoice + customer join + SO join
+⋮----
+// Query 2: all payments for this invoice
+⋮----
+// Query 3: available customer credits (amount > usedAmount)
+⋮----
+export async function updateInvoiceStatus(
+  id: string,
+  status: Invoice['status'],
+  tx?: DrizzleTx
+): Promise<void>
+⋮----
+export async function updateInvoicePaidAmount(
+  id: string,
+  paidAmount: number,
+  tx?: DrizzleTx
+): Promise<void>
+⋮----
+export async function getOverdueInvoices(): Promise<InvoiceWithCustomer[]>
+⋮----
+export async function updateInvoicePdfInfo(id: string, pdfUrl: string, pdfGeneratedAt: Date): Promise<void>
+⋮----
+export async function getAgingReport(): Promise<AgingRow[]>
 ````
 
-## File: lib/db/queries/dashboard.queries.ts
+## File: lib/db/queries/sales-order.queries.ts
 ````typescript
 import { db } from '@/lib/db'
-import { dailyRecords, flocks, inventoryMovements } from '@/lib/db/schema'
-import { desc, isNull, gte, and, sum, eq } from 'drizzle-orm'
-import type { DailyRecord } from '@/lib/db/schema'
+import { salesOrders, salesOrderItems, inventoryMovements, invoices, flocks, customers } from '@/lib/db/schema'
+import { eq, and, desc, sql, count, getTableColumns } from 'drizzle-orm'
+import type { SalesOrder, SalesOrderItem, NewSalesOrder, NewSalesOrderItem, NewInventoryMovement, NewInvoice } from '@/lib/db/schema'
 ⋮----
-export type DashboardRecord = Pick<
-  DailyRecord,
-  'id' | 'flockId' | 'recordDate' | 'deaths' | 'culled' | 'eggsGradeA' | 'eggsGradeB' | 'feedKg' | 'isLateInput'
->
+export type SalesOrderWithCustomer = SalesOrder & { customerName: string | null }
 ⋮----
-export async function getRecentDailyRecordsAcrossFlocks(limit: number): Promise<DashboardRecord[]>
+export async function findSalesOrderById(id: string): Promise<SalesOrderWithCustomer | null>
 ⋮----
-export type DailyAggRow = {
-  date: Date
-  totalEggsA: number
-  totalEggsB: number
-  totalDeaths: number
-  totalFeedKg: number
-}
+export async function findSalesOrderItems(orderId: string): Promise<SalesOrderItem[]>
 ⋮----
-export async function getDailyProductionAgg(days: number): Promise<DailyAggRow[]>
+export async function countSalesOrdersThisMonth(prefix: string): Promise<number>
 ⋮----
-export type FlockPopulationRow = {
-  flockId: string
-  initialCount: number
-  totalDeaths: number
-  totalCulled: number
-}
+// Use MAX on trailing seq to avoid collision when rows are deleted (COUNT would reuse numbers)
 ⋮----
-export async function getActiveFlockPopulations(): Promise<FlockPopulationRow[]>
+export async function insertSalesOrderWithItems(
+  order: NewSalesOrder,
+  items: Omit<NewSalesOrderItem, 'orderId'>[]
+): Promise<SalesOrder>
 ⋮----
-export type StockSummaryRow = {
-  totalGradeA: number
-  totalGradeB: number
-}
+export async function updateSalesOrderStatus(
+  id: string,
+  status: 'draft' | 'confirmed' | 'fulfilled' | 'cancelled',
+  updatedBy: string
+): Promise<void>
 ⋮----
-export async function getStockSummary(): Promise<StockSummaryRow>
+export async function deleteDraftSO(id: string): Promise<void>
+⋮----
+export async function fulfillSOTx(
+  orderId: string,
+  userId: string,
+  movements: NewInventoryMovement[],
+  invoice: NewInvoice,
+  flockUpdates: { flockId: string; retiredAt: Date }[]
+): Promise<void>
+⋮----
+// Check stock for each movement that has a stockItemId
+⋮----
+// Update SO status
+⋮----
+// Insert inventory movements
+⋮----
+// Insert invoice
+⋮----
+// Update flock status for flock items
+⋮----
+export async function getCustomerOutstandingCredit(customerId: string): Promise<number>
+⋮----
+export async function listSalesOrders(
+  page: number = 1,
+  pageSize: number = 20,
+  status?: string
+): Promise<
 ````
 
-## File: lib/db/schema/daily-records.ts
+## File: lib/db/queries/stock-catalog.queries.ts
 ````typescript
-import { pgTable, uuid, integer, date, timestamp, boolean, numeric, uniqueIndex } from 'drizzle-orm/pg-core'
-import { flocks } from './flocks'
-import { users } from './users'
+import { db } from '@/lib/db'
+import { stockCategories, stockItems } from '@/lib/db/schema'
+import { eq, and } from 'drizzle-orm'
+import type { StockCategory, StockItem, NewStockCategory, NewStockItem } from '@/lib/db/schema'
 ⋮----
-export type DailyRecord = typeof dailyRecords.$inferSelect
-export type NewDailyRecord = typeof dailyRecords.$inferInsert
+export async function findAllCategories(): Promise<StockCategory[]>
+⋮----
+export async function findCategoryById(id: string): Promise<StockCategory | null>
+⋮----
+export async function findCategoryByName(name: string): Promise<StockCategory | null>
+⋮----
+export async function findItemsByCategory(categoryId: string): Promise<StockItem[]>
+⋮----
+export async function findActiveItemsByCategory(categoryId: string): Promise<StockItem[]>
+⋮----
+export async function findItemById(id: string): Promise<StockItem | null>
+⋮----
+export async function insertCategory(data: NewStockCategory): Promise<StockCategory>
+⋮----
+export async function insertStockItem(data: NewStockItem): Promise<StockItem>
+⋮----
+export async function updateStockItemActive(id: string, isActive: boolean): Promise<void>
 ````
 
 ## File: lib/db/schema/flocks.ts
@@ -2231,21 +2611,6 @@ import { users } from './users'
 ⋮----
 export type Flock = typeof flocks.$inferSelect
 export type NewFlock = typeof flocks.$inferInsert
-````
-
-## File: lib/db/schema/index.ts
-````typescript
-
-````
-
-## File: lib/db/schema/inventory-movements.ts
-````typescript
-import { pgTable, uuid, integer, date, timestamp, text, pgEnum, boolean } from 'drizzle-orm/pg-core'
-import { flocks } from './flocks'
-import { users } from './users'
-⋮----
-export type InventoryMovement = typeof inventoryMovements.$inferSelect
-export type NewInventoryMovement = typeof inventoryMovements.$inferInsert
 ````
 
 ## File: lib/db/schema/invoices.ts
@@ -2260,29 +2625,33 @@ export type Invoice = typeof invoices.$inferSelect
 export type NewInvoice = typeof invoices.$inferInsert
 ````
 
-## File: lib/db/schema/sales-orders.ts
+## File: lib/db/schema/regrade-requests.ts
 ````typescript
-import { pgTable, uuid, text, numeric, date, timestamp, pgEnum } from 'drizzle-orm/pg-core'
-import { customers } from './customers'
+import { pgTable, uuid, integer, date, timestamp, text, pgEnum } from 'drizzle-orm/pg-core'
+import { stockItems } from './stock-items'
 import { users } from './users'
 ⋮----
-export type SalesOrder = typeof salesOrders.$inferSelect
-export type NewSalesOrder = typeof salesOrders.$inferInsert
+export type RegradeRequest = typeof regradeRequests.$inferSelect
+export type NewRegradeRequest = typeof regradeRequests.$inferInsert
 ````
 
-## File: lib/db/seed-sales.ts
+## File: lib/db/schema/stock-adjustments.ts
+````typescript
+import { pgTable, uuid, integer, date, timestamp, text } from 'drizzle-orm/pg-core'
+import { stockItems } from './stock-items'
+import { flocks } from './flocks'
+import { users } from './users'
+⋮----
+export type StockAdjustment = typeof stockAdjustments.$inferSelect
+export type NewStockAdjustment = typeof stockAdjustments.$inferInsert
+````
+
+## File: lib/db/seed.ts
 ````typescript
 import { db } from './index'
-import { customers, flocks, inventoryMovements } from './schema'
-import { eq, and } from 'drizzle-orm'
+import { flockPhases, stockCategories, stockItems } from './schema'
 ⋮----
-async function seedSalesTestData()
-⋮----
-// Check if customers exist
-⋮----
-// Check if flock exists
-⋮----
-// Check if stock exists
+async function seed()
 ````
 
 ## File: lib/services/app-settings.service.ts
@@ -2303,88 +2672,24 @@ import { createCustomer, deactivateCustomer } from './customer.service'
 vi.mocked(customerQueries.updateCustomer).mockResolvedValue({ id: 'cust-1', status: 'inactive' } as any) // any: partial Customer for mock
 ````
 
-## File: lib/services/customer.service.ts
+## File: lib/services/invoice.service.test.ts
 ````typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+⋮----
+// Mock db.transaction to immediately invoke callback with a mock tx that has insert
+⋮----
+import { db } from '@/lib/db'
 import {
-  listCustomers as findAllCustomers,
-  findCustomerById,
-  insertCustomer,
-  updateCustomer,
-} from '@/lib/db/queries/customer.queries'
-import type { Customer } from '@/lib/db/schema'
+  getInvoiceDetails,
+  recordPayment,
+  applyCredit,
+  getAgingData,
+  getInvoiceForPdf,
+} from './invoice.service'
 ⋮----
-type CreateCustomerInput = {
-  name: string
-  type?: 'retail' | 'wholesale' | 'distributor'
-  phone?: string
-  address?: string
-  creditLimit?: number
-  paymentTerms?: number
-  notes?: string
-  createdBy: string
-}
+vi.mocked(notificationQueries.createNotification).mockResolvedValue(undefined as any) // any: mock doesn't need full Notification shape
 ⋮----
-export async function createCustomer(input: CreateCustomerInput): Promise<Customer>
-⋮----
-export async function getAllCustomers(): Promise<Customer[]>
-⋮----
-export async function getCustomerById(id: string): Promise<Customer | null>
-⋮----
-export async function updateCustomerById(
-  id: string,
-  input: Partial<Omit<CreateCustomerInput, 'createdBy'>>
-): Promise<Customer | null>
-⋮----
-export async function deactivateCustomer(id: string): Promise<void>
-⋮----
-export async function activateCustomer(id: string): Promise<void>
-````
-
-## File: lib/services/dashboard.service.ts
-````typescript
-import {
-  getRecentDailyRecordsAcrossFlocks,
-  getDailyProductionAgg,
-  getActiveFlockPopulations,
-  getStockSummary,
-  type DashboardRecord,
-  type DailyAggRow,
-} from '@/lib/db/queries/dashboard.queries'
-import { computeHDP, computeFCR, computeFeedPerBird } from './daily-record.service'
-⋮----
-export type DashboardKpis = {
-  hdpPercent: number
-  fcr7Day: number
-  productionToday: number
-  stockReadyToSell: number
-  activePopulation: number
-  feedPerBirdGrams: number
-}
-⋮----
-export type DashboardChartPoint = {
-  date: string
-  hdp: number
-  fcr: number
-  gradeA: number
-  gradeB: number
-  cumulativeDepletion: number
-}
-⋮----
-export type DashboardRecentRecord = {
-  date: string
-  gradeA: number
-  gradeB: number
-  deaths: number
-  feedKg: number
-  fcr: number
-  isLate: boolean
-}
-⋮----
-export async function getDashboardKpis(): Promise<DashboardKpis>
-⋮----
-export async function getProductionChartData(days: number = 30): Promise<DashboardChartPoint[]>
-⋮----
-export async function getRecentDashboardRecords(limit: number = 7): Promise<DashboardRecentRecord[]>
+// Verify query-layer functions were called for customerCredit and notification
 ````
 
 ## File: lib/services/lock-period.service.test.ts
@@ -2396,97 +2701,67 @@ import { canEdit, assertCanEdit, isLocked } from './lock-period.service'
 function daysAgo(n: number): Date
 ````
 
-## File: lib/services/lock-period.service.ts
+## File: lib/services/sales-return.service.test.ts
 ````typescript
-/**
- * Lock Period Service — Sprint 8
- * Enforces edit windows per role and creates correction_records for admin edits past lock.
- *
- * Rules (from PRD Section 6.5):
- *   Operator  → H+1 from record_date
- *   Supervisor→ H+7 from record_date
- *   Admin     → unlimited
- *
- * When admin edits a locked record → must supply reason → creates correction_record.
- * Old value is preserved; no overwrite without audit trail.
- */
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 ⋮----
-import { db } from '@/lib/db'
-import { dailyRecords, inventoryMovements } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
-import { insertCorrectionRecord } from '@/lib/db/queries/correction-record.queries'
-import type { CorrectionRecord } from '@/lib/db/schema'
+import {
+  createSalesReturn,
+  approveSalesReturn,
+  rejectSalesReturn,
+} from './sales-return.service'
 ⋮----
-type Role = 'operator' | 'supervisor' | 'admin'
+type CreateReturnInput = {
+  orderId: string
+  returnDate: Date
+  reasonType: 'wrong_grade' | 'damaged' | 'quantity_error' | 'other'
+  items: Array<{
+    itemType: 'egg_grade_a' | 'egg_grade_b' | 'flock' | 'other'
+    itemRefId?: string
+    quantity: number
+    unit: 'butir' | 'ekor' | 'unit'
+  }>
+  notes?: string
+}
+````
+
+## File: lib/services/sales-return.service.ts
+````typescript
+import { generateOrderNumber } from '@/lib/utils/order-number'
+import type { NewSalesReturn, NewSalesReturnItem, NewInventoryMovement, NewInvoice, NewCustomerCredit } from '@/lib/db/schema'
 ⋮----
-/**
- * Returns true if the given role can edit a record with the given record_date at `now`.
- */
-export function canEdit(recordDate: Date, role: Role, now: Date = new Date()): boolean
-⋮----
-const limit = role === 'operator' ? 1 : 7 // supervisor = H+7
-⋮----
-/**
- * Throws if the role cannot edit this record date.
- * Admin always passes (no throw).
- */
-export function assertCanEdit(recordDate: Date, role: Role, now: Date = new Date()): void
-⋮----
-/**
- * Checks whether a record is in a locked state for a given role.
- * Admins editing a locked record must supply a reason and the result will
- * create correction_records.
- */
-export function isLocked(recordDate: Date, role: Role, now: Date = new Date()): boolean
-⋮----
-// ─── daily_record correction ──────────────────────────────────────────────────
-⋮----
-type DailyRecordPatch = {
-  deaths?: number
-  culled?: number
-  eggsGradeA?: number
-  eggsGradeB?: number
-  eggsCracked?: number
-  eggsAbnormal?: number
-  avgWeightKg?: number | null
-  feedKg?: number | null
+type CreateReturnInput = {
+  orderId: string
+  returnDate: Date
+  reasonType: 'wrong_grade' | 'damaged' | 'quantity_error' | 'other'
+  items: Array<{
+    itemType: 'egg_grade_a' | 'egg_grade_b' | 'flock' | 'other'
+    itemRefId?: string
+    quantity: number
+    unit: 'butir' | 'ekor' | 'unit'
+  }>
+  notes?: string
 }
 ⋮----
-/**
- * Admin-only: apply corrections to a daily_record past lock window.
- * Creates one correction_record per changed field.
- * If eggsGradeA or eggsGradeB changes, creates compensating inventory_movements.
- */
-export async function correctDailyRecord(
-  recordId: string,
-  patch: DailyRecordPatch,
-  reason: string,
-  adminId: string
-): Promise<CorrectionRecord[]>
+export async function createSalesReturn(input: CreateReturnInput, userId: string, role: string)
 ⋮----
-// Build update set
+// Validate return quantities don't exceed original SO quantities
 ⋮----
-// Compensating inventory movements for egg grade changes
-````
-
-## File: lib/utils/order-number.test.ts
-````typescript
-import { describe, it, expect, vi } from 'vitest'
-import { generateOrderNumber } from './order-number'
-````
-
-## File: lib/utils/order-number.ts
-````typescript
-// USED BY: [sales-order.service, sales-return.service, invoice creation] — count: 3+
-export function generateOrderNumber(
-  prefix: 'SO' | 'RTN' | 'INV' | 'RCP' | 'CN',
-  lastSeq: number
-): string
-````
-
-## File: playwright.config.ts
-````typescript
-import { defineConfig } from '@playwright/test';
+// Generate return number
+⋮----
+export async function approveSalesReturn(returnId: string, userId: string, role: string)
+⋮----
+// Calculate credit amount: sum returnQty * pricePerUnit * (1 - discount/100) per item
+⋮----
+// Build inventory movements (IN) for egg return items only
+⋮----
+// Generate credit note invoice number
+⋮----
+// Build customer credit entry
+⋮----
+sourceInvoiceId: '', // will be overwritten in tx with actual invoice id
+⋮----
+export async function rejectSalesReturn(returnId: string, userId: string, role: string)
 ````
 
 ## File: repomix.config.json
@@ -2556,10 +2831,65 @@ async function main()
 // Output JSON for easy parsing
 ````
 
-## File: app/(app)/admin/page.tsx
-````typescript
-import Link from 'next/link'
-import { Users, Home, ShoppingBag, Settings, MessageSquare, Bell, Upload } from 'lucide-react'
+## File: .gitignore
+````
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# project-specific
+.worktrees/
+.superpowers/
+.env.local
+.scratch/
+.playwright-mcp/
+.claude/
+design/
+
+# superpowers
+docs/superpowers/*PORT=5555
+nohup.out
+PORT=5555
+nohup.out
 ````
 
 ## File: app/(app)/admin/settings/wa-template/page.tsx
@@ -2584,142 +2914,57 @@ async function handleSaveTemplate(formData: FormData)
 {/* Preview */}
 ````
 
-## File: app/(app)/laporan/page.tsx
+## File: app/(app)/admin/stok-katalog/page.tsx
 ````typescript
-import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/get-session'
-import { getAgingData } from '@/lib/services/invoice.service'
-import { KpiCard } from '@/components/ui/kpi-card'
+import { redirect } from 'next/navigation'
+import { getCategories } from '@/lib/services/stock-catalog.service'
+import { findItemsByCategory } from '@/lib/db/queries/stock-catalog.queries'
+import { createCategoryAction, createStockItemAction, toggleStockItemActiveAction } from '@/lib/actions/stock-catalog.actions'
 ⋮----
-function formatRupiah(n: number): string
+async function handleCreateCategory(formData: FormData)
 ⋮----
-function formatDate(d: Date): string
+async function handleCreateItem(formData: FormData)
 ⋮----
-function getDaysOverdueStyle(bucket: string): React.CSSProperties
+{/* Category list */}
 ⋮----
-// DB error — render empty state
+async function handleToggle()
 ⋮----
-{/* Page header */}
-⋮----
-{/* KPI Row */}
-⋮----
-{/* Aging Table */}
-⋮----
-<td className="px-4 py-3 text-sm text-right" style=
-⋮----
-<td className="px-4 py-3 text-sm" style=
+{/* Add category */}
 ````
 
-## File: app/(app)/penjualan/[id]/page.tsx
+## File: app/(app)/produksi/[id]/edit/edit-form.tsx
 ````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import {
-  findSalesOrderById,
-  findSalesOrderItems,
-} from '@/lib/db/queries/sales-order.queries'
-import {
-  confirmSOAction,
-  cancelSOAction,
-  deleteDraftSOAction,
-  fulfillSOAction,
-} from '@/lib/actions/sales-order.actions'
-import { findSalesReturnsByOrderId } from '@/lib/db/queries/sales-return.queries'
-import { SOStatusBadge } from '@/components/ui/so-status-badge'
-import { Button } from '@/components/ui/button'
+'use client' // client: needs useState for error/success state and form submission
 ⋮----
-async function confirmAction()
-async function cancelAction()
-async function deleteAction()
-async function fulfillAction()
+import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import type { DailyRecord } from '@/lib/db/schema'
+import { saveDailyRecordAction } from '@/lib/actions/daily-record.actions'
+import { correctDailyRecordAction } from '@/lib/actions/lock-period.actions'
 ⋮----
-{/* SO Items */}
+type Props = {
+  record: DailyRecord
+  requireReason: boolean
+}
 ⋮----
-{/* Sales Returns */}
+function handleSubmit(e: React.FormEvent<HTMLFormElement>)
 ⋮----
-{/* Status Actions */}
+<input type="number" min=
 ````
 
-## File: app/(app)/penjualan/[id]/return/new/page.tsx
+## File: app/(app)/stok/page.tsx
 ````typescript
-import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/get-session'
-import { findSalesOrderById, findSalesOrderItems } from '@/lib/db/queries/sales-order.queries'
-import { CreateReturnClient } from '@/components/forms/create-return-client'
-⋮----
-export default async function CreateReturnPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-})
-````
-
-## File: app/(app)/penjualan/new/page.tsx
-````typescript
 import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { getAllCustomers } from '@/lib/services/customer.service'
-import { CreateSOClient } from '@/components/forms/create-so-client'
-⋮----
-export default async function CreateSOPage()
-````
-
-## File: app/(app)/penjualan/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
+import { getAllStockBalances } from '@/lib/db/queries/inventory.queries'
+import { getCategories } from '@/lib/services/stock-catalog.service'
 import Link from 'next/link'
-import { getSession } from '@/lib/auth/get-session'
-import { listSalesOrders } from '@/lib/db/queries/sales-order.queries'
-import { listSalesReturnsWithOrder } from '@/lib/db/queries/sales-return.queries'
-import { SOStatusBadge } from '@/components/ui/so-status-badge'
-import { Button } from '@/components/ui/button'
-⋮----
-// USED BY: [penjualan/page, return/[id]/page] — count: 2
-⋮----
-{/* Page header */}
+import type { StockBalance } from '@/lib/db/queries/inventory.queries'
 ⋮----
 {/* Tab strip */}
 ⋮----
-{/* SO Tab Content */}
-⋮----
-{/* SO Status Filter */}
-⋮----
-{/* SO Table */}
-⋮----
-{/* SO Pagination */}
-⋮----
-{/* Return Tab Content */}
-⋮----
-{/* Return Status Filter */}
-⋮----
-{/* Return Table */}
-⋮----
-{/* Return Pagination */}
-````
-
-## File: app/(app)/penjualan/return/[id]/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import {
-  findSalesReturnById,
-  findSalesReturnItems,
-} from '@/lib/db/queries/sales-return.queries'
-import { findSalesOrderById } from '@/lib/db/queries/sales-order.queries'
-import {
-  approveSalesReturnAction,
-  rejectSalesReturnAction,
-} from '@/lib/actions/sales-return.actions'
-import { Button } from '@/components/ui/button'
-⋮----
-// USED BY: [penjualan/page, return/[id]/page] — count: 2
-⋮----
-async function approveAction()
-async function rejectAction()
-⋮----
-{/* Return Items */}
-⋮----
-{/* Admin Actions - only for pending returns */}
+{/* Balance list */}
 ````
 
 ## File: app/api/alerts/run/route.ts
@@ -2737,25 +2982,63 @@ export async function POST(request: Request): Promise<Response>
 // Secret not configured — fail closed (don't allow requests through)
 ````
 
-## File: app/api/laporan/aging-csv/route.ts
+## File: app/layout.tsx
 ````typescript
-import { getSession } from '@/lib/auth/get-session'
-import { getAgingData } from '@/lib/services/invoice.service'
+import type { Metadata } from "next"
+import { DM_Sans } from "next/font/google"
 ⋮----
-export async function GET(): Promise<Response>
+import { ProgressBar } from '@/components/providers/progress-bar'
+⋮----
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>)
 ````
 
-## File: app/api/laporan/produksi-csv/route.ts
+## File: components/forms/daily-input-form.tsx
 ````typescript
-import { getSession } from '@/lib/auth/get-session'
-import { getProductionReportData } from '@/lib/services/daily-record.service'
-import type { Role, ProductionReportResult } from '@/lib/services/daily-record.service'
+// client: tabs, dynamic state, sessionStorage persistence
 ⋮----
-function parseSafeDate(str: string | null, fallback: Date): Date
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { saveDailyRecordAction } from '@/lib/actions/daily-record.actions'
+import type { FlockOption } from '@/lib/services/daily-record.service'
+import type { StockItem } from '@/lib/db/schema'
 ⋮----
-function escapeField(value: string): string
+type StockItemWithBalance = StockItem & { balance: number }
 ⋮----
-export async function GET(request: Request): Promise<Response>
+type Props = {
+  flocks: FlockOption[]
+  userRole: 'operator' | 'supervisor' | 'admin'
+  eggItems: StockItem[]
+  feedItems: StockItemWithBalance[]
+  vaccineItems: StockItemWithBalance[]
+}
+⋮----
+type EggEntry = { stockItemId: string; qtyButir: number; qtyKg: number }
+type FeedEntry = { stockItemId: string; qtyUsed: number }
+⋮----
+function todayUTC(): string
+⋮----
+function minDate(role: 'operator' | 'supervisor' | 'admin'): string
+⋮----
+type TabKey = typeof TABS[number]['key']
+⋮----
+function updateEggButir(idx: number, val: number)
+function updateEggKg(idx: number, val: number)
+function updateFeed(idx: number, val: number)
+function updateVaccine(idx: number, val: number)
+⋮----
+async function submitForm()
+⋮----
+{/* Header: Flock + Date */}
+⋮----
+{/* Tab strip */}
+⋮----
+onChange=
+⋮----
+{/* Also track waste metrics (hidden from tabs but included in Ayam tab context) */}
 ````
 
 ## File: components/forms/login-form.tsx
@@ -2804,87 +3087,75 @@ export function AppShell({
 })
 ````
 
-## File: components/ui/so-item-row.tsx
+## File: components/ui/charts/dashboard-charts.tsx
 ````typescript
-import type { SalesOrderItem } from '@/lib/db/schema'
+// client: dynamic ssr:false requires Client Component in Next.js 15
 ⋮----
-interface SOItemRowProps {
-  item: SalesOrderItem
-  index: number
-  onRemove?: (index: number) => void
-  onQuantityChange?: (index: number, quantity: number) => void
-  onPriceChange?: (index: number, price: number) => void
-  onDiscountChange?: (index: number, discount: number) => void
-}
+import dynamic from 'next/dynamic'
+import type { DashboardChartPoint } from '@/lib/services/dashboard.service'
+⋮----
+export function DashboardCharts(
 ````
 
-## File: lib/actions/daily-record.actions.ts
+## File: lib/actions/lock-period.actions.ts
 ````typescript
 import { z } from 'zod'
 import { getSession } from '@/lib/auth/get-session'
-import { requireAuth } from '@/lib/auth/guards'
-import { createDailyRecord, getFlockOptionsForInput, updateDailyRecord } from '@/lib/services/daily-record.service'
-import { findAssignedCoopIds } from '@/lib/db/queries/user-coop-assignment.queries'
-import { findFlockById } from '@/lib/db/queries/flock.queries'
+import { correctDailyRecord } from '@/lib/services/lock-period.service'
+import { findCorrectionsByEntity } from '@/lib/db/queries/correction-record.queries'
+import type { CorrectionRecordWithUser } from '@/lib/db/queries/correction-record.queries'
 ⋮----
 type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: false; error: string }
 ⋮----
-async function assertCoopAccess(userId: string, role: string, flockId: string): Promise<
-⋮----
-if (role !== 'operator') return null // supervisor + admin can access all coops
-⋮----
-export async function createDailyRecordAction(
+export async function correctDailyRecordAction(
   formData: FormData
 ): Promise<ActionResult<
 ⋮----
-flockId: z.string().uuid().optional(), // needed for coop scope check
-⋮----
-export async function updateDailyRecordAction(
-  formData: FormData
-): Promise<ActionResult<
-⋮----
-export async function getFlockOptionsForInputAction(): Promise<ActionResult<import('@/lib/services/daily-record.service').FlockOption[]>>
+export async function getCorrectionHistoryAction(
+  entityId: string
+): Promise<ActionResult<CorrectionRecordWithUser[]>>
 ````
 
-## File: lib/actions/stock.actions.ts
+## File: lib/actions/stock-catalog.actions.ts
 ````typescript
 import { z } from 'zod'
-import { getSession } from '@/lib/auth/get-session'
-import { requireSupervisorOrAdmin, requireAdmin } from '@/lib/auth/guards'
+import { requireAdmin } from '@/lib/auth/guards'
 import {
-  getStockBalance,
-  createStockAdjustment,
-  submitRegradeRequest,
-  approveRegradeRequest,
-  rejectRegradeRequest,
-} from '@/lib/services/stock.service'
+  createCategory,
+  createStockItem,
+  toggleStockItemActive,
+} from '@/lib/services/stock-catalog.service'
 ⋮----
 type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: false; error: string }
 ⋮----
-export async function getStockBalanceAction(
-  flockId: string,
-  grade: 'A' | 'B'
-): Promise<ActionResult<number>>
-⋮----
-export async function createStockAdjustmentAction(
+export async function createCategoryAction(
   formData: FormData
 ): Promise<ActionResult<
 ⋮----
-export async function submitRegradeRequestAction(
+export async function createStockItemAction(
   formData: FormData
 ): Promise<ActionResult<
 ⋮----
-export async function approveRegradeRequestAction(
-  requestId: string
+export async function toggleStockItemActiveAction(
+  itemId: string
 ): Promise<ActionResult>
+````
+
+## File: lib/db/index.ts
+````typescript
+import { drizzle } from 'drizzle-orm/postgres-js'
+import postgres from 'postgres'
 ⋮----
-export async function rejectRegradeRequestAction(
-  requestId: string
-): Promise<ActionResult>
+prepare: false,      // safer with Supabase pooler (both session + transaction mode)
+max: 3,              // allow a few concurrent connections on free-tier pool
+idle_timeout: 20,    // release idle connections after 20s (avoids stale conn on hot reload)
+connect_timeout: 10, // fail fast instead of hanging indefinitely
+⋮----
+export type DrizzleTx = Parameters<Parameters<(typeof db)['transaction']>[0]>[0]
 ````
 
 ## File: lib/db/queries/correction-record.queries.ts
@@ -2909,484 +3180,31 @@ export async function findCorrectionsByEntity(
 ): Promise<CorrectionRecordWithUser[]>
 ````
 
-## File: lib/db/queries/payment.queries.ts
-````typescript
-import { db, DrizzleTx } from '@/lib/db'
-import { payments } from '@/lib/db/schema'
-import { eq, sql, asc } from 'drizzle-orm'
-import type { Payment, NewPayment } from '@/lib/db/schema'
-⋮----
-export async function createPayment(payment: NewPayment, tx?: DrizzleTx): Promise<Payment>
-⋮----
-export async function listPaymentsByInvoice(invoiceId: string): Promise<Payment[]>
-⋮----
-export async function sumPaymentsByInvoice(invoiceId: string, tx?: DrizzleTx): Promise<number>
-````
-
-## File: lib/db/schema/app-settings.ts
-````typescript
-import { pgTable, text, uuid, timestamp } from 'drizzle-orm/pg-core'
-import { users } from './users'
-⋮----
-export type AppSetting = typeof appSettings.$inferSelect
-export type NewAppSetting = typeof appSettings.$inferInsert
-````
-
-## File: lib/db/schema/customers.ts
-````typescript
-import { pgTable, uuid, text, integer, numeric, timestamp, pgEnum, boolean } from 'drizzle-orm/pg-core'
-import { users } from './users'
-⋮----
-export type Customer = typeof customers.$inferSelect
-export type NewCustomer = typeof customers.$inferInsert
-````
-
-## File: lib/services/import.service.test.ts
-````typescript
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-⋮----
-// Module-level state to control mock return values per test
-⋮----
-// where() must return something awaitable AND support .limit()
-// Reads from module-level vars at call-time (not at factory-time)
-⋮----
-// any: attaching .limit to Promise
-⋮----
-import {
-  parseFlockscsv,
-  parseDailyRecordsCsv,
-  parseCustomersCsv,
-  parseOpeningStockCsv,
-  getCsvTemplate,
-} from './import.service'
-⋮----
-// any: vitest mock type
-⋮----
-function setWhereMock(fn: () => Promise<unknown[]>)
-⋮----
-// Capture result once; both awaiting where() and calling .limit() return same result
-⋮----
-const getResult = () =>
-⋮----
-// Restore chain after clearAllMocks
-````
-
-## File: lib/services/notification.service.ts
-````typescript
-import {
-  createNotification,
-  listNotificationsForRole,
-  countUnreadForUser,
-  markNotificationRead,
-  markAllReadForUser,
-  getReadNotificationIdsForUser,
-} from '@/lib/db/queries/notification.queries'
-import type { Notification, NewNotification } from '@/lib/db/schema'
-⋮----
-export async function getNotificationsForRole(
-  role: 'operator' | 'supervisor' | 'admin',
-  limit = 50
-): Promise<Notification[]>
-⋮----
-export async function getUnreadCount(
-  userId: string,
-  role: 'operator' | 'supervisor' | 'admin'
-): Promise<number>
-⋮----
-export async function readNotification(
-  notificationId: string,
-  userId: string
-): Promise<void>
-⋮----
-export async function readAllNotifications(
-  userId: string,
-  role: 'operator' | 'supervisor' | 'admin'
-): Promise<void>
-⋮----
-export async function pushNotification(
-  data: NewNotification
-): Promise<Notification>
-⋮----
-export async function getReadNotificationIds(userId: string): Promise<string[]>
-````
-
-## File: lib/services/sales-return.service.test.ts
-````typescript
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-⋮----
-import {
-  createSalesReturn,
-  approveSalesReturn,
-  rejectSalesReturn,
-} from './sales-return.service'
-⋮----
-type CreateReturnInput = {
-  orderId: string
-  returnDate: Date
-  reasonType: 'wrong_grade' | 'damaged' | 'quantity_error' | 'other'
-  items: Array<{
-    itemType: 'egg_grade_a' | 'egg_grade_b' | 'flock' | 'other'
-    itemRefId?: string
-    quantity: number
-    unit: 'butir' | 'ekor' | 'unit'
-  }>
-  notes?: string
-}
-````
-
-## File: lib/services/sales-return.service.ts
-````typescript
-import { generateOrderNumber } from '@/lib/utils/order-number'
-import type { NewSalesReturn, NewSalesReturnItem, NewInventoryMovement, NewInvoice, NewCustomerCredit } from '@/lib/db/schema'
-⋮----
-type CreateReturnInput = {
-  orderId: string
-  returnDate: Date
-  reasonType: 'wrong_grade' | 'damaged' | 'quantity_error' | 'other'
-  items: Array<{
-    itemType: 'egg_grade_a' | 'egg_grade_b' | 'flock' | 'other'
-    itemRefId?: string
-    quantity: number
-    unit: 'butir' | 'ekor' | 'unit'
-  }>
-  notes?: string
-}
-⋮----
-export async function createSalesReturn(input: CreateReturnInput, userId: string, role: string)
-⋮----
-// Validate return quantities don't exceed original SO quantities
-⋮----
-// Generate return number
-⋮----
-export async function approveSalesReturn(returnId: string, userId: string, role: string)
-⋮----
-// Calculate credit amount: sum returnQty * pricePerUnit * (1 - discount/100) per item
-⋮----
-// Build inventory movements (IN) for egg return items only
-⋮----
-// Generate credit note invoice number
-⋮----
-// Build customer credit entry
-⋮----
-sourceInvoiceId: '', // will be overwritten in tx with actual invoice id
-⋮----
-export async function rejectSalesReturn(returnId: string, userId: string, role: string)
-````
-
-## File: lib/services/stock.service.test.ts
-````typescript
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-⋮----
-assertCanEdit: vi.fn(), // no-op by default
-⋮----
-import {
-  validateStockNotBelowZero,
-  createStockAdjustment,
-  submitRegradeRequest,
-  approveRegradeRequest,
-  rejectRegradeRequest,
-} from './stock.service'
-⋮----
-vi.mocked(q.insertStockAdjustmentWithMovement).mockResolvedValue({ id: 'adj-1' } as any) // any: partial mock
-⋮----
-vi.mocked(q.insertStockAdjustmentWithMovement).mockResolvedValue({ id: 'adj-1' } as any) // any: partial mock
-⋮----
-vi.mocked(q.insertRegradeRequest).mockResolvedValue({ id: 'rr-1' } as any) // any: partial mock
-⋮----
-vi.mocked(q.findRegradeRequestById).mockResolvedValue({ id: 'req-1', status: 'APPROVED' } as any) // any: partial mock
-⋮----
-vi.mocked(q.findRegradeRequestById).mockResolvedValue({ id: 'req-1', status: 'PENDING' } as any) // any: partial mock
-⋮----
-vi.mocked(q.findRegradeRequestById).mockResolvedValue({ id: 'req-1', status: 'PENDING' } as any) // any: partial mock
-````
-
-## File: lib/services/stock.service.ts
-````typescript
-import {
-  getStockBalance as _getStockBalance,
-  insertStockAdjustmentWithMovement,
-  findPendingRegradeRequests,
-  findRegradeRequestById,
-  insertRegradeRequest,
-  updateRegradeRequestStatus,
-  approveRegradeRequestTx,
-} from '@/lib/db/queries/inventory.queries'
-import { assertCanEdit } from '@/lib/services/lock-period.service'
-import type { StockAdjustment, RegradeRequest } from '@/lib/db/schema'
-⋮----
-type Role = 'operator' | 'supervisor' | 'admin'
-⋮----
-export async function getStockBalance(flockId: string, grade: 'A' | 'B'): Promise<number>
-⋮----
-export function validateStockNotBelowZero(currentBalance: number, quantity: number): void
-⋮----
-type AdjustmentInput = {
-  flockId: string
-  adjustmentDate: Date
-  grade: 'A' | 'B'
-  quantity: number // signed
-  reason: string
-  notes?: string
-}
-⋮----
-quantity: number // signed
-⋮----
-export async function createStockAdjustment(
-  input: AdjustmentInput,
-  userId: string,
-  role: Role = 'admin',
-  now: Date = new Date()
-): Promise<StockAdjustment>
-⋮----
-// Lock period check — adjustmentDate is treated as the record date
-⋮----
-sourceId: null, // Will be set by insertStockAdjustmentWithMovement
-⋮----
-type RegradeInput = {
-  flockId: string
-  gradeFrom: 'A' | 'B'
-  gradeTo: 'A' | 'B'
-  quantity: number
-  requestDate: Date
-  notes?: string
-}
-⋮----
-export async function submitRegradeRequest(
-  input: RegradeInput,
-  userId: string
-): Promise<RegradeRequest>
-⋮----
-export async function approveRegradeRequest(requestId: string, adminId: string): Promise<void>
-⋮----
-export async function rejectRegradeRequest(requestId: string, adminId: string): Promise<void>
-⋮----
-export async function getPendingRegradeRequests(): Promise<RegradeRequest[]>
-````
-
-## File: app/(app)/admin/settings/alerts/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { getAppSetting } from '@/lib/services/app-settings.service'
-import { updateAlertSettings } from '@/lib/actions/app-settings.actions'
-````
-
-## File: app/(app)/laporan/produksi/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { Suspense } from 'react'
-import { getSession } from '@/lib/auth/get-session'
-import { getProductionReportData } from '@/lib/services/daily-record.service'
-import type { Role } from '@/lib/services/daily-record.service'
-import { KpiCard } from '@/components/ui/kpi-card'
-import { ProductionReportFilter } from '@/components/forms/production-report-filter'
-⋮----
-function formatDate(d: Date): string
-⋮----
-function toISODate(d: Date): string
-⋮----
-function parseSafeDate(str: string, fallback: Date): Date
-⋮----
-// DB error — render empty state
-⋮----
-{/* Page header */}
-⋮----
-{/* KPI Row */}
-⋮----
-{/* Production Table */}
-````
-
-## File: app/(app)/layout.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { AppShell } from '@/components/layout/app-shell'
-import {
-  getNotificationsForRole,
-  getReadNotificationIds,
-} from '@/lib/services/notification.service'
-⋮----
-export default async function AppLayout(
-````
-
-## File: app/(app)/penjualan/invoices/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { listInvoices } from '@/lib/db/queries/invoice.queries'
-import { InvoiceStatusBadge } from '@/components/ui/invoice-status-badge'
-import { Button } from '@/components/ui/button'
-import type { Invoice } from '@/lib/db/schema'
-⋮----
-{/* Header */}
-⋮----
-{/* Status filter buttons */}
-⋮----
-{/* Table */}
-⋮----
-{/* Pagination */}
-````
-
-## File: components/forms/production-report-filter.tsx
-````typescript
-// client: needs onChange handlers for date inputs
-⋮----
-import { useRouter, useSearchParams } from 'next/navigation'
-⋮----
-type Props = {
-  defaultFrom: string
-  defaultTo: string
-}
-⋮----
-function handleFromChange(value: string)
-⋮----
-function handleToChange(value: string)
-````
-
-## File: lib/actions/import.actions.ts
-````typescript
-import { getSession } from '@/lib/auth/get-session'
-import { requireAdmin } from '@/lib/auth/guards'
-import {
-  parseFlockscsv,
-  parseDailyRecordsCsv,
-  parseCustomersCsv,
-  parseOpeningStockCsv,
-  commitImport,
-  getCsvTemplate,
-} from '@/lib/services/import.service'
-import type { ImportEntity, ParseResult, ParsedRow, ImportResult } from '@/lib/services/import.service'
-⋮----
-type ActionResult<T = void> =
-  | { success: true; data: T }
-  | { success: false; error: string }
-⋮----
-export async function parseCsvAction(
-  entity: ImportEntity,
-  csvText: string
-  // any: ParseResult generic varies by entity
-): Promise<ActionResult<ParseResult<Record<string, unknown>>>>
-⋮----
-// any: ParseResult generic varies by entity
-⋮----
-// any: cast for unified return type
-⋮----
-export async function commitImportAction(
-  entity: ImportEntity,
-  // any: parsed rows from dynamic parse step
-  rows: ParsedRow<Record<string, unknown>>[]
-): Promise<ActionResult<ImportResult>>
-⋮----
-// any: parsed rows from dynamic parse step
-⋮----
-// requireAdmin() already confirmed session exists — getSession() is safe
-⋮----
-export async function getCsvTemplateAction(
-  entity: ImportEntity
-): Promise<ActionResult<string>>
-````
-
-## File: lib/db/index.ts
-````typescript
-import { drizzle } from 'drizzle-orm/postgres-js'
-import postgres from 'postgres'
-⋮----
-prepare: false,      // safer with Supabase pooler (both session + transaction mode)
-max: 3,              // allow a few concurrent connections on free-tier pool
-idle_timeout: 20,    // release idle connections after 20s (avoids stale conn on hot reload)
-connect_timeout: 10, // fail fast instead of hanging indefinitely
-⋮----
-export type DrizzleTx = Parameters<Parameters<(typeof db)['transaction']>[0]>[0]
-````
-
-## File: lib/db/queries/customer-credit.queries.ts
-````typescript
-import { db, DrizzleTx } from '@/lib/db'
-import { customerCredits } from '@/lib/db/schema'
-import { eq, sql, desc, and } from 'drizzle-orm'
-import type { CustomerCredit, NewCustomerCredit } from '@/lib/db/schema'
-⋮----
-export async function listCreditsByCustomer(customerId: string): Promise<CustomerCredit[]>
-⋮----
-export async function getAvailableCredit(customerId: string): Promise<number>
-⋮----
-export async function findCreditById(id: string, tx?: DrizzleTx): Promise<CustomerCredit | null>
-⋮----
-export async function createCustomerCredit(
-  credit: NewCustomerCredit,
-  tx?: DrizzleTx
-): Promise<void>
-⋮----
-export async function updateCreditUsedAmount(
-  creditId: string,
-  additionalUsed: number,
-  tx?: DrizzleTx
-): Promise<void>
-````
-
-## File: lib/db/queries/daily-record.queries.ts
-````typescript
-import { db } from '@/lib/db'
-import { dailyRecords, inventoryMovements, flocks, coops } from '@/lib/db/schema'
-import { eq, and, desc, sum, gte, lte, asc } from 'drizzle-orm'
-import type { DailyRecord, NewDailyRecord, NewInventoryMovement } from '@/lib/db/schema'
-⋮----
-export async function findDailyRecordById(id: string): Promise<DailyRecord | null>
-⋮----
-export async function findDailyRecord(flockId: string, recordDate: Date): Promise<DailyRecord | null>
-⋮----
-export async function findRecentDailyRecords(flockId: string, limit: number): Promise<DailyRecord[]>
-⋮----
-export async function getTotalDepletionByFlock(
-  flockId: string
-): Promise<
-⋮----
-export async function insertDailyRecordWithMovements(
-  record: NewDailyRecord,
-  movements: NewInventoryMovement[]
-): Promise<DailyRecord>
-⋮----
-export async function getCumulativeDepletionByFlockUpTo(
-  flockId: string,
-  upToDate: Date
-): Promise<
-⋮----
-export type ProductionReportRow = {
-  recordDate: Date
-  coopId: string
-  coopName: string
-  flockId: string
-  flockName: string
-  flockInitialCount: number
-  deaths: number
-  culled: number
-  eggsGradeA: number
-  eggsGradeB: number
-  feedKg: string | null
-}
-⋮----
-export async function getProductionReport(
-  from: Date,
-  to: Date
-): Promise<ProductionReportRow[]>
-````
-
 ## File: lib/db/queries/inventory.queries.ts
 ````typescript
 import { db } from '@/lib/db'
-import { inventoryMovements, stockAdjustments, regradeRequests } from '@/lib/db/schema'
-import { eq, and, desc, sql, sum } from 'drizzle-orm'
+import { inventoryMovements, stockAdjustments, regradeRequests, stockItems, stockCategories } from '@/lib/db/schema'
+import { eq, desc, sql, sum } from 'drizzle-orm'
 import type {
   NewInventoryMovement,
   StockAdjustment, NewStockAdjustment,
   RegradeRequest, NewRegradeRequest,
 } from '@/lib/db/schema'
 ⋮----
-export async function getStockBalance(flockId: string, grade: 'A' | 'B'): Promise<number>
+export type StockBalance = {
+  stockItemId: string
+  categoryId: string
+  categoryName: string
+  itemName: string
+  unit: string
+  balance: number
+}
 ⋮----
-export async function getStockBalanceByGrade(grade: 'A' | 'B'): Promise<number>
+export async function getStockBalance(stockItemId: string): Promise<number>
 ⋮----
-export async function getAllStockBalances(): Promise<
+export async function getAllStockBalances(): Promise<StockBalance[]>
+⋮----
+export async function insertInventoryMovement(data: NewInventoryMovement): Promise<void>
 ⋮----
 export async function insertStockAdjustmentWithMovement(
   adjustment: NewStockAdjustment,
@@ -3448,322 +3266,321 @@ export async function getReadNotificationIdsForUser(
 ): Promise<
 ````
 
-## File: lib/db/queries/sales-order.queries.ts
+## File: lib/db/schema/app-settings.ts
 ````typescript
-import { db } from '@/lib/db'
-import { salesOrders, salesOrderItems, inventoryMovements, invoices, flocks, customers } from '@/lib/db/schema'
-import { eq, and, desc, sql, count, getTableColumns } from 'drizzle-orm'
-import type { SalesOrder, SalesOrderItem, NewSalesOrder, NewSalesOrderItem, NewInventoryMovement, NewInvoice } from '@/lib/db/schema'
+import { pgTable, text, uuid, timestamp } from 'drizzle-orm/pg-core'
+import { users } from './users'
 ⋮----
-export type SalesOrderWithCustomer = SalesOrder & { customerName: string | null }
-⋮----
-export async function findSalesOrderById(id: string): Promise<SalesOrderWithCustomer | null>
-⋮----
-export async function findSalesOrderItems(orderId: string): Promise<SalesOrderItem[]>
-⋮----
-export async function countSalesOrdersThisMonth(prefix: string): Promise<number>
-⋮----
-// Use MAX on trailing seq to avoid collision when rows are deleted (COUNT would reuse numbers)
-⋮----
-export async function insertSalesOrderWithItems(
-  order: NewSalesOrder,
-  items: Omit<NewSalesOrderItem, 'orderId'>[]
-): Promise<SalesOrder>
-⋮----
-export async function updateSalesOrderStatus(
-  id: string,
-  status: 'draft' | 'confirmed' | 'fulfilled' | 'cancelled',
-  updatedBy: string
-): Promise<void>
-⋮----
-export async function deleteDraftSO(id: string): Promise<void>
-⋮----
-export async function fulfillSOTx(
-  orderId: string,
-  userId: string,
-  movements: NewInventoryMovement[],
-  invoice: NewInvoice,
-  flockUpdates: { flockId: string; retiredAt: Date }[]
-): Promise<void>
-⋮----
-// Check stock for each egg item movement
-⋮----
-// Update SO status
-⋮----
-// Insert inventory movements
-⋮----
-// Insert invoice
-⋮----
-// Update flock status for flock items
-⋮----
-export async function getCustomerOutstandingCredit(customerId: string): Promise<number>
-⋮----
-export async function listSalesOrders(
-  page: number = 1,
-  pageSize: number = 20,
-  status?: string
-): Promise<
+export type AppSetting = typeof appSettings.$inferSelect
+export type NewAppSetting = typeof appSettings.$inferInsert
 ````
 
-## File: lib/db/queries/sales-return.queries.ts
+## File: lib/db/schema/customers.ts
 ````typescript
+import { pgTable, uuid, text, integer, numeric, timestamp, pgEnum, boolean } from 'drizzle-orm/pg-core'
+import { users } from './users'
+⋮----
+export type Customer = typeof customers.$inferSelect
+export type NewCustomer = typeof customers.$inferInsert
+````
+
+## File: lib/db/schema/daily-egg-records.ts
+````typescript
+import { pgTable, uuid, integer, numeric, uniqueIndex, timestamp } from 'drizzle-orm/pg-core'
+import { dailyRecords } from './daily-records'
+import { stockItems } from './stock-items'
+⋮----
+export type DailyEggRecord = typeof dailyEggRecords.$inferSelect
+export type NewDailyEggRecord = typeof dailyEggRecords.$inferInsert
+````
+
+## File: lib/db/schema/daily-feed-records.ts
+````typescript
+import { pgTable, uuid, numeric, uniqueIndex, timestamp } from 'drizzle-orm/pg-core'
+import { dailyRecords } from './daily-records'
+import { stockItems } from './stock-items'
+⋮----
+export type DailyFeedRecord = typeof dailyFeedRecords.$inferSelect
+export type NewDailyFeedRecord = typeof dailyFeedRecords.$inferInsert
+````
+
+## File: lib/db/schema/daily-records.ts
+````typescript
+import { pgTable, uuid, integer, date, timestamp, boolean, text, uniqueIndex } from 'drizzle-orm/pg-core'
+import { flocks } from './flocks'
+import { users } from './users'
+⋮----
+export type DailyRecord = typeof dailyRecords.$inferSelect
+export type NewDailyRecord = typeof dailyRecords.$inferInsert
+````
+
+## File: lib/db/schema/daily-vaccine-records.ts
+````typescript
+import { pgTable, uuid, numeric, uniqueIndex, timestamp } from 'drizzle-orm/pg-core'
+import { dailyRecords } from './daily-records'
+import { stockItems } from './stock-items'
+⋮----
+export type DailyVaccineRecord = typeof dailyVaccineRecords.$inferSelect
+export type NewDailyVaccineRecord = typeof dailyVaccineRecords.$inferInsert
+````
+
+## File: lib/db/schema/inventory-movements.ts
+````typescript
+import { pgTable, uuid, integer, date, timestamp, text, pgEnum, boolean } from 'drizzle-orm/pg-core'
+import { stockItems } from './stock-items'
+import { flocks } from './flocks'
+import { users } from './users'
+⋮----
+export type InventoryMovement = typeof inventoryMovements.$inferSelect
+export type NewInventoryMovement = typeof inventoryMovements.$inferInsert
+````
+
+## File: lib/db/schema/stock-categories.ts
+````typescript
+import { pgTable, uuid, text, boolean, timestamp } from 'drizzle-orm/pg-core'
+⋮----
+export type StockCategory = typeof stockCategories.$inferSelect
+export type NewStockCategory = typeof stockCategories.$inferInsert
+````
+
+## File: lib/db/schema/stock-items.ts
+````typescript
+import { pgTable, uuid, text, boolean, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import { stockCategories } from './stock-categories'
+⋮----
+export type StockItem = typeof stockItems.$inferSelect
+export type NewStockItem = typeof stockItems.$inferInsert
+````
+
+## File: lib/services/lock-period.service.ts
+````typescript
+/**
+ * Lock Period Service — Sprint 8
+ * Enforces edit windows per role and creates correction_records for admin edits past lock.
+ *
+ * Rules (from PRD Section 6.5):
+ *   Operator  → H+1 from record_date
+ *   Supervisor→ H+7 from record_date
+ *   Admin     → unlimited
+ *
+ * When admin edits a locked record → must supply reason → creates correction_record.
+ * Old value is preserved; no overwrite without audit trail.
+ */
+⋮----
 import { db } from '@/lib/db'
-import { salesReturns, salesReturnItems, salesOrders, inventoryMovements, invoices, customerCredits } from '@/lib/db/schema'
-import { eq, desc, sql, count, getTableColumns } from 'drizzle-orm'
-import type { SalesReturn, SalesReturnItem, NewSalesReturn, NewSalesReturnItem, NewInventoryMovement, NewInvoice, NewCustomerCredit } from '@/lib/db/schema'
+import { dailyRecords } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
+import { insertCorrectionRecord } from '@/lib/db/queries/correction-record.queries'
+import type { CorrectionRecord } from '@/lib/db/schema'
 ⋮----
-export async function findSalesReturnById(id: string): Promise<SalesReturn | null>
+type Role = 'operator' | 'supervisor' | 'admin'
 ⋮----
-export async function findSalesReturnItems(returnId: string): Promise<SalesReturnItem[]>
+/**
+ * Returns true if the given role can edit a record with the given record_date at `now`.
+ */
+export function canEdit(recordDate: Date, role: Role, now: Date = new Date()): boolean
 ⋮----
-export async function countSalesReturnsThisMonth(prefix: string): Promise<number>
+const limit = role === 'operator' ? 1 : 7 // supervisor = H+7
 ⋮----
-export async function insertSalesReturnWithItems(
-  ret: NewSalesReturn,
-  items: Omit<NewSalesReturnItem, 'returnId'>[]
-): Promise<SalesReturn>
+/**
+ * Throws if the role cannot edit this record date.
+ * Admin always passes (no throw).
+ */
+export function assertCanEdit(recordDate: Date, role: Role, now: Date = new Date()): void
 ⋮----
-export async function approveSalesReturnTx(
-  returnId: string,
+/**
+ * Checks whether a record is in a locked state for a given role.
+ * Admins editing a locked record must supply a reason and the result will
+ * create correction_records.
+ */
+export function isLocked(recordDate: Date, role: Role, now: Date = new Date()): boolean
+⋮----
+// ─── daily_record correction ──────────────────────────────────────────────────
+⋮----
+type DailyRecordPatch = {
+  deaths?: number
+  culled?: number
+  eggsCracked?: number
+  eggsAbnormal?: number
+}
+⋮----
+/**
+ * Admin-only: apply corrections to a daily_record past lock window.
+ * Creates one correction_record per changed field.
+ * Egg/feed/vaccine corrections are handled via new input entries in the sub-tables;
+ * this service only patches the core daily_record fields.
+ */
+export async function correctDailyRecord(
+  recordId: string,
+  patch: DailyRecordPatch,
+  reason: string,
+  adminId: string
+): Promise<CorrectionRecord[]>
+⋮----
+// Build update set
+````
+
+## File: lib/services/notification.service.ts
+````typescript
+import {
+  createNotification,
+  listNotificationsForRole,
+  countUnreadForUser,
+  markNotificationRead,
+  markAllReadForUser,
+  getReadNotificationIdsForUser,
+} from '@/lib/db/queries/notification.queries'
+import type { Notification, NewNotification } from '@/lib/db/schema'
+⋮----
+export async function getNotificationsForRole(
+  role: 'operator' | 'supervisor' | 'admin',
+  limit = 50
+): Promise<Notification[]>
+⋮----
+export async function getUnreadCount(
   userId: string,
-  movements: NewInventoryMovement[],
-  creditNoteInvoice: NewInvoice,
-  customerCredit: NewCustomerCredit
-): Promise<void>
+  role: 'operator' | 'supervisor' | 'admin'
+): Promise<number>
 ⋮----
-// Insert inventory movements
-⋮----
-// Insert credit note invoice
-⋮----
-// Insert customer credit with created invoice id
-⋮----
-// Update return status
-⋮----
-export async function rejectSalesReturn(
-  returnId: string,
+export async function readNotification(
+  notificationId: string,
   userId: string
 ): Promise<void>
 ⋮----
-export async function findSalesReturnsByOrderId(orderId: string): Promise<SalesReturn[]>
-⋮----
-export type SalesReturnWithOrder = SalesReturn & { orderNumber: string | null }
-⋮----
-export async function listSalesReturnsWithOrder(
-  page: number = 1,
-  pageSize: number = 20,
-  status?: string
-): Promise<
-⋮----
-export async function listSalesReturns(
-  page: number = 1,
-  pageSize: number = 20,
-  status?: string
-): Promise<
-````
-
-## File: lib/services/daily-record.service.test.ts
-````typescript
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-⋮----
-assertCanEdit: vi.fn(), // no-op by default
-⋮----
-import {
-  validateBackdate,
-  computeIsLateInput,
-  computeActivePopulation,
-  computeHDP,
-  computeFeedPerBird,
-  computeFCR,
-  createDailyRecord,
-  getProductionReportData,
-} from './daily-record.service'
-⋮----
-// 12 kg feed, 120 eggs = 10 dozen → 1.2
-⋮----
-// Cumulative depletion up to recordDate: 5 deaths, 2 culled (same as the single row)
-⋮----
-// activePopulation = 1000 - (5 + 2) = 993
-⋮----
-// totalEggs = 850 + 50 = 900
-⋮----
-// hdp = (900 / 993) * 100 ≈ 90.63
-⋮----
-// fcr = 120 / (900 / 12) = 120 / 75 = 1.6
-⋮----
-// KPI aggregates
-⋮----
-// Default: flock exists, no depletion
-vi.mocked(flockQueries.findFlockById).mockResolvedValue({ id: 'f1', initialCount: 5000 } as any) // any: partial mock
-⋮----
-vi.mocked(queries.findDailyRecord).mockResolvedValue({ id: 'existing' } as any) // any: partial mock
-⋮----
-vi.mocked(queries.insertDailyRecordWithMovements).mockResolvedValue({ id: 'r1' } as any) // any: partial mock
-⋮----
-vi.mocked(queries.insertDailyRecordWithMovements).mockResolvedValue({ id: 'r1' } as any) // any: partial mock
-````
-
-## File: lib/services/email.service.ts
-````typescript
-import { Resend } from 'resend'
-import type { InvoiceDetails } from '@/lib/db/queries/invoice.queries'
-import type { SalesOrderItem } from '@/lib/db/schema'
-⋮----
-// Lazy-init so build does not fail when RESEND_API_KEY is not set
-function getResend(): Resend
-⋮----
-export async function sendInvoiceEmail(
-  to: string,
-  invoice: InvoiceDetails & { items: SalesOrderItem[] },
-  pdfBuffer: Buffer
+export async function readAllNotifications(
+  userId: string,
+  role: 'operator' | 'supervisor' | 'admin'
 ): Promise<void>
+⋮----
+export async function pushNotification(
+  data: NewNotification
+): Promise<Notification>
+⋮----
+export async function getReadNotificationIds(userId: string): Promise<string[]>
 ````
 
-## File: lib/services/import.service.ts
+## File: lib/services/stock-catalog.service.ts
 ````typescript
-/**
- * Import Service — Sprint 8
- * CSV import for: flocks, daily_records, customers, opening stock.
- *
- * Flow:
- *   1. parse(csvText, entity)  → { valid, errors }   (no DB write)
- *   2. importRows(valid, entity, adminId)             (DB write in transaction)
- *
- * All imported records: is_imported = true, imported_by = adminId.
- * System errors → full rollback, no partial save.
- * Valid rows imported, error rows skipped after user confirmation.
- */
-⋮----
-import { db } from '@/lib/db'
 import {
-  flocks,
-  dailyRecords,
-  customers,
-  inventoryMovements,
-  coops,
-} from '@/lib/db/schema'
-import { eq, and, sql } from 'drizzle-orm'
-import type { NewFlock, NewDailyRecord, NewCustomer, NewInventoryMovement } from '@/lib/db/schema'
+  findAllCategories,
+  findCategoryById,
+  findCategoryByName,
+  findActiveItemsByCategory,
+  findItemsByCategory,
+  findItemById,
+  insertCategory,
+  insertStockItem,
+  updateStockItemActive,
+} from '@/lib/db/queries/stock-catalog.queries'
+import type { StockCategory, StockItem } from '@/lib/db/schema'
 ⋮----
-// ─── CSV parsing helpers ──────────────────────────────────────────────────────
+type CreateCategoryInput = { name: string; unit: string }
+type CreateStockItemInput = { categoryId: string; name: string }
 ⋮----
-function parseDate(val: string, field: string, rowNum: number):
+export async function getCategories(): Promise<StockCategory[]>
 ⋮----
-function parseInt2(val: string, field: string, rowNum: number, required = true):
+export type CategoryWithItems = StockCategory & { items: StockItem[] }
 ⋮----
-function parseFloat2(val: string, field: string, rowNum: number):
+export async function getCategoriesWithActiveItems(): Promise<CategoryWithItems[]>
 ⋮----
-export type ParsedRow<T> = {
-  rowNum: number
-  data: T
-}
+export async function getCategoryWithItems(
+  categoryId: string
+): Promise<
 ⋮----
-export type ParseError = {
-  rowNum: number
-  errors: string[]
-}
+export async function getActiveItemsByCategory(categoryId: string): Promise<StockItem[]>
 ⋮----
-export type ParseResult<T> = {
-  valid: ParsedRow<T>[]
-  errors: ParseError[]
-}
+export async function getActiveItemsByCategoryName(name: string): Promise<StockItem[]>
 ⋮----
-function parseCsv(text: string): string[][]
+export async function getActiveEggItems(): Promise<StockItem[]>
 ⋮----
-// ─── Flock import ─────────────────────────────────────────────────────────────
+export async function getActiveFeedItems(): Promise<StockItem[]>
 ⋮----
-export type FlockImportRow = Omit<NewFlock, 'isImported' | 'importedBy'>
+export async function getActiveVaccineItems(): Promise<StockItem[]>
 ⋮----
-/**
- * Expected CSV columns: coop_id, name, arrival_date, initial_count, breed (opt), notes (opt)
- */
-export async function parseFlockscsv(csvText: string): Promise<ParseResult<FlockImportRow>>
+export async function createCategory(input: CreateCategoryInput): Promise<StockCategory>
 ⋮----
-const [, ...dataRows] = rows // skip header
+export async function createStockItem(input: CreateStockItemInput): Promise<StockItem>
 ⋮----
-// FK validation: coopId must exist in coops table
-⋮----
-// ─── DailyRecord import ───────────────────────────────────────────────────────
-⋮----
-export type DailyRecordImportRow = Omit<NewDailyRecord, 'isImported' | 'importedBy'>
-⋮----
-/**
- * Expected CSV columns:
- * flock_id, record_date, deaths, culled, eggs_grade_a, eggs_grade_b,
- * eggs_cracked, eggs_abnormal, avg_weight_kg (opt), feed_kg (opt)
- */
-export async function parseDailyRecordsCsv(csvText: string): Promise<ParseResult<DailyRecordImportRow>>
-⋮----
-// FK validation: flockId must exist in flocks table
-⋮----
-// Duplicate check: (flockId, recordDate) must not already exist
-⋮----
-// ─── Customer import ──────────────────────────────────────────────────────────
-⋮----
-export type CustomerImportRow = Omit<NewCustomer, 'isImported' | 'importedBy'>
-⋮----
-/**
- * Expected CSV columns:
- * name, type (retail|wholesale|distributor), phone (opt), address (opt),
- * credit_limit (opt), payment_terms (opt)
- */
-export function parseCustomersCsv(csvText: string): ParseResult<CustomerImportRow>
-⋮----
-// ─── Opening stock import ─────────────────────────────────────────────────────
-⋮----
-export type OpeningStockImportRow = Omit<NewInventoryMovement, 'isImported' | 'importedBy'>
-⋮----
-/**
- * Expected CSV columns: flock_id, grade (A|B), quantity, movement_date
- */
-export async function parseOpeningStockCsv(csvText: string): Promise<ParseResult<OpeningStockImportRow>>
-⋮----
-// Check once if any import entries already exist for each cutover date encountered
-⋮----
-// Check for existing import entries on the same cutover_date
-⋮----
-// ─── DB write ─────────────────────────────────────────────────────────────────
-⋮----
-export type ImportEntity = 'flocks' | 'daily_records' | 'customers' | 'opening_stock'
-⋮----
-export type ImportResult = {
-  inserted: number
-  skipped: number
-}
-⋮----
-/**
- * Writes valid parsed rows to DB inside a single transaction.
- * Any system error → full rollback.
- * admin-only: sets is_imported = true, imported_by = adminId.
- */
-export async function commitImport(
-  entity: ImportEntity,
-  // any: dynamic row types across 4 entity types
-  // any: row data varies by entity
-  rows: ParsedRow<Record<string, unknown>>[],
-  adminId: string
-): Promise<ImportResult>
-⋮----
-// any: dynamic row types across 4 entity types
-// any: row data varies by entity
-⋮----
-// ─── CSV templates ───────────────────────────────────────────────────────────
-⋮----
-export function getCsvTemplate(entity: ImportEntity): string
+export async function toggleStockItemActive(itemId: string): Promise<void>
 ````
 
-## File: middleware.ts
+## File: lib/services/stock.service.ts
 ````typescript
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
-import { Ratelimit } from '@upstash/ratelimit'
-import { Redis } from '@upstash/redis'
+import {
+  getStockBalance as _getStockBalance,
+  getAllStockBalances as _getAllStockBalances,
+  insertInventoryMovement,
+  insertStockAdjustmentWithMovement,
+  findPendingRegradeRequests,
+  findRegradeRequestById,
+  insertRegradeRequest,
+  updateRegradeRequestStatus,
+  approveRegradeRequestTx,
+  type StockBalance,
+} from '@/lib/db/queries/inventory.queries'
+import { assertCanEdit } from '@/lib/services/lock-period.service'
+import type { StockAdjustment, RegradeRequest } from '@/lib/db/schema'
 ⋮----
-export async function middleware(request: NextRequest)
+type Role = 'operator' | 'supervisor' | 'admin'
 ⋮----
-// Rate limit auth endpoints
+export async function getStockBalance(stockItemId: string): Promise<number>
 ⋮----
-getAll()
-setAll(cookiesToSet)
+export async function getAllStockBalances(): Promise<StockBalance[]>
+⋮----
+export function validateStockNotBelowZero(currentBalance: number, quantity: number): void
+⋮----
+type AdjustmentInput = {
+  stockItemId: string
+  adjustmentDate: string // YYYY-MM-DD
+  quantity: number // signed
+  reason: string
+  notes?: string
+}
+⋮----
+adjustmentDate: string // YYYY-MM-DD
+quantity: number // signed
+⋮----
+export async function createStockAdjustment(
+  input: AdjustmentInput,
+  userId: string,
+  role: Role = 'admin',
+  now: Date = new Date()
+): Promise<StockAdjustment>
+⋮----
+type RegradeInput = {
+  fromItemId: string
+  toItemId: string
+  quantity: number
+  requestDate: string // YYYY-MM-DD
+  notes?: string
+}
+⋮----
+requestDate: string // YYYY-MM-DD
+⋮----
+export async function submitRegradeRequest(
+  input: RegradeInput,
+  userId: string
+): Promise<RegradeRequest>
+⋮----
+export async function approveRegradeRequest(requestId: string, adminId: string): Promise<void>
+⋮----
+export async function rejectRegradeRequest(requestId: string, adminId: string): Promise<void>
+⋮----
+export async function getPendingRegradeRequests(): Promise<RegradeRequest[]>
+⋮----
+type StockPurchaseInput = {
+  stockItemId: string
+  quantity: number
+  purchaseDate: string // YYYY-MM-DD
+  notes?: string
+}
+⋮----
+purchaseDate: string // YYYY-MM-DD
+⋮----
+export async function createStockPurchase(
+  input: StockPurchaseInput,
+  userId: string
+): Promise<void>
 ````
 
 ## File: package.json
@@ -3836,6 +3653,422 @@ setAll(cookiesToSet)
 }
 ````
 
+## File: app/(app)/admin/page.tsx
+````typescript
+import Link from 'next/link'
+import { Users, Home, ShoppingBag, Settings, MessageSquare, Bell, Upload } from 'lucide-react'
+````
+
+## File: app/(app)/admin/settings/alerts/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { getAppSetting } from '@/lib/services/app-settings.service'
+import { updateAlertSettings } from '@/lib/actions/app-settings.actions'
+````
+
+## File: app/(app)/layout.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { AppShell } from '@/components/layout/app-shell'
+import {
+  getNotificationsForRole,
+  getReadNotificationIds,
+} from '@/lib/services/notification.service'
+⋮----
+export default async function AppLayout(
+````
+
+## File: app/(app)/produksi/page.tsx
+````typescript
+import { getSession } from '@/lib/auth/get-session'
+import { redirect } from 'next/navigation'
+import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
+import { findRecentDailyRecordsMultiFlocks } from '@/lib/db/queries/daily-record.queries'
+import Link from 'next/link'
+import FlockFilter from './flock-filter'
+⋮----
+function isWithinLockWindow(recordDate: Date, now: Date, days: number): boolean
+````
+
+## File: app/api/laporan/produksi-csv/route.ts
+````typescript
+import { getSession } from '@/lib/auth/get-session'
+import { getProductionReportData } from '@/lib/services/daily-record.service'
+import type { Role, ProductionReportResult } from '@/lib/services/daily-record.service'
+⋮----
+function parseSafeISODate(str: string | null, fallback: Date): string
+⋮----
+function escapeField(value: string): string
+⋮----
+export async function GET(request: Request): Promise<Response>
+````
+
+## File: components/forms/production-report-filter.tsx
+````typescript
+// client: needs onChange handlers for date inputs
+⋮----
+import { useRouter, useSearchParams } from 'next/navigation'
+⋮----
+type Props = {
+  defaultFrom: string
+  defaultTo: string
+}
+⋮----
+function handleFromChange(value: string)
+⋮----
+function handleToChange(value: string)
+````
+
+## File: lib/actions/daily-record.actions.ts
+````typescript
+import { z } from 'zod'
+import { getSession } from '@/lib/auth/get-session'
+import { requireAuth } from '@/lib/auth/guards'
+import { saveDailyRecord, getFlockOptionsForInput } from '@/lib/services/daily-record.service'
+import { findAssignedCoopIds } from '@/lib/db/queries/user-coop-assignment.queries'
+import { findFlockById } from '@/lib/db/queries/flock.queries'
+⋮----
+type ActionResult<T = void> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+⋮----
+async function assertCoopAccess(userId: string, role: string, flockId: string): Promise<
+⋮----
+export async function saveDailyRecordAction(
+  data: unknown
+): Promise<ActionResult<
+⋮----
+export async function getFlockOptionsForInputAction(): Promise<ActionResult<import('@/lib/services/daily-record.service').FlockOption[]>>
+````
+
+## File: lib/actions/import.actions.ts
+````typescript
+import { getSession } from '@/lib/auth/get-session'
+import { requireAdmin } from '@/lib/auth/guards'
+import {
+  parseFlockscsv,
+  parseDailyRecordsCsv,
+  parseCustomersCsv,
+  parseOpeningStockCsv,
+  commitImport,
+  getCsvTemplate,
+} from '@/lib/services/import.service'
+import type { ImportEntity, ParseResult, ParsedRow, ImportResult } from '@/lib/services/import.service'
+⋮----
+type ActionResult<T = void> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+⋮----
+export async function parseCsvAction(
+  entity: ImportEntity,
+  csvText: string
+  // any: ParseResult generic varies by entity
+): Promise<ActionResult<ParseResult<Record<string, unknown>>>>
+⋮----
+// any: ParseResult generic varies by entity
+⋮----
+// any: cast for unified return type
+⋮----
+export async function commitImportAction(
+  entity: ImportEntity,
+  // any: parsed rows from dynamic parse step
+  rows: ParsedRow<Record<string, unknown>>[]
+): Promise<ActionResult<ImportResult>>
+⋮----
+// any: parsed rows from dynamic parse step
+⋮----
+// requireAdmin() already confirmed session exists — getSession() is safe
+⋮----
+export async function getCsvTemplateAction(
+  entity: ImportEntity
+): Promise<ActionResult<string>>
+````
+
+## File: lib/actions/invoice.actions.ts
+````typescript
+import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
+import { getSession } from '@/lib/auth/get-session'
+import { recordPayment, applyCredit, getInvoiceForPdf, markInvoiceSent } from '@/lib/services/invoice.service'
+import { sendInvoiceEmail } from '@/lib/services/email.service'
+import { InvoicePdfDocument } from '@/components/pdf/invoice-pdf-document'
+⋮----
+type ActionResult<T = undefined> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+⋮----
+async function requireAdmin(): Promise<
+  { success: false; error: string; session?: never } | { success: true; session: NonNullable<Awaited<ReturnType<typeof getSession>>> }
+> {
+  const session = await getSession()
+if (!session || session.role !== 'admin')
+⋮----
+export async function recordPaymentAction(
+  formData: FormData
+): Promise<ActionResult<
+⋮----
+export async function applyCreditAction(
+  invoiceId: string,
+  creditId: string,
+  amount: number
+): Promise<ActionResult>
+⋮----
+export async function sendInvoiceEmailAction(invoiceId: string): Promise<ActionResult>
+⋮----
+// any: renderToBuffer expects ReactElement<DocumentProps> but InvoicePdfDocument
+// returns a <Document> wrapper — the runtime shape is correct, cast is safe.
+⋮----
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+````
+
+## File: lib/actions/stock.actions.ts
+````typescript
+import { z } from 'zod'
+import { getSession } from '@/lib/auth/get-session'
+import { requireSupervisorOrAdmin, requireAdmin } from '@/lib/auth/guards'
+import {
+  getStockBalance,
+  getAllStockBalances,
+  createStockAdjustment,
+  submitRegradeRequest,
+  approveRegradeRequest,
+  rejectRegradeRequest,
+  createStockPurchase,
+  type StockBalance,
+} from '@/lib/services/stock.service'
+⋮----
+type ActionResult<T = void> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+⋮----
+export async function getStockBalanceAction(
+  stockItemId: string
+): Promise<ActionResult<number>>
+⋮----
+export async function getAllStockBalancesAction(): Promise<ActionResult<StockBalance[]>>
+⋮----
+export async function createStockAdjustmentAction(
+  formData: FormData
+): Promise<ActionResult<
+⋮----
+export async function submitRegradeRequestAction(
+  formData: FormData
+): Promise<ActionResult<
+⋮----
+export async function approveRegradeRequestAction(
+  requestId: string
+): Promise<ActionResult>
+⋮----
+export async function rejectRegradeRequestAction(
+  requestId: string
+): Promise<ActionResult>
+⋮----
+export async function createStockPurchaseAction(
+  formData: FormData
+): Promise<ActionResult>
+````
+
+## File: lib/db/queries/dashboard.queries.ts
+````typescript
+import { db } from '@/lib/db'
+import { dailyRecords, flocks, dailyEggRecords, stockItems, stockCategories } from '@/lib/db/schema'
+import { desc, isNull, gte, and, sum, eq, inArray, SQL } from 'drizzle-orm'
+import type { DailyRecord } from '@/lib/db/schema'
+⋮----
+export type DashboardRecord = Pick<
+  DailyRecord,
+  'id' | 'flockId' | 'recordDate' | 'deaths' | 'culled' | 'isLateInput'
+>
+⋮----
+export async function getRecentDailyRecordsAcrossFlocks(limit: number, flockIds?: string[]): Promise<DashboardRecord[]>
+⋮----
+export type DailyAggRow = {
+  date: string
+  totalEggs: number
+  totalDeaths: number
+}
+⋮----
+export async function getDailyProductionAgg(days: number, flockIds?: string[]): Promise<DailyAggRow[]>
+⋮----
+// Egg totals require joining daily_egg_records — return 0 for now, laporan has full data
+⋮----
+export type FlockPopulationRow = {
+  flockId: string
+  initialCount: number
+  totalDeaths: number
+  totalCulled: number
+}
+⋮----
+export async function getActiveFlockPopulations(flockIds?: string[]): Promise<FlockPopulationRow[]>
+⋮----
+export type StockSummaryRow = {
+  totalEggs: number
+}
+⋮----
+export async function getStockSummary(): Promise<StockSummaryRow>
+````
+
+## File: lib/services/dashboard.service.ts
+````typescript
+import {
+  getRecentDailyRecordsAcrossFlocks,
+  getDailyProductionAgg,
+  getActiveFlockPopulations,
+  getStockSummary,
+  type DashboardRecord,
+  type DailyAggRow,
+} from '@/lib/db/queries/dashboard.queries'
+⋮----
+export type DashboardKpis = {
+  productionToday: number
+  stockTotalEggs: number
+  activePopulation: number
+  totalDeathsToday: number
+}
+⋮----
+export type DashboardChartPoint = {
+  date: string
+  deaths: number
+  cumulativeDepletion: number
+}
+⋮----
+export type DashboardRecentRecord = {
+  date: string
+  deaths: number
+  culled: number
+  isLate: boolean
+}
+⋮----
+export async function getDashboardKpis(flockIds?: string[]): Promise<DashboardKpis>
+⋮----
+productionToday: 0, // egg totals available in /stok and /laporan, not computed here for perf
+⋮----
+export async function getProductionChartData(days: number = 30, flockIds?: string[]): Promise<DashboardChartPoint[]>
+⋮----
+export async function getRecentDashboardRecords(limit: number = 7, flockIds?: string[]): Promise<DashboardRecentRecord[]>
+````
+
+## File: lib/services/email.service.ts
+````typescript
+import { Resend } from 'resend'
+import type { InvoiceDetails } from '@/lib/db/queries/invoice.queries'
+import type { SalesOrderItem } from '@/lib/db/schema'
+⋮----
+// Lazy-init so build does not fail when RESEND_API_KEY is not set
+function getResend(): Resend
+⋮----
+export async function sendInvoiceEmail(
+  to: string,
+  invoice: InvoiceDetails & { items: SalesOrderItem[] },
+  pdfBuffer: Buffer
+): Promise<void>
+````
+
+## File: lib/services/import.service.test.ts
+````typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+⋮----
+// Module-level state to control mock return values per test
+⋮----
+// where() must return something awaitable AND support .limit()
+// Reads from module-level vars at call-time (not at factory-time)
+⋮----
+// any: attaching .limit to Promise
+⋮----
+import {
+  parseFlockscsv,
+  parseDailyRecordsCsv,
+  parseCustomersCsv,
+  parseOpeningStockCsv,
+  getCsvTemplate,
+} from './import.service'
+⋮----
+// any: vitest mock type
+⋮----
+function setWhereMock(fn: () => Promise<unknown[]>)
+⋮----
+// Capture result once; both awaiting where() and calling .limit() return same result
+⋮----
+const getResult = () =>
+⋮----
+// Restore chain after clearAllMocks
+⋮----
+// first call: stockItems lookup → found; second call: existing import count → 0
+````
+
+## File: lib/services/invoice.service.ts
+````typescript
+import { findSalesOrderItems } from '@/lib/db/queries/sales-order.queries'
+import { db } from '@/lib/db'
+import type { InvoiceDetails, AgingRow } from '@/lib/db/queries/invoice.queries'
+import type { Invoice, SalesOrderItem } from '@/lib/db/schema'
+⋮----
+export async function getInvoiceDetails(id: string): Promise<InvoiceDetails>
+⋮----
+type RecordPaymentInput = {
+  amount: number
+  method: 'cash' | 'transfer' | 'cheque' | 'credit'
+  referenceNumber?: string
+  paymentDate: Date
+}
+⋮----
+export async function recordPayment(
+  invoiceId: string,
+  input: RecordPaymentInput,
+  userId: string
+): Promise<
+⋮----
+export async function applyCredit(
+  invoiceId: string,
+  creditId: string,
+  amount: number,
+  userId: string
+): Promise<void>
+⋮----
+// Pre-validation outside transaction (fast fail)
+⋮----
+// Re-check inside transaction to prevent TOCTOU race
+⋮----
+export async function getAgingData(): Promise<AgingRow[]>
+⋮----
+export async function savePdfMetadata(id: string, pdfUrl: string, pdfGeneratedAt: Date): Promise<void>
+⋮----
+export async function getInvoiceForPdf(
+  id: string
+): Promise<InvoiceDetails &
+⋮----
+export async function markInvoiceSent(id: string): Promise<void>
+````
+
+## File: lib/services/stock.service.test.ts
+````typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+⋮----
+assertCanEdit: vi.fn(), // no-op by default
+⋮----
+import {
+  validateStockNotBelowZero,
+  createStockAdjustment,
+  submitRegradeRequest,
+  approveRegradeRequest,
+  rejectRegradeRequest,
+} from './stock.service'
+⋮----
+vi.mocked(q.insertStockAdjustmentWithMovement).mockResolvedValue({ id: 'adj-1' } as any) // any: partial mock
+⋮----
+vi.mocked(q.insertStockAdjustmentWithMovement).mockResolvedValue({ id: 'adj-1' } as any) // any: partial mock
+⋮----
+vi.mocked(q.insertRegradeRequest).mockResolvedValue({ id: 'rr-1' } as any) // any: partial mock
+⋮----
+vi.mocked(q.findRegradeRequestById).mockResolvedValue({ id: 'req-1', status: 'APPROVED' } as any) // any: partial mock
+⋮----
+vi.mocked(q.findRegradeRequestById).mockResolvedValue({ id: 'req-1', status: 'PENDING' } as any) // any: partial mock
+⋮----
+vi.mocked(q.findRegradeRequestById).mockResolvedValue({ id: 'req-1', status: 'PENDING' } as any) // any: partial mock
+````
+
 ## File: app/(app)/dashboard/page.tsx
 ````typescript
 import Link from 'next/link'
@@ -3845,6 +4078,8 @@ import { KpiCard } from '@/components/ui/kpi-card'
 import { DashboardCharts } from '@/components/ui/charts/dashboard-charts'
 import { getDashboardKpis, getProductionChartData, getRecentDashboardRecords } from '@/lib/services/dashboard.service'
 import { getAgingData } from '@/lib/services/invoice.service'
+import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
+import FlockFilter from '../produksi/flock-filter'
 import type { AgingRow } from '@/lib/db/queries/invoice.queries'
 ⋮----
 {/* Header */}
@@ -3856,6 +4091,70 @@ import type { AgingRow } from '@/lib/db/queries/invoice.queries'
 {/* Recent records table */}
 ⋮----
 {/* Aging widget — admin + supervisor only */}
+````
+
+## File: app/(app)/laporan/produksi/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
+import { getSession } from '@/lib/auth/get-session'
+import { getProductionReportData } from '@/lib/services/daily-record.service'
+import type { Role } from '@/lib/services/daily-record.service'
+import { KpiCard } from '@/components/ui/kpi-card'
+import { ProductionReportFilter } from '@/components/forms/production-report-filter'
+⋮----
+function formatDate(dateStr: string): string
+⋮----
+function toISODate(d: Date): string
+⋮----
+function parseSafeISODate(str: string, fallback: Date): string
+⋮----
+// DB error — render empty state
+⋮----
+{/* Page header */}
+⋮----
+{/* KPI Row */}
+⋮----
+{/* Production Table */}
+````
+
+## File: app/(app)/penjualan/invoices/[id]/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { getSession } from '@/lib/auth/get-session'
+import { getInvoiceDetails } from '@/lib/services/invoice.service'
+import { recordPaymentAction, applyCreditAction, sendInvoiceEmailAction } from '@/lib/actions/invoice.actions'
+import { getAppSetting } from '@/lib/services/app-settings.service'
+import { InvoiceStatusBadge } from '@/components/ui/invoice-status-badge'
+import { Button } from '@/components/ui/button'
+⋮----
+// WA share setup (admin only)
+⋮----
+// Inline server actions
+async function handleRecordPayment(formData: FormData)
+⋮----
+async function handleSendEmail()
+⋮----
+{/* Header */}
+⋮----
+{/* Download PDF button */}
+⋮----
+{/* WA share button — admin only, requires customer phone */}
+⋮----
+{/* Email send button — admin only, requires customer email */}
+⋮----
+{/* Alerts */}
+⋮----
+{/* Financial summary */}
+⋮----
+{/* Payment history */}
+⋮----
+{/* Record Payment form (admin only, status not paid/cancelled/draft) */}
+⋮----
+{/* Available credits (admin only) */}
+⋮----
+async function handleApplyCredit(formData: FormData)
 ````
 
 ## File: app/api/invoices/[id]/pdf/route.tsx
@@ -3892,33 +4191,6 @@ export async function GET(
 // 8. Persist PDF metadata on invoice record
 ⋮----
 // 9. Return PDF bytes — convert Buffer to Uint8Array for Web Response compatibility
-````
-
-## File: components/layout/sidebar.tsx
-````typescript
-import Link from 'next/link'
-import { LayoutDashboard, Egg, Package, DollarSign, Bird, Settings, LogOut, BarChart2 } from 'lucide-react'
-import type { SessionUser } from '@/lib/auth/get-session'
-import type { Notification } from '@/lib/services/notification.service'
-import { NotificationBell } from '@/components/ui/notification-bell'
-⋮----
-function getInitials(name: string)
-⋮----
-function getRoleLabel(role: string)
-⋮----
-{/* Brand */}
-⋮----
-{/* Farm info box */}
-⋮----
-{/* Nav */}
-⋮----
-{/* Invoice sub-link under Penjualan — admin + supervisor only */}
-⋮----
-{/* Laporan Piutang — admin + supervisor only */}
-⋮----
-{/* User card */}
-⋮----
-{/* Logout via GET route that calls supabase.auth.signOut() and redirects to /login */}
 ````
 
 ## File: components/pdf/invoice-pdf-document.tsx
@@ -4044,68 +4316,6 @@ type ActionResult = { success: true } | { success: false; error: string }
 export async function saveWaTemplateAction(formData: FormData): Promise<ActionResult>
 ````
 
-## File: lib/actions/sales-order.actions.ts
-````typescript
-import { z } from 'zod'
-import { revalidatePath } from 'next/cache'
-import { getSession } from '@/lib/auth/get-session'
-import { requireSupervisorOrAdmin } from '@/lib/auth/guards'
-import {
-  createDraftSO,
-  confirmSO,
-  cancelSO,
-  deleteDraftSO,
-  fulfillSO,
-} from '@/lib/services/sales-order.service'
-⋮----
-type ActionResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: string }
-⋮----
-export async function createDraftSOAction(formData: FormData): Promise<ActionResult<
-⋮----
-// Parse items array from FormData
-⋮----
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let items: any[] // any: raw JSON from FormData, validated by zod immediately after
-⋮----
-export async function confirmSOAction(orderId: string): Promise<ActionResult<undefined>>
-⋮----
-export async function cancelSOAction(orderId: string): Promise<ActionResult<undefined>>
-⋮----
-export async function deleteDraftSOAction(orderId: string): Promise<ActionResult<undefined>>
-⋮----
-export async function fulfillSOAction(orderId: string): Promise<ActionResult<undefined>>
-````
-
-## File: lib/actions/sales-return.actions.ts
-````typescript
-import { z } from 'zod'
-import { revalidatePath } from 'next/cache'
-import { getSession } from '@/lib/auth/get-session'
-import { requireSupervisorOrAdmin, requireAdmin } from '@/lib/auth/guards'
-import {
-  createSalesReturn,
-  approveSalesReturn,
-  rejectSalesReturn,
-} from '@/lib/services/sales-return.service'
-⋮----
-type ActionResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: string }
-⋮----
-export async function createSalesReturnAction(formData: FormData): Promise<ActionResult<
-⋮----
-// Parse items array from FormData
-⋮----
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let items: any[] // any: raw JSON from FormData, validated by zod immediately after
-⋮----
-export async function approveSalesReturnAction(returnId: string): Promise<ActionResult<undefined>>
-⋮----
-export async function rejectSalesReturnAction(returnId: string): Promise<ActionResult<undefined>>
-````
-
 ## File: lib/db/queries/app-settings.queries.ts
 ````typescript
 import { db } from '@/lib/db'
@@ -4116,6 +4326,241 @@ import { eq } from 'drizzle-orm'
 export async function getAppSetting(key: string): Promise<string | null>
 ⋮----
 export async function upsertAppSetting(key: string, value: string, updatedBy: string): Promise<void>
+````
+
+## File: lib/db/schema/index.ts
+````typescript
+
+````
+
+## File: lib/services/daily-record.service.test.ts
+````typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+⋮----
+assertCanEdit: vi.fn(), // no-op by default
+⋮----
+import {
+  validateBackdate,
+  computeIsLateInput,
+  computeActivePopulation,
+  saveDailyRecord,
+  getProductionReportData,
+} from './daily-record.service'
+⋮----
+// activePopulation = 1000 - (5 + 2) = 993
+⋮----
+// KPI aggregates
+⋮----
+vi.mocked(flockQueries.findFlockById).mockResolvedValue({ id: 'f1', initialCount: 5000 } as any) // any: partial mock
+⋮----
+vi.mocked(queries.upsertDailyRecordTx).mockResolvedValue({ id: 'dr-1' } as any) // any: partial mock
+````
+
+## File: lib/services/import.service.ts
+````typescript
+/**
+ * Import Service — Sprint 8
+ * CSV import for: flocks, daily_records, customers, opening stock.
+ *
+ * Flow:
+ *   1. parse(csvText, entity)  → { valid, errors }   (no DB write)
+ *   2. importRows(valid, entity, adminId)             (DB write in transaction)
+ *
+ * All imported records: is_imported = true, imported_by = adminId.
+ * System errors → full rollback, no partial save.
+ * Valid rows imported, error rows skipped after user confirmation.
+ */
+⋮----
+import { db } from '@/lib/db'
+import {
+  flocks,
+  dailyRecords,
+  customers,
+  inventoryMovements,
+  coops,
+  stockItems,
+} from '@/lib/db/schema'
+import { eq, and, sql } from 'drizzle-orm'
+import type { NewFlock, NewDailyRecord, NewCustomer, NewInventoryMovement } from '@/lib/db/schema'
+⋮----
+// ─── CSV parsing helpers ──────────────────────────────────────────────────────
+⋮----
+function parseISODate(val: string, field: string, rowNum: number):
+⋮----
+function parseInt2(val: string, field: string, rowNum: number, required = true):
+⋮----
+function parseFloat2(val: string, field: string, rowNum: number):
+⋮----
+export type ParsedRow<T> = {
+  rowNum: number
+  data: T
+}
+⋮----
+export type ParseError = {
+  rowNum: number
+  errors: string[]
+}
+⋮----
+export type ParseResult<T> = {
+  valid: ParsedRow<T>[]
+  errors: ParseError[]
+}
+⋮----
+function parseCsv(text: string): string[][]
+⋮----
+// ─── Flock import ─────────────────────────────────────────────────────────────
+⋮----
+export type FlockImportRow = Omit<NewFlock, 'isImported' | 'importedBy'>
+⋮----
+/**
+ * Expected CSV columns: coop_id, name, arrival_date, initial_count, breed (opt), notes (opt)
+ */
+export async function parseFlockscsv(csvText: string): Promise<ParseResult<FlockImportRow>>
+⋮----
+const [, ...dataRows] = rows // skip header
+⋮----
+// ─── DailyRecord import ───────────────────────────────────────────────────────
+⋮----
+export type DailyRecordImportRow = Pick<NewDailyRecord, 'flockId' | 'recordDate' | 'deaths' | 'culled' | 'eggsCracked' | 'eggsAbnormal' | 'isLateInput'>
+⋮----
+/**
+ * Expected CSV columns: flock_id, record_date, deaths, culled, eggs_cracked (opt), eggs_abnormal (opt)
+ * Note: egg/feed entries are imported separately via the daily input form.
+ */
+export async function parseDailyRecordsCsv(csvText: string): Promise<ParseResult<DailyRecordImportRow>>
+⋮----
+// Duplicate check: (flockId, recordDate) must not already exist
+⋮----
+// ─── Customer import ──────────────────────────────────────────────────────────
+⋮----
+export type CustomerImportRow = Omit<NewCustomer, 'isImported' | 'importedBy'>
+⋮----
+/**
+ * Expected CSV columns:
+ * name, type (retail|wholesale|distributor), phone (opt), address (opt),
+ * credit_limit (opt), payment_terms (opt)
+ */
+export function parseCustomersCsv(csvText: string): ParseResult<CustomerImportRow>
+⋮----
+// ─── Opening stock import ─────────────────────────────────────────────────────
+⋮----
+export type OpeningStockImportRow = Pick<NewInventoryMovement, 'stockItemId' | 'movementType' | 'source' | 'sourceType' | 'quantity' | 'movementDate'>
+⋮----
+/**
+ * Expected CSV columns: stock_item_id, quantity, movement_date
+ */
+export async function parseOpeningStockCsv(csvText: string): Promise<ParseResult<OpeningStockImportRow>>
+⋮----
+// ─── DB write ─────────────────────────────────────────────────────────────────
+⋮----
+export type ImportEntity = 'flocks' | 'daily_records' | 'customers' | 'opening_stock'
+⋮----
+export type ImportResult = {
+  inserted: number
+  skipped: number
+}
+⋮----
+/**
+ * Writes valid parsed rows to DB inside a single transaction.
+ * Any system error → full rollback.
+ * admin-only: sets is_imported = true, imported_by = adminId.
+ */
+export async function commitImport(
+  entity: ImportEntity,
+  // any: dynamic row types across 4 entity types
+  // any: row data varies by entity
+  rows: ParsedRow<Record<string, unknown>>[],
+  adminId: string
+): Promise<ImportResult>
+⋮----
+// any: dynamic row types across 4 entity types
+// any: row data varies by entity
+⋮----
+// ─── CSV templates ───────────────────────────────────────────────────────────
+⋮----
+export function getCsvTemplate(entity: ImportEntity): string
+````
+
+## File: middleware.ts
+````typescript
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
+import { Ratelimit } from '@upstash/ratelimit'
+import { Redis } from '@upstash/redis/cloudflare'
+⋮----
+export async function middleware(request: NextRequest)
+⋮----
+// Rate limit auth endpoints
+⋮----
+getAll()
+setAll(cookiesToSet)
+````
+
+## File: lib/db/queries/daily-record.queries.ts
+````typescript
+import { db } from '@/lib/db'
+import {
+  dailyRecords, dailyEggRecords, dailyFeedRecords, dailyVaccineRecords,
+  inventoryMovements, flocks, coops,
+} from '@/lib/db/schema'
+import { eq, and, desc, sum, gte, lte, asc, inArray } from 'drizzle-orm'
+import type {
+  DailyRecord, NewDailyRecord,
+  NewDailyEggRecord, NewDailyFeedRecord, NewDailyVaccineRecord,
+  NewInventoryMovement,
+} from '@/lib/db/schema'
+⋮----
+export async function findDailyRecordById(id: string): Promise<DailyRecord | null>
+⋮----
+export async function findDailyRecord(flockId: string, recordDate: string): Promise<DailyRecord | null>
+⋮----
+export async function findRecentDailyRecords(flockId: string, limit: number): Promise<DailyRecord[]>
+⋮----
+export type DailyRecordWithFlock = DailyRecord & { flockName: string; coopName: string }
+⋮----
+export async function findRecentDailyRecordsMultiFlocks(
+  flockIds: string[],
+  limit: number,
+): Promise<DailyRecordWithFlock[]>
+⋮----
+export async function getTotalDepletionByFlock(
+  flockId: string
+): Promise<
+⋮----
+export async function getCumulativeDepletionByFlockUpTo(
+  flockId: string,
+  upToDate: string
+): Promise<
+⋮----
+type SaveDailyRecordTxInput = {
+  record: NewDailyRecord
+  eggEntries: NewDailyEggRecord[]
+  feedEntries: NewDailyFeedRecord[]
+  vaccineEntries: NewDailyVaccineRecord[]
+  eggMovements: NewInventoryMovement[]
+  feedMovements: NewInventoryMovement[]
+  vaccineMovements: NewInventoryMovement[]
+}
+⋮----
+export async function upsertDailyRecordTx(input: SaveDailyRecordTxInput): Promise<DailyRecord>
+⋮----
+// Delete old movements from this record (by sourceId reference)
+⋮----
+export type ProductionReportRow = {
+  recordDate: string
+  coopId: string
+  coopName: string
+  flockId: string
+  flockName: string
+  flockInitialCount: number
+  deaths: number
+  culled: number
+}
+⋮----
+export async function getProductionReport(
+  from: string,
+  to: string
+): Promise<ProductionReportRow[]>
 ````
 
 ## File: lib/services/alert.service.ts
@@ -4130,6 +4575,8 @@ import { db } from '@/lib/db'
 import {
   flocks,
   dailyRecords,
+  dailyEggRecords,
+  dailyFeedRecords,
   invoices,
 } from '@/lib/db/schema'
 import { eq, isNull, desc, and, lte, sql, inArray } from 'drizzle-orm'
@@ -4138,7 +4585,7 @@ import { getAppSetting } from '@/lib/services/app-settings.service'
 import { findActiveCooldown, upsertCooldown } from '@/lib/db/queries/alert-cooldown.queries'
 import { createNotification } from '@/lib/db/queries/notification.queries'
 import { getPhaseForWeeks } from '@/lib/services/flock-phase.service'
-import { getStockBalanceByGrade } from '@/lib/db/queries/inventory.queries'
+import { getAllStockBalances } from '@/lib/db/queries/inventory.queries'
 ⋮----
 // ─── helpers ──────────────────────────────────────────────────────────────────
 ⋮----
@@ -4147,6 +4594,10 @@ function daysSince(date: Date): number
 function weeksOld(arrivalDate: Date): number
 ⋮----
 async function getNumericSetting(key: string, fallback: number): Promise<number>
+⋮----
+async function getTotalEggsForRecord(dailyRecordId: string): Promise<number>
+⋮----
+async function getTotalFeedKgForRecord(dailyRecordId: string): Promise<number>
 ⋮----
 // ─── alert conditions ─────────────────────────────────────────────────────────
 ⋮----
@@ -4188,7 +4639,7 @@ async function checkOverdueInvoiceAlerts(overdueDelayDays: number): Promise<void
 // No cooldown — fires daily
 ⋮----
 /**
- * Stock overstock alert — fires if total stock (grade A + B) > threshold.
+ * Stock overstock alert — fires if total Telur stock > threshold.
  * Cooldown: 24h (fixed entity id '00000000-0000-0000-0000-000000000001').
  */
 async function checkStockAlerts(threshold: number): Promise<void>
@@ -4208,18 +4659,19 @@ export async function runDailyAlerts(): Promise<void>
 ````typescript
 import {
   findDailyRecord,
-  insertDailyRecordWithMovements,
+  upsertDailyRecordTx,
   getTotalDepletionByFlock,
   getCumulativeDepletionByFlockUpTo,
   getProductionReport,
 } from '@/lib/db/queries/daily-record.queries'
+import { getStockBalance } from '@/lib/db/queries/inventory.queries'
 import { findAllActiveFlocks, findFlockById } from '@/lib/db/queries/flock.queries'
 import { findAssignedCoopIds } from '@/lib/db/queries/user-coop-assignment.queries'
 import { db } from '@/lib/db'
 import { dailyRecords } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { assertCanEdit } from '@/lib/services/lock-period.service'
-import type { DailyRecord, NewDailyRecord, NewInventoryMovement } from '@/lib/db/schema'
+import type { DailyRecord } from '@/lib/db/schema'
 ⋮----
 export type Role = 'operator' | 'supervisor' | 'admin'
 ⋮----
@@ -4232,35 +4684,35 @@ export function computeActivePopulation(
   records: { deaths: number; culled: number }[]
 ): number
 ⋮----
-export function computeHDP(eggsA: number, eggsB: number, population: number): number
+type EggEntry = { stockItemId: string; qtyButir: number; qtyKg: number }
+type FeedEntry = { stockItemId: string; qtyUsed: number }
+type VaccineEntry = { stockItemId: string; qtyUsed: number }
 ⋮----
-export function computeFeedPerBird(feedKg: number, population: number): number
-⋮----
-return (feedKg / population) * 1000 // grams per bird
-⋮----
-export function computeFCR(feedKg: number, eggsA: number, eggsB: number): number
-⋮----
-return feedKg / (total / 12) // kg feed per dozen eggs; threshold >2.1 = inefficient
-⋮----
-type CreateDailyRecordInput = {
+type SaveDailyRecordInput = {
   flockId: string
-  recordDate: Date
+  recordDate: string // YYYY-MM-DD
   deaths: number
   culled: number
-  eggsGradeA: number
-  eggsGradeB: number
   eggsCracked: number
   eggsAbnormal: number
-  avgWeightKg?: number
-  feedKg?: number
+  notes?: string
+  eggEntries: EggEntry[]
+  feedEntries: FeedEntry[]
+  vaccineEntries: VaccineEntry[]
 }
 ⋮----
-export async function createDailyRecord(
-  input: CreateDailyRecordInput,
+recordDate: string // YYYY-MM-DD
+⋮----
+export async function saveDailyRecord(
+  input: SaveDailyRecordInput,
   userId: string,
   role: Role,
   now: Date = new Date()
 ): Promise<DailyRecord>
+⋮----
+// Validate feed/vaccine stock
+⋮----
+dailyRecordId: '', // will be set in tx
 ⋮----
 export type FlockOption = {
   id: string
@@ -4272,20 +4724,8 @@ export type FlockOption = {
 ⋮----
 export async function getFlockOptionsForInput(userId: string, role: Role): Promise<FlockOption[]>
 ⋮----
-type UpdateDailyRecordInput = Partial<Omit<CreateDailyRecordInput, 'flockId' | 'recordDate'>>
-⋮----
-export async function updateDailyRecord(
-  recordId: string,
-  input: UpdateDailyRecordInput,
-  userId: string,
-  role: Role,
-  now: Date = new Date()
-): Promise<DailyRecord>
-⋮----
-// Lock period check — throws if role cannot edit this record date
-⋮----
 export type EnrichedProductionRow = {
-  recordDate: Date
+  recordDate: string
   coopId: string
   coopName: string
   flockId: string
@@ -4293,243 +4733,29 @@ export type EnrichedProductionRow = {
   activePopulation: number
   deaths: number
   culled: number
-  eggsGradeA: number
-  eggsGradeB: number
-  totalEggs: number
-  feedKg: number
-  hdp: number
-  fcr: number
 }
 ⋮----
 export type ProductionReportResult = {
   rows: EnrichedProductionRow[]
   kpi: {
-    avgHdp: number
-    totalEggs: number
-    totalFeedKg: number
     totalDeaths: number
+    totalCulled: number
   }
 }
 ⋮----
 export async function getProductionReportData(
-  from: Date,
-  to: Date,
+  from: string,
+  to: string,
   role: Role
 ): Promise<ProductionReportResult>
 ⋮----
-// PERF: N+1 per flock-date row; batch if > 10 flocks per report
-⋮----
-// Unweighted mean across all flock-day rows; does not account for different flock sizes
-````
-
-## File: lib/services/invoice.service.test.ts
-````typescript
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-⋮----
-// Mock db.transaction to immediately invoke callback with a mock tx that has insert
-⋮----
-import { db } from '@/lib/db'
-import {
-  getInvoiceDetails,
-  recordPayment,
-  applyCredit,
-  getAgingData,
-  getInvoiceForPdf,
-} from './invoice.service'
-⋮----
-vi.mocked(notificationQueries.createNotification).mockResolvedValue(undefined as any) // any: mock doesn't need full Notification shape
-⋮----
-// Verify query-layer functions were called for customerCredit and notification
-````
-
-## File: lib/services/invoice.service.ts
-````typescript
-import { findSalesOrderItems } from '@/lib/db/queries/sales-order.queries'
-import { db } from '@/lib/db'
-import type { InvoiceDetails, AgingRow } from '@/lib/db/queries/invoice.queries'
-import type { Invoice, SalesOrderItem } from '@/lib/db/schema'
-⋮----
-export async function getInvoiceDetails(id: string): Promise<InvoiceDetails>
-⋮----
-type RecordPaymentInput = {
-  amount: number
-  method: 'cash' | 'transfer' | 'cheque' | 'credit'
-  referenceNumber?: string
-  paymentDate: Date
-}
-⋮----
-export async function recordPayment(
-  invoiceId: string,
-  input: RecordPaymentInput,
-  userId: string
-): Promise<
-⋮----
-export async function applyCredit(
-  invoiceId: string,
-  creditId: string,
-  amount: number,
-  userId: string
-): Promise<void>
-⋮----
-// Pre-validation outside transaction (fast fail)
-⋮----
-// Re-check inside transaction to prevent TOCTOU race
-⋮----
-export async function getAgingData(): Promise<AgingRow[]>
-⋮----
-export async function savePdfMetadata(id: string, pdfUrl: string, pdfGeneratedAt: Date): Promise<void>
-⋮----
-export async function getInvoiceForPdf(
-  id: string
-): Promise<InvoiceDetails &
-⋮----
-export async function markInvoiceSent(id: string): Promise<void>
-````
-
-## File: lib/actions/invoice.actions.ts
-````typescript
-import { z } from 'zod'
-import { revalidatePath } from 'next/cache'
-import { getSession } from '@/lib/auth/get-session'
-import { recordPayment, applyCredit, getInvoiceForPdf, markInvoiceSent } from '@/lib/services/invoice.service'
-import { sendInvoiceEmail } from '@/lib/services/email.service'
-import { InvoicePdfDocument } from '@/components/pdf/invoice-pdf-document'
-⋮----
-type ActionResult<T = undefined> =
-  | { success: true; data: T }
-  | { success: false; error: string }
-⋮----
-async function requireAdmin(): Promise<
-  { success: false; error: string; session?: never } | { success: true; session: NonNullable<Awaited<ReturnType<typeof getSession>>> }
-> {
-  const session = await getSession()
-if (!session || session.role !== 'admin')
-⋮----
-export async function recordPaymentAction(
-  formData: FormData
-): Promise<ActionResult<
-⋮----
-export async function applyCreditAction(
-  invoiceId: string,
-  creditId: string,
-  amount: number
-): Promise<ActionResult>
-⋮----
-export async function sendInvoiceEmailAction(invoiceId: string): Promise<ActionResult>
-⋮----
-// any: renderToBuffer expects ReactElement<DocumentProps> but InvoicePdfDocument
-// returns a <Document> wrapper — the runtime shape is correct, cast is safe.
-⋮----
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-````
-
-## File: lib/db/queries/invoice.queries.ts
-````typescript
-import { db, DrizzleTx } from '@/lib/db'
-import { invoices, customers, salesOrders, payments, customerCredits } from '@/lib/db/schema'
-import { eq, and, asc, desc, count, getTableColumns, sql, inArray } from 'drizzle-orm'
-import type { Invoice, Customer, Payment, CustomerCredit } from '@/lib/db/schema'
-⋮----
-export async function countInvoicesThisMonth(prefix: string): Promise<number>
-⋮----
-export async function findInvoiceByOrderId(orderId: string): Promise<Invoice | null>
-⋮----
-export type InvoiceWithCustomer = Invoice & { customerName: string | null; orderNumber: string | null }
-⋮----
-export type InvoiceDetails = Invoice & {
-  customer: Customer
-  orderNumber: string | null
-  payments: Payment[]
-  availableCredits: CustomerCredit[]
-}
-⋮----
-export type AgingBucket = '0-7' | '8-14' | '15-30' | '>30'
-⋮----
-export type AgingRow = {
-  invoiceId: string
-  invoiceNumber: string
-  customerId: string
-  customerName: string
-  issueDate: Date
-  dueDate: Date
-  totalAmount: number
-  paidAmount: number
-  outstanding: number
-  daysOverdue: number
-  bucket: AgingBucket
-}
-⋮----
-export async function listInvoices(
-  page: number = 1,
-  pageSize: number = 20,
-  status?: Invoice['status'],
-  customerId?: string
-): Promise<
-⋮----
-export async function getInvoiceWithDetails(id: string): Promise<InvoiceDetails | null>
-⋮----
-// Query 1: invoice + customer join + SO join
-⋮----
-// Query 2: all payments for this invoice
-⋮----
-// Query 3: available customer credits (amount > usedAmount)
-⋮----
-export async function updateInvoiceStatus(
-  id: string,
-  status: Invoice['status'],
-  tx?: DrizzleTx
-): Promise<void>
-⋮----
-export async function updateInvoicePaidAmount(
-  id: string,
-  paidAmount: number,
-  tx?: DrizzleTx
-): Promise<void>
-⋮----
-export async function getOverdueInvoices(): Promise<InvoiceWithCustomer[]>
-⋮----
-export async function updateInvoicePdfInfo(id: string, pdfUrl: string, pdfGeneratedAt: Date): Promise<void>
-⋮----
-export async function getAgingReport(): Promise<AgingRow[]>
-````
-
-## File: app/(app)/penjualan/invoices/[id]/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { getSession } from '@/lib/auth/get-session'
-import { getInvoiceDetails } from '@/lib/services/invoice.service'
-import { recordPaymentAction, applyCreditAction, sendInvoiceEmailAction } from '@/lib/actions/invoice.actions'
-import { getAppSetting } from '@/lib/services/app-settings.service'
-import { InvoiceStatusBadge } from '@/components/ui/invoice-status-badge'
-import { Button } from '@/components/ui/button'
-⋮----
-// WA share setup (admin only)
-⋮----
-// Inline server actions
-async function handleRecordPayment(formData: FormData)
-⋮----
-async function handleSendEmail()
-⋮----
-{/* Header */}
-⋮----
-{/* Download PDF button */}
-⋮----
-{/* WA share button — admin only, requires customer phone */}
-⋮----
-{/* Email send button — admin only, requires customer email */}
-⋮----
-{/* Alerts */}
-⋮----
-{/* Financial summary */}
-⋮----
-{/* Payment history */}
-⋮----
-{/* Record Payment form (admin only, status not paid/cancelled/draft) */}
-⋮----
-{/* Available credits (admin only) */}
-⋮----
-async function handleApplyCredit(formData: FormData)
+export async function updateDailyRecordAyam(
+  recordId: string,
+  input: { deaths?: number; culled?: number; notes?: string },
+  userId: string,
+  role: Role,
+  now: Date = new Date()
+): Promise<DailyRecord>
 ````
 
 ## File: lib/services/sales-order.service.ts
@@ -4623,4 +4849,59 @@ type CreateDraftInput = {
   notes?: string
   overrideReason?: string
 }
+````
+
+## File: components/layout/sidebar.tsx
+````typescript
+// client: needs useState for accordion open/close state
+⋮----
+import { useState } from 'react'
+import Link from 'next/link'
+import { LayoutDashboard, Egg, Package, DollarSign, Bird, Settings, LogOut, BarChart2, ChevronDown } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import type { SessionUser } from '@/lib/auth/get-session'
+import type { Notification } from '@/lib/services/notification.service'
+import { NotificationBell } from '@/components/ui/notification-bell'
+⋮----
+type NavSubItem = {
+  href: string
+  label: string
+  /** roles that can see this sub-item. undefined = all roles */
+  roles?: Array<'admin' | 'supervisor' | 'operator'>
+}
+⋮----
+/** roles that can see this sub-item. undefined = all roles */
+⋮----
+type NavItem =
+  | { kind: 'flat'; href: string; icon: LucideIcon; label: string; roles?: Array<'admin' | 'supervisor' | 'operator'> }
+  | { kind: 'accordion'; id: string; icon: LucideIcon; label: string; roles?: Array<'admin' | 'supervisor' | 'operator'>; children: NavSubItem[] }
+⋮----
+function getInitials(name: string)
+⋮----
+function getRoleLabel(role: string)
+⋮----
+function canSee(roles: Array<'admin' | 'supervisor' | 'operator'> | undefined, userRole: string): boolean
+⋮----
+// Prevents /admin matching /admin/kandang — requires trailing slash or exact match
+function isActive(currentPath: string, href: string): boolean
+⋮----
+function getDefaultOpenId(
+  sections: typeof NAV_SECTIONS,
+  currentPath: string,
+  userRole: string,
+): string | null
+⋮----
+function toggleAccordion(id: string)
+⋮----
+{/* Brand */}
+⋮----
+{/* Farm info box */}
+⋮----
+{/* Nav */}
+⋮----
+// accordion item
+⋮----
+{/* User card */}
+⋮----
+{/* Logout via GET route that calls supabase.auth.signOut() and redirects to /login */}
 ````

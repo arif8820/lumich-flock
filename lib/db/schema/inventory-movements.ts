@@ -19,7 +19,7 @@ export const inventoryMovements = pgTable('inventory_movements', {
   flockId: uuid('flock_id').references(() => flocks.id),
   movementType: movementTypeEnum('movement_type').notNull(),
   source: movementSourceEnum('source').notNull(),
-  sourceType: movementSourceTypeEnum('source_type').notNull(),
+  sourceType: movementSourceTypeEnum('source_type'),
   sourceId: uuid('source_id'),
   quantity: integer('quantity').notNull(),
   movementDate: date('movement_date').notNull(),

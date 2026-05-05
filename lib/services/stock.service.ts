@@ -123,8 +123,6 @@ export async function createStockPurchase(
     stockItemId: input.stockItemId,
     movementType: 'in',
     source: 'purchase',
-    sourceType: 'stock_adjustments',
-    sourceId: null,
     quantity: input.quantity,
     movementDate: input.purchaseDate,
     createdBy: userId,

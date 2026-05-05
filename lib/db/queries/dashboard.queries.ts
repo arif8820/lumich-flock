@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
-import { dailyRecords, flocks, dailyEggRecords, stockItems, stockCategories } from '@/lib/db/schema'
-import { desc, isNull, gte, and, sum, eq, inArray, SQL } from 'drizzle-orm'
+import { dailyRecords, flocks, dailyEggRecords, stockItems, stockCategories, inventoryMovements } from '@/lib/db/schema'
+import { desc, isNull, gte, and, sum, eq, inArray, SQL, sql } from 'drizzle-orm'
 import type { DailyRecord } from '@/lib/db/schema'
 
 export type DashboardRecord = Pick<
@@ -98,16 +98,13 @@ export type StockSummaryRow = {
 export async function getStockSummary(): Promise<StockSummaryRow> {
   const rows = await db
     .select({
-      stockItemId: dailyEggRecords.stockItemId,
-      categoryName: stockCategories.name,
-      totalButir: sum(dailyEggRecords.qtyButir),
+      balance: sum(sql<number>`CASE WHEN ${inventoryMovements.movementType} = 'in' THEN ${inventoryMovements.quantity} ELSE -${inventoryMovements.quantity} END`),
     })
-    .from(dailyEggRecords)
-    .innerJoin(stockItems, eq(dailyEggRecords.stockItemId, stockItems.id))
+    .from(inventoryMovements)
+    .innerJoin(stockItems, eq(inventoryMovements.stockItemId, stockItems.id))
     .innerJoin(stockCategories, eq(stockItems.categoryId, stockCategories.id))
     .where(eq(stockCategories.name, 'Telur'))
-    .groupBy(dailyEggRecords.stockItemId, stockCategories.name)
 
-  const totalEggs = rows.reduce((s, r) => s + Number(r.totalButir ?? 0), 0)
+  const totalEggs = Number(rows[0]?.balance ?? 0)
   return { totalEggs }
 }

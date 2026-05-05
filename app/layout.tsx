@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { DM_Sans } from "next/font/google"
+import { Suspense } from 'react'
 import "./globals.css"
 import { ProgressBar } from '@/components/providers/progress-bar'
 
@@ -24,7 +25,9 @@ export default function RootLayout({
   return (
     <html lang="id" className={`${dmSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        <ProgressBar />
+        <Suspense>
+          <ProgressBar />
+        </Suspense>
         {children}
       </body>
     </html>
