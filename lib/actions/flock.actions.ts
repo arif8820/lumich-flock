@@ -23,11 +23,6 @@ type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: false; error: string }
 
-async function requireSupervisorOrAdmin(): Promise<{ success: false; error: string } | null> {
-  const session = await getSession()
-  if (!session || session.role === 'operator') return { success: false, error: 'Akses ditolak' }
-  return null
-}
 
 export async function createFlockAction(formData: FormData): Promise<ActionResult<{ id: string }>> {
   const session = await getSession()

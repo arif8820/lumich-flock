@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { dailyRecords, flocks, dailyEggRecords, stockItems, stockCategories, inventoryMovements } from '@/lib/db/schema'
+import { dailyRecords, flocks, stockItems, stockCategories, inventoryMovements } from '@/lib/db/schema'
 import { desc, isNull, gte, and, sum, eq, inArray, SQL, sql } from 'drizzle-orm'
 import type { DailyRecord } from '@/lib/db/schema'
 
