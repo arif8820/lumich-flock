@@ -7,6 +7,7 @@ import {
 } from '@/lib/db/queries/daily-record.queries'
 import { getStockBalance } from '@/lib/db/queries/inventory.queries'
 import { findAllActiveFlocks, findFlockById } from '@/lib/db/queries/flock.queries'
+import { sumDeliveriesQuantityByFlockId } from '@/lib/db/queries/flock-delivery.queries'
 import { findAssignedCoopIds } from '@/lib/db/queries/user-coop-assignment.queries'
 import { db } from '@/lib/db'
 import { dailyRecords } from '@/lib/db/schema'
@@ -76,7 +77,8 @@ export async function saveDailyRecord(
 
   const existing = await findDailyRecord(input.flockId, input.recordDate)
   if (!existing) {
-    const currentPop = Math.max(0, flock.initialCount - dep.deaths - dep.culled)
+    const flockTotalCount = await sumDeliveriesQuantityByFlockId(input.flockId)
+    const currentPop = Math.max(0, flockTotalCount - dep.deaths - dep.culled)
     const todayDepletion = input.deaths + input.culled
     if (todayDepletion > currentPop) {
       throw new Error(`Total depletion (${todayDepletion}) melebihi populasi aktif (${currentPop})`)
@@ -181,7 +183,7 @@ export type FlockOption = {
   id: string
   name: string
   coopName: string
-  initialCount: number
+  totalCount: number
   currentPopulation: number
 }
 
@@ -193,13 +195,16 @@ export async function getFlockOptionsForInput(userId: string, role: Role): Promi
   }
   return Promise.all(
     rawFlocks.map(async (f) => {
-      const dep = await getTotalDepletionByFlock(f.id)
+      const [dep, flockTotalCount] = await Promise.all([
+        getTotalDepletionByFlock(f.id),
+        sumDeliveriesQuantityByFlockId(f.id),
+      ])
       return {
         id: f.id,
         name: f.name,
         coopName: f.coopName,
-        initialCount: f.initialCount,
-        currentPopulation: Math.max(0, f.initialCount - dep.deaths - dep.culled),
+        totalCount: flockTotalCount,
+        currentPopulation: Math.max(0, flockTotalCount - dep.deaths - dep.culled),
       }
     })
   )
@@ -239,7 +244,7 @@ export async function getProductionReportData(
         row.flockId,
         row.recordDate
       )
-      const activePopulation = Math.max(0, row.flockInitialCount - cumDeaths - cumCulled)
+      const activePopulation = Math.max(0, row.flockTotalCount - cumDeaths - cumCulled)
       return {
         recordDate: row.recordDate,
         coopId: row.coopId,

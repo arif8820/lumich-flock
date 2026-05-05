@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { dailyRecords, flocks, dailyEggRecords, stockItems, stockCategories, inventoryMovements } from '@/lib/db/schema'
+import { dailyRecords, flocks, stockItems, stockCategories, inventoryMovements } from '@/lib/db/schema'
 import { desc, isNull, gte, and, sum, eq, inArray, SQL, sql } from 'drizzle-orm'
 import type { DailyRecord } from '@/lib/db/schema'
 
@@ -63,7 +63,7 @@ export async function getDailyProductionAgg(days: number, flockIds?: string[]): 
 
 export type FlockPopulationRow = {
   flockId: string
-  initialCount: number
+  totalCount: number
   totalDeaths: number
   totalCulled: number
 }
@@ -74,18 +74,18 @@ export async function getActiveFlockPopulations(flockIds?: string[]): Promise<Fl
   const rows = await db
     .select({
       flockId: flocks.id,
-      initialCount: flocks.initialCount,
+      totalCount: sql<number>`COALESCE((SELECT SUM(fd.quantity) FROM flock_deliveries fd WHERE fd.flock_id = ${flocks.id}), 0)`,
       totalDeaths: sum(dailyRecords.deaths),
       totalCulled: sum(dailyRecords.culled),
     })
     .from(flocks)
     .leftJoin(dailyRecords, eq(dailyRecords.flockId, flocks.id))
     .where(and(...conditions))
-    .groupBy(flocks.id, flocks.initialCount)
+    .groupBy(flocks.id)
 
   return rows.map((r) => ({
     flockId: r.flockId,
-    initialCount: r.initialCount,
+    totalCount: Number(r.totalCount),
     totalDeaths: Number(r.totalDeaths ?? 0),
     totalCulled: Number(r.totalCulled ?? 0),
   }))

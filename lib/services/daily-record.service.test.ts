@@ -107,7 +107,7 @@ describe('daily-record.service — pure functions', () => {
       coopName: 'Kandang A',
       flockId: 'flock-1',
       flockName: 'Batch 2026-01',
-      flockInitialCount: 1000,
+      flockTotalCount: 1000,
       deaths: 5,
       culled: 2,
     }

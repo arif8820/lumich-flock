@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, integer, date, timestamp, boolean } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, date, timestamp, boolean } from 'drizzle-orm/pg-core'
 import { coops } from './coops'
 import { users } from './users'
 
@@ -7,7 +7,7 @@ export const flocks = pgTable('flocks', {
   coopId: uuid('coop_id').notNull().references(() => coops.id),
   name: text('name').notNull(),
   arrivalDate: date('arrival_date', { mode: 'date' }).notNull(),
-  initialCount: integer('initial_count').notNull(),
+  docDate: date('doc_date', { mode: 'date' }).notNull(),
   breed: text('breed'),
   notes: text('notes'),
   retiredAt: timestamp('retired_at', { withTimezone: true }),

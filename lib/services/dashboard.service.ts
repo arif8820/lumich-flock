@@ -35,7 +35,7 @@ export async function getDashboardKpis(flockIds?: string[]): Promise<DashboardKp
   ])
 
   const activePopulation = popRows.reduce(
-    (acc, r) => acc + Math.max(0, r.initialCount - r.totalDeaths - r.totalCulled),
+    (acc, r) => acc + Math.max(0, r.totalCount - r.totalDeaths - r.totalCulled),
     0
   )
 

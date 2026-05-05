@@ -8,8 +8,13 @@ import { createFlockAction } from '@/lib/actions/flock.actions'
 const inputClass = 'mt-1 w-full border border-[var(--lf-border)] rounded-lg px-3 py-2 text-sm bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--lf-blue)]'
 const labelClass = 'block text-xs font-medium text-[var(--lf-text-mid)]'
 
+// USED BY: [add-delivery-form, create-flock-form] — count: 2
 function todayISO() {
-  return new Date().toISOString().split('T')[0]!
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 interface Props {
@@ -20,8 +25,9 @@ export function CreateFlockForm({ activeCoops }: Props) {
   const router = useRouter()
   const [name, setName] = useState('')
   const [coopId, setCoopId] = useState(activeCoops[0]?.id ?? '')
-  const [arrivalDate, setArrivalDate] = useState(todayISO())
-  const [initialCount, setInitialCount] = useState('')
+  const [firstDeliveryDate, setFirstDeliveryDate] = useState(todayISO())
+  const [firstDeliveryQuantity, setFirstDeliveryQuantity] = useState('')
+  const [ageAtArrivalDays, setAgeAtArrivalDays] = useState('0')
   const [breed, setBreed] = useState('')
   const [notes, setNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -35,8 +41,11 @@ export function CreateFlockForm({ activeCoops }: Props) {
       const fd = new FormData()
       fd.set('name', name)
       fd.set('coopId', coopId)
-      fd.set('arrivalDate', arrivalDate)
-      fd.set('initialCount', initialCount)
+      // arrivalDate = firstDeliveryDate (derived, not shown to user)
+      fd.set('arrivalDate', firstDeliveryDate)
+      fd.set('firstDeliveryDate', firstDeliveryDate)
+      fd.set('firstDeliveryQuantity', firstDeliveryQuantity)
+      fd.set('ageAtArrivalDays', ageAtArrivalDays)
       if (breed) fd.set('breed', breed)
       if (notes) fd.set('notes', notes)
       const result = await createFlockAction(fd)
@@ -52,81 +61,105 @@ export function CreateFlockForm({ activeCoops }: Props) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={labelClass}>Nama Flock</label>
-          <input
-            className={inputClass}
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            placeholder="Contoh: Batch Q1-2025"
-          />
+    <form onSubmit={onSubmit} className="space-y-5">
+      {/* Informasi Flock */}
+      <div className="space-y-4">
+        <h2 className="text-sm font-semibold text-[var(--lf-text-dark)]">Informasi Flock</h2>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>Nama Flock</label>
+            <input
+              className={inputClass}
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              placeholder="Contoh: Batch Q1-2025"
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Kandang</label>
+            <select
+              className={inputClass}
+              value={coopId}
+              onChange={(e) => setCoopId(e.target.value)}
+              required
+            >
+              {activeCoops.length === 0 && (
+                <option value="">-- Tidak ada kandang tersedia --</option>
+              )}
+              {activeCoops.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div>
-          <label className={labelClass}>Kandang</label>
-          <select
-            className={inputClass}
-            value={coopId}
-            onChange={(e) => setCoopId(e.target.value)}
-            required
-          >
-            {activeCoops.length === 0 && (
-              <option value="">-- Tidak ada kandang aktif --</option>
-            )}
-            {activeCoops.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>Ras/Breed (opsional)</label>
+            <input
+              className={inputClass}
+              type="text"
+              value={breed}
+              onChange={(e) => setBreed(e.target.value)}
+              placeholder="Contoh: Isa Brown"
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Catatan (opsional)</label>
+            <input
+              className={inputClass}
+              type="text"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      {/* Kedatangan Pertama */}
+      <div className="space-y-4 pt-2 border-t border-[var(--lf-border)]">
         <div>
-          <label className={labelClass}>Tanggal Kedatangan</label>
-          <input
-            className={inputClass}
-            type="date"
-            value={arrivalDate}
-            onChange={(e) => setArrivalDate(e.target.value)}
-            required
-          />
+          <h2 className="text-sm font-semibold text-[var(--lf-text-dark)]">Kedatangan Pertama</h2>
+          <p className="text-xs text-[var(--lf-text-soft)] mt-0.5">
+            Sistem akan menghitung tanggal lahir (DOC date) secara otomatis.
+          </p>
         </div>
-        <div>
-          <label className={labelClass}>Jumlah Ayam (ekor)</label>
-          <input
-            className={inputClass}
-            type="number"
-            value={initialCount}
-            onChange={(e) => setInitialCount(e.target.value)}
-            required
-            min="1"
-            placeholder="Jumlah ekor"
-          />
-        </div>
-      </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={labelClass}>Ras/Breed (opsional)</label>
-          <input
-            className={inputClass}
-            type="text"
-            value={breed}
-            onChange={(e) => setBreed(e.target.value)}
-            placeholder="Contoh: Isa Brown"
-          />
-        </div>
-        <div>
-          <label className={labelClass}>Catatan (opsional)</label>
-          <input
-            className={inputClass}
-            type="text"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-          />
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className={labelClass}>Tanggal Tiba</label>
+            <input
+              className={inputClass}
+              type="date"
+              value={firstDeliveryDate}
+              onChange={(e) => setFirstDeliveryDate(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Jumlah DOC (ekor)</label>
+            <input
+              className={inputClass}
+              type="number"
+              value={firstDeliveryQuantity}
+              onChange={(e) => setFirstDeliveryQuantity(e.target.value)}
+              required
+              min="1"
+              placeholder="Jumlah ekor"
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Umur saat tiba (hari)</label>
+            <input
+              className={inputClass}
+              type="number"
+              value={ageAtArrivalDays}
+              onChange={(e) => setAgeAtArrivalDays(e.target.value)}
+              min="0"
+            />
+          </div>
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Users, Home, ShoppingBag, Settings, MessageSquare, Bell, Upload, Package } from 'lucide-react'
+import { Users, Settings, MessageSquare, Bell, Upload, Package } from 'lucide-react'
 
 const MENU = [
   {
@@ -13,18 +13,6 @@ const MENU = [
     icon: Users,
     label: 'Manajemen User',
     desc: 'Tambah, ubah role, dan kelola akses pengguna',
-  },
-  {
-    href: '/admin/kandang',
-    icon: Home,
-    label: 'Manajemen Kandang',
-    desc: 'Daftarkan dan atur kandang aktif',
-  },
-  {
-    href: '/admin/pelanggan',
-    icon: ShoppingBag,
-    label: 'Manajemen Pelanggan',
-    desc: 'Data pelanggan, tipe, dan batas kredit',
   },
   {
     href: '/admin/flock-phases',

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSession } from '@/lib/auth/get-session'
 import { getAllCoops } from '@/lib/services/coop.service'
+import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
 import { CreateFlockForm } from '@/components/forms/create-flock-form'
 
 export default async function NewFlockPage() {
@@ -9,8 +10,10 @@ export default async function NewFlockPage() {
   if (!session || session.role === 'operator') redirect('/flock')
 
   const allCoops = await getAllCoops()
-  const activeCoops = allCoops
-    .filter((c) => c.status === 'active')
+  const activeFlocks = await findAllActiveFlocks()
+  const occupiedCoopIds = new Set(activeFlocks.map((f) => f.coopId))
+  const availableCoops = allCoops
+    .filter((c) => c.status === 'active' && !occupiedCoopIds.has(c.id))
     .map((c) => ({ id: c.id, name: c.name }))
 
   return (
@@ -29,7 +32,7 @@ export default async function NewFlockPage() {
       </div>
 
       <div className="bg-white rounded-2xl shadow-lf-sm p-6">
-        <CreateFlockForm activeCoops={activeCoops} />
+        <CreateFlockForm activeCoops={availableCoops} />
       </div>
     </div>
   )
