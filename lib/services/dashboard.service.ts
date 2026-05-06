@@ -1,5 +1,4 @@
 import {
-  getRecentDailyRecordsAcrossFlocks,
   getDailyProductionAgg,
   getActiveFlockPopulations,
   getStockSummary,
@@ -51,8 +50,8 @@ export type ProductionChartPoint = {
 }
 
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr)
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
+  const [, month, day] = dateStr.split('-')
+  return `${day}/${month}`
 }
 
 export async function getDashboardKpis(flockIds?: string[]): Promise<DashboardKpis> {
