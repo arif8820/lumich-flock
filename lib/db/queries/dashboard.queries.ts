@@ -61,7 +61,8 @@ export async function getDailyProductionAgg(days: number, flockIds?: string[]): 
     .orderBy(desc(dailyRecords.recordDate))
     .limit(days)
 
-  // Egg totals require joining daily_egg_records — return 0 for now, laporan has full data
+  // totalEggs intentionally not computed here — this query feeds the depletion chart only.
+  // For egg production data use getExtendedDailyRecords or getProductionBySkuTrend.
   return rows.map((r) => ({
     date: r.date as string,
     totalEggs: 0,
@@ -142,6 +143,8 @@ export async function getHdpTrend(days: number, flockIds?: string[]): Promise<Hd
     .groupBy(dailyRecords.recordDate)
     .orderBy(asc(dailyRecords.recordDate))
 
+  // Population snapshot: cumulative active birds as of now (not per-date).
+  // Acceptable approximation for dashboard trend display; use /laporan for precision.
   const popRows = await db
     .select({
       flockId: flocks.id,
@@ -239,6 +242,8 @@ export async function getFeedPerBirdTrend(days: number, flockIds?: string[]): Pr
     .groupBy(dailyRecords.recordDate)
     .orderBy(asc(dailyRecords.recordDate))
 
+  // Population snapshot: cumulative active birds as of now (not per-date).
+  // Acceptable approximation for dashboard trend display; use /laporan for precision.
   const popRows = await db
     .select({
       flockId: flocks.id,
@@ -300,6 +305,7 @@ export async function getProductionBySkuTrend(
     .groupBy(dailyRecords.recordDate, stockItems.name)
     .orderBy(asc(dailyRecords.recordDate), asc(stockItems.name))
 
+  // SKU name is used as the chart data key. Safe: stock_items has unique(category_id, name).
   const byDate = new Map<string, Record<string, number>>()
   for (const r of rows) {
     const date = r.date as string
@@ -316,7 +322,7 @@ export type ExtendedDashboardRecord = {
   totalFeedKg: number
   deaths: number
   culled: number
-  isLateInput: boolean | null
+  isLateInput: boolean
 }
 
 export async function getExtendedDailyRecords(
@@ -331,12 +337,12 @@ export async function getExtendedDailyRecords(
       date: dailyRecords.recordDate,
       deaths: sum(dailyRecords.deaths),
       culled: sum(dailyRecords.culled),
-      isLateInput: dailyRecords.isLateInput,
+      isLateInput: sql<boolean>`BOOL_OR(${dailyRecords.isLateInput})`,
     })
     .from(dailyRecords)
     .innerJoin(flocks, eq(dailyRecords.flockId, flocks.id))
     .where(and(...conditions))
-    .groupBy(dailyRecords.recordDate, dailyRecords.isLateInput)
+    .groupBy(dailyRecords.recordDate)
     .orderBy(desc(dailyRecords.recordDate))
     .limit(limit)
 
@@ -385,6 +391,6 @@ export async function getExtendedDailyRecords(
     totalFeedKg: feedByDate.get(r.date as string) ?? 0,
     deaths: Number(r.deaths ?? 0),
     culled: Number(r.culled ?? 0),
-    isLateInput: r.isLateInput,
+    isLateInput: r.isLateInput ?? false,
   }))
 }
