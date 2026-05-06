@@ -1,6 +1,7 @@
 'use client'
 // client: dynamic ssr:false requires Client Component in Next.js 15
 
+import type { ReactNode } from 'react'
 import dynamic from 'next/dynamic'
 import type { DashboardChartPoint, ProductionChartPoint } from '@/lib/services/dashboard.service'
 import type { HdpPoint, FcrPoint } from '@/lib/db/queries/dashboard.queries'
@@ -30,7 +31,7 @@ type DashboardChartsProps = {
   skuKeys: string[]
 }
 
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+function ChartCard({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="bg-white rounded-2xl p-4 shadow-lf-sm border border-[var(--lf-border)]">
       <p className="text-xs font-medium text-[var(--lf-text-soft)] uppercase tracking-wide mb-3">{title}</p>
