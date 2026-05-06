@@ -3,7 +3,7 @@ import { getSession } from '@/lib/auth/get-session'
 import { redirect } from 'next/navigation'
 import { KpiCard } from '@/components/ui/kpi-card'
 import { DashboardCharts } from '@/components/ui/charts/dashboard-charts'
-import { getDashboardKpis, getProductionChartData, getRecentDashboardRecords } from '@/lib/services/dashboard.service'
+import { getDashboardKpis, getProductionChartData, getRecentDashboardRecords, getHdpChartData, getFcrChartData, getProductionBySkuChartData } from '@/lib/services/dashboard.service'
 import { getAgingData } from '@/lib/services/invoice.service'
 import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
 import FlockFilter from '../produksi/flock-filter'
@@ -27,11 +27,18 @@ export default async function DashboardPage({
     flockIds = allFlocks.filter(f => f.coopId === coopId).map(f => f.id)
   }
 
-  const [kpis, chartData, recentRecords] = await Promise.all([
+  const [kpis, depletionData, recentRecords, hdpData, fcrData, productionSkuData] = await Promise.all([
     getDashboardKpis(flockIds),
     getProductionChartData(30, flockIds),
     getRecentDashboardRecords(7, flockIds),
+    getHdpChartData(30, flockIds),
+    getFcrChartData(30, flockIds),
+    getProductionBySkuChartData(30, flockIds),
   ])
+
+  const skuKeys = productionSkuData.length > 0
+    ? Object.keys(productionSkuData[0]!).filter((k) => k !== 'date')
+    : []
 
   let top5: AgingRow[] = []
   if (user.role !== 'operator') {
@@ -66,7 +73,13 @@ export default async function DashboardPage({
       </div>
 
       {/* Charts 2x2 */}
-      <DashboardCharts data={chartData} />
+      <DashboardCharts
+        depletionData={depletionData}
+        hdpData={hdpData}
+        fcrData={fcrData}
+        productionData={productionSkuData}
+        skuKeys={skuKeys}
+      />
 
       {/* Recent records table */}
       <div className="bg-white rounded-2xl p-4 shadow-lf-sm border border-[var(--lf-border)]">
