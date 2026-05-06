@@ -7,7 +7,6 @@ import {
   getFeedPerBirdTrend,
   getProductionBySkuTrend,
   getExtendedDailyRecords,
-  type DashboardRecord,
   type DailyAggRow,
   type HdpPoint,
   type FcrPoint,
