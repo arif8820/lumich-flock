@@ -11,12 +11,22 @@ type KpiCardProps = {
   unit?: string
   subText?: string
   trend?: KpiTrend
+  icon?: React.ReactNode
+  iconBg?: string
   className?: string
 }
 
-export function KpiCard({ label, value, unit, subText, trend, className }: KpiCardProps) {
+export function KpiCard({ label, value, unit, subText, trend, icon, iconBg, className }: KpiCardProps) {
   return (
     <div className={cn('bg-white rounded-2xl p-4 shadow-lf-sm border border-[var(--lf-border)]', className)}>
+      {icon && (
+        <div
+          className="mb-2 inline-flex items-center justify-center w-8 h-8 rounded-lg"
+          style={{ backgroundColor: iconBg ?? 'var(--lf-blue-light)' }}
+        >
+          {icon}
+        </div>
+      )}
       <p className="text-[10px] font-medium text-[var(--lf-text-soft)] uppercase tracking-[0.8px]">{label}</p>
       <div className="mt-2 flex items-baseline gap-1">
         <span className="text-2xl font-bold text-[var(--lf-text-dark)]">{value}</span>
