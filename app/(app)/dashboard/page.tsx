@@ -62,7 +62,7 @@ export default async function DashboardPage({
         <KpiCard label="Produksi Hari Ini" value={kpis.productionToday.toLocaleString('id')} unit="butir" />
         <KpiCard label="Stok Telur" value={kpis.stockTotalEggs.toLocaleString('id')} unit="butir" />
         <KpiCard label="Populasi Aktif" value={kpis.activePopulation.toLocaleString('id')} unit="ekor" />
-        <KpiCard label="Kematian Hari Ini" value={kpis.totalDeathsToday.toLocaleString('id')} unit="ekor" />
+        <KpiCard label="Kematian Hari Ini" value={kpis.depletionToday.toLocaleString('id')} unit="ekor" />
       </div>
 
       {/* Charts 2x2 */}
