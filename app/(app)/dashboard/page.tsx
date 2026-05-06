@@ -25,12 +25,14 @@ export default async function DashboardPage({
   if (!user) redirect('/login')
 
   const { flockId, days: daysParam } = await searchParams
-  const days = daysParam ? parseInt(daysParam, 10) : 7
+  const parsedDays = daysParam ? parseInt(daysParam, 10) : 7
+  const days = Number.isFinite(parsedDays) && parsedDays > 0 ? parsedDays : 7
   const allFlocks = await findAllActiveFlocks()
 
   let flockIds: string[] | undefined
   if (flockId) {
-    flockIds = allFlocks.filter(f => f.id === flockId).map(f => f.id)
+    const match = allFlocks.find(f => f.id === flockId)
+    flockIds = match ? [match.id] : undefined
   }
 
   const [kpis, depletionData, recentRecords, hdpData, fcrData, productionSkuData] = await Promise.all([
