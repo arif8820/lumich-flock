@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 type KpiTrend = {
@@ -11,7 +12,7 @@ type KpiCardProps = {
   unit?: string
   subText?: string
   trend?: KpiTrend
-  icon?: React.ReactNode
+  icon?: ReactNode
   iconBg?: string
   className?: string
 }
@@ -41,9 +42,9 @@ export function KpiCard({ label, value, unit, subText, trend, icon, iconBg, clas
           style={{
             color:
               trend.direction === 'up'
-                ? '#5a8a5a'
+                ? 'var(--lf-teal)'
                 : trend.direction === 'down'
-                ? '#b05050'
+                ? 'var(--lf-danger-text)'
                 : 'var(--lf-text-soft)',
           }}
         >
