@@ -3,7 +3,7 @@
 
 import type { ReactNode } from 'react'
 import dynamic from 'next/dynamic'
-import type { DashboardChartPoint, ProductionChartPoint } from '@/lib/services/dashboard.service'
+import type { DepletionPoint, ProductionChartPoint } from '@/lib/services/dashboard.service'
 import type { HdpPoint, FcrPoint } from '@/lib/db/queries/dashboard.queries'
 
 const HdpLineChart = dynamic(
@@ -24,7 +24,7 @@ const DepletionAreaChart = dynamic(
 )
 
 type DashboardChartsProps = {
-  depletionData: DashboardChartPoint[]
+  depletionData: DepletionPoint[]
   hdpData: HdpPoint[]
   fcrData: FcrPoint[]
   productionData: ProductionChartPoint[]
@@ -59,7 +59,7 @@ export function DashboardCharts({
         {/* any: ProductionChartPoint index sig is string|number; chart expects number values only — safe at runtime */}
         <ProductionBarChart data={productionData as Array<{ date: string } & Record<string, number>>} skuKeys={skuKeys} />
       </ChartCard>
-      <ChartCard title="Deplesi Kumulatif">
+      <ChartCard title="Deplesi Harian">
         <DepletionAreaChart data={depletionData} />
       </ChartCard>
     </div>

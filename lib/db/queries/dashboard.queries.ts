@@ -8,7 +8,7 @@ import {
   stockCategories,
   inventoryMovements,
 } from '@/lib/db/schema'
-import { desc, isNull, gte, and, sum, eq, inArray, SQL, sql, asc } from 'drizzle-orm'
+import { desc, isNull, gte, lte, and, sum, eq, inArray, SQL, sql, asc } from 'drizzle-orm'
 import type { DailyRecord } from '@/lib/db/schema'
 
 export type DashboardRecord = Pick<
@@ -41,12 +41,12 @@ export type DailyAggRow = {
   totalDeaths: number
 }
 
-export async function getDailyProductionAgg(days: number, flockIds?: string[]): Promise<DailyAggRow[]> {
-  const since = new Date()
-  since.setDate(since.getDate() - days)
-  const sinceStr = since.toISOString().split('T')[0]!
-
-  const conditions: SQL[] = [isNull(flocks.retiredAt), gte(dailyRecords.recordDate, sinceStr)]
+export async function getDailyProductionAgg(since: string, until: string, flockIds?: string[]): Promise<DailyAggRow[]> {
+  const conditions: SQL[] = [
+    isNull(flocks.retiredAt),
+    gte(dailyRecords.recordDate, since),
+    lte(dailyRecords.recordDate, until),
+  ]
   if (flockIds && flockIds.length > 0) conditions.push(inArray(dailyRecords.flockId, flockIds))
 
   const rows = await db
@@ -58,8 +58,7 @@ export async function getDailyProductionAgg(days: number, flockIds?: string[]): 
     .innerJoin(flocks, eq(dailyRecords.flockId, flocks.id))
     .where(and(...conditions))
     .groupBy(dailyRecords.recordDate)
-    .orderBy(desc(dailyRecords.recordDate))
-    .limit(days)
+    .orderBy(asc(dailyRecords.recordDate))
 
   // totalEggs intentionally not computed here — this query feeds the depletion chart only.
   // For egg production data use getExtendedDailyRecords or getProductionBySkuTrend.
@@ -120,14 +119,11 @@ export async function getStockSummary(): Promise<StockSummaryRow> {
 
 export type HdpPoint = { date: string; hdp: number }
 
-export async function getHdpTrend(days: number, flockIds?: string[]): Promise<HdpPoint[]> {
-  const since = new Date()
-  since.setDate(since.getDate() - days)
-  const sinceStr = since.toISOString().split('T')[0]!
-
+export async function getHdpTrend(since: string, until: string, flockIds?: string[]): Promise<HdpPoint[]> {
   const conditions: SQL[] = [
     isNull(flocks.retiredAt),
-    gte(dailyRecords.recordDate, sinceStr),
+    gte(dailyRecords.recordDate, since),
+    lte(dailyRecords.recordDate, until),
   ]
   if (flockIds && flockIds.length > 0) conditions.push(inArray(dailyRecords.flockId, flockIds))
 
@@ -170,14 +166,11 @@ export async function getHdpTrend(days: number, flockIds?: string[]): Promise<Hd
 
 export type FcrPoint = { date: string; fcr: number }
 
-export async function getFcrTrend(days: number, flockIds?: string[]): Promise<FcrPoint[]> {
-  const since = new Date()
-  since.setDate(since.getDate() - days)
-  const sinceStr = since.toISOString().split('T')[0]!
-
+export async function getFcrTrend(since: string, until: string, flockIds?: string[]): Promise<FcrPoint[]> {
   const conditions: SQL[] = [
     isNull(flocks.retiredAt),
-    gte(dailyRecords.recordDate, sinceStr),
+    gte(dailyRecords.recordDate, since),
+    lte(dailyRecords.recordDate, until),
   ]
   if (flockIds && flockIds.length > 0) conditions.push(inArray(dailyRecords.flockId, flockIds))
 
@@ -219,14 +212,11 @@ export async function getFcrTrend(days: number, flockIds?: string[]): Promise<Fc
 
 export type FeedPerBirdPoint = { date: string; feedGram: number }
 
-export async function getFeedPerBirdTrend(days: number, flockIds?: string[]): Promise<FeedPerBirdPoint[]> {
-  const since = new Date()
-  since.setDate(since.getDate() - days)
-  const sinceStr = since.toISOString().split('T')[0]!
-
+export async function getFeedPerBirdTrend(since: string, until: string, flockIds?: string[]): Promise<FeedPerBirdPoint[]> {
   const conditions: SQL[] = [
     isNull(flocks.retiredAt),
-    gte(dailyRecords.recordDate, sinceStr),
+    gte(dailyRecords.recordDate, since),
+    lte(dailyRecords.recordDate, until),
   ]
   if (flockIds && flockIds.length > 0) conditions.push(inArray(dailyRecords.flockId, flockIds))
 
@@ -276,16 +266,14 @@ export type ProductionBySkuRow = {
 }
 
 export async function getProductionBySkuTrend(
-  days: number,
+  since: string,
+  until: string,
   flockIds?: string[]
 ): Promise<ProductionBySkuRow[]> {
-  const since = new Date()
-  since.setDate(since.getDate() - days)
-  const sinceStr = since.toISOString().split('T')[0]!
-
   const conditions: SQL[] = [
     isNull(flocks.retiredAt),
-    gte(dailyRecords.recordDate, sinceStr),
+    gte(dailyRecords.recordDate, since),
+    lte(dailyRecords.recordDate, until),
     eq(stockCategories.name, 'Telur'),
   ]
   if (flockIds && flockIds.length > 0) conditions.push(inArray(dailyRecords.flockId, flockIds))
@@ -326,10 +314,15 @@ export type ExtendedDashboardRecord = {
 }
 
 export async function getExtendedDailyRecords(
-  limit: number,
+  since: string,
+  until: string,
   flockIds?: string[]
 ): Promise<ExtendedDashboardRecord[]> {
-  const conditions: SQL[] = [isNull(flocks.retiredAt)]
+  const conditions: SQL[] = [
+    isNull(flocks.retiredAt),
+    gte(dailyRecords.recordDate, since),
+    lte(dailyRecords.recordDate, until),
+  ]
   if (flockIds && flockIds.length > 0) conditions.push(inArray(dailyRecords.flockId, flockIds))
 
   const baseRows = await db
@@ -344,7 +337,6 @@ export async function getExtendedDailyRecords(
     .where(and(...conditions))
     .groupBy(dailyRecords.recordDate)
     .orderBy(desc(dailyRecords.recordDate))
-    .limit(limit)
 
   const dates = baseRows.map((r) => r.date as string)
   if (dates.length === 0) return []

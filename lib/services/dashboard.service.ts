@@ -14,21 +14,17 @@ import {
 
 export type DashboardKpis = {
   hdpToday: number
-  hdpDelta: number
   fcrCumulative: number
   productionToday: number
-  productionDelta: number
   stockTotalEggs: number
   activePopulation: number
   depletionToday: number
   feedPerBirdToday: number
-  feedPerBirdDelta: number
 }
 
-export type DashboardChartPoint = {
+export type DepletionPoint = {
   date: string
   deaths: number
-  cumulativeDepletion: number
 }
 
 export type DashboardRecentRecord = {
@@ -53,14 +49,14 @@ function formatDate(dateStr: string): string {
   return `${day}/${month}`
 }
 
-export async function getDashboardKpis(flockIds?: string[]): Promise<DashboardKpis> {
+export async function getDashboardKpis(since: string, until: string, flockIds?: string[]): Promise<DashboardKpis> {
   const [popRows, stockSummary, hdpTrend, fcrTrend, feedTrend, extRecords] = await Promise.all([
     getActiveFlockPopulations(flockIds),
     getStockSummary(),
-    getHdpTrend(2, flockIds),
-    getFcrTrend(30, flockIds),
-    getFeedPerBirdTrend(2, flockIds),
-    getExtendedDailyRecords(2, flockIds),
+    getHdpTrend(since, until, flockIds),
+    getFcrTrend(since, until, flockIds),
+    getFeedPerBirdTrend(since, until, flockIds),
+    getExtendedDailyRecords(since, until, flockIds),
   ])
 
   const activePopulation = popRows.reduce(
@@ -68,86 +64,75 @@ export async function getDashboardKpis(flockIds?: string[]): Promise<DashboardKp
     0
   )
 
-  const todayStr = new Date().toISOString().slice(0, 10)
+  // Aggregate HDP over the period (average of daily values)
+  const hdpValues = hdpTrend.filter((r) => r.hdp > 0).map((r) => r.hdp)
+  const hdpToday = hdpValues.length > 0
+    ? Math.round((hdpValues.reduce((a, b) => a + b, 0) / hdpValues.length) * 10) / 10
+    : 0
 
-  const todayHdp = hdpTrend.find((r) => r.date === todayStr)?.hdp ?? 0
-  const yesterdayHdp = hdpTrend.find((r) => r.date !== todayStr)?.hdp ?? 0
-  const hdpDelta = Math.round((todayHdp - yesterdayHdp) * 10) / 10
-
+  // FCR cumulative over the period
   const fcrValues = fcrTrend.filter((r) => r.fcr > 0).map((r) => r.fcr)
-  const fcrCumulative =
-    fcrValues.length > 0
-      ? Math.round((fcrValues.reduce((a, b) => a + b, 0) / fcrValues.length) * 100) / 100
-      : 0
+  const fcrCumulative = fcrValues.length > 0
+    ? Math.round((fcrValues.reduce((a, b) => a + b, 0) / fcrValues.length) * 100) / 100
+    : 0
 
-  const todayRecord = extRecords.find((r) => r.date === todayStr)
-  const yesterdayRecord = extRecords.find((r) => r.date !== todayStr)
-  const productionToday = todayRecord?.totalEggs ?? 0
-  const productionDelta = productionToday - (yesterdayRecord?.totalEggs ?? 0)
+  // Production total over the period
+  const productionToday = extRecords.reduce((acc, r) => acc + r.totalEggs, 0)
 
-  const todayFeed = feedTrend.find((r) => r.date === todayStr)?.feedGram ?? 0
-  const yesterdayFeed = feedTrend.find((r) => r.date !== todayStr)?.feedGram ?? 0
-  const feedPerBirdDelta = todayFeed - yesterdayFeed
+  // Feed per bird: average over period
+  const feedValues = feedTrend.filter((r) => r.feedGram > 0).map((r) => r.feedGram)
+  const feedPerBirdToday = feedValues.length > 0
+    ? Math.round(feedValues.reduce((a, b) => a + b, 0) / feedValues.length)
+    : 0
 
-  const depletionToday = (todayRecord?.deaths ?? 0) + (todayRecord?.culled ?? 0)
+  // Depletion: total over period
+  const depletionToday = extRecords.reduce((acc, r) => acc + r.deaths + r.culled, 0)
 
   return {
-    hdpToday: todayHdp,
-    hdpDelta,
+    hdpToday,
     fcrCumulative,
     productionToday,
-    productionDelta,
     stockTotalEggs: stockSummary.totalEggs,
     activePopulation,
     depletionToday,
-    feedPerBirdToday: todayFeed,
-    feedPerBirdDelta,
+    feedPerBirdToday,
   }
 }
 
-export async function getHdpChartData(days: number, flockIds?: string[]): Promise<HdpPoint[]> {
-  const raw = await getHdpTrend(days, flockIds)
+export async function getHdpChartData(since: string, until: string, flockIds?: string[]): Promise<HdpPoint[]> {
+  const raw = await getHdpTrend(since, until, flockIds)
   return raw.map((r) => ({ date: formatDate(r.date), hdp: r.hdp }))
 }
 
-export async function getFcrChartData(days: number, flockIds?: string[]): Promise<FcrPoint[]> {
-  const raw = await getFcrTrend(days, flockIds)
+export async function getFcrChartData(since: string, until: string, flockIds?: string[]): Promise<FcrPoint[]> {
+  const raw = await getFcrTrend(since, until, flockIds)
   return raw.map((r) => ({ date: formatDate(r.date), fcr: r.fcr }))
 }
 
 export async function getProductionBySkuChartData(
-  days: number,
+  since: string,
+  until: string,
   flockIds?: string[]
 ): Promise<ProductionChartPoint[]> {
-  const raw = await getProductionBySkuTrend(days, flockIds)
+  const raw = await getProductionBySkuTrend(since, until, flockIds)
   return raw.map((r) => ({ date: formatDate(r.date), ...r.skuBreakdown }))
 }
 
-export async function getProductionChartData(days: number = 30, flockIds?: string[]): Promise<DashboardChartPoint[]> {
-  const [aggRows, popRows] = await Promise.all([
-    getDailyProductionAgg(days, flockIds),
-    getActiveFlockPopulations(flockIds),
-  ])
-
-  const totalDepletion = popRows.reduce((acc, r) => acc + r.totalDeaths + r.totalCulled, 0)
-  let cumulativeDepletion = totalDepletion
-
-  return aggRows.map((r: DailyAggRow) => {
-    cumulativeDepletion -= r.totalDeaths
-    return {
-      date: formatDate(r.date),
-      deaths: r.totalDeaths,
-      cumulativeDepletion: totalDepletion - cumulativeDepletion,
-    }
-  })
+export async function getProductionChartData(since: string, until: string, flockIds?: string[]): Promise<DepletionPoint[]> {
+  const aggRows = await getDailyProductionAgg(since, until, flockIds)
+  return aggRows.map((r: DailyAggRow) => ({
+    date: formatDate(r.date),
+    deaths: r.totalDeaths,
+  }))
 }
 
 export async function getRecentDashboardRecords(
-  limit: number = 7,
+  since: string,
+  until: string,
   flockIds?: string[]
 ): Promise<DashboardRecentRecord[]> {
   const [extRecords, popRows] = await Promise.all([
-    getExtendedDailyRecords(limit, flockIds),
+    getExtendedDailyRecords(since, until, flockIds),
     getActiveFlockPopulations(flockIds),
   ])
 

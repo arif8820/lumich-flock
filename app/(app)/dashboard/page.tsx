@@ -16,6 +16,16 @@ import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
 import FlockOnlyFilter from './flock-only-filter'
 import type { AgingRow } from '@/lib/db/queries/invoice.queries'
 
+function getPeriodRange(days: number): { since: string; until: string } {
+  const todayMs = Date.now()
+  const today = new Date(todayMs).toISOString().slice(0, 10)
+  const yesterday = new Date(todayMs - 86400000).toISOString().slice(0, 10)
+  if (days === 0) return { since: today, until: today }
+  if (days === 1) return { since: yesterday, until: yesterday }
+  const since = new Date(todayMs - days * 86400000).toISOString().slice(0, 10)
+  return { since, until: yesterday }
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -25,8 +35,10 @@ export default async function DashboardPage({
   if (!user) redirect('/login')
 
   const { flockId, days: daysParam } = await searchParams
-  const parsedDays = daysParam ? parseInt(daysParam, 10) : 7
-  const days = Number.isFinite(parsedDays) && parsedDays > 0 ? parsedDays : 7
+  const parsedDays = daysParam !== undefined ? parseInt(daysParam, 10) : 0
+  const days = Number.isFinite(parsedDays) && parsedDays >= 0 ? parsedDays : 0
+  const { since, until } = getPeriodRange(days)
+
   const allFlocks = await findAllActiveFlocks()
 
   let flockIds: string[] | undefined
@@ -36,17 +48,22 @@ export default async function DashboardPage({
   }
 
   const [kpis, depletionData, recentRecords, hdpData, fcrData, productionSkuData] = await Promise.all([
-    getDashboardKpis(flockIds),
-    getProductionChartData(days, flockIds),
-    getRecentDashboardRecords(days, flockIds),
-    getHdpChartData(days, flockIds),
-    getFcrChartData(days, flockIds),
-    getProductionBySkuChartData(days, flockIds),
+    getDashboardKpis(since, until, flockIds),
+    getProductionChartData(since, until, flockIds),
+    getRecentDashboardRecords(since, until, flockIds),
+    getHdpChartData(since, until, flockIds),
+    getFcrChartData(since, until, flockIds),
+    getProductionBySkuChartData(since, until, flockIds),
   ])
 
-  const skuKeys = productionSkuData.length > 0
-    ? Object.keys(productionSkuData[0]!).filter((k) => k !== 'date')
-    : []
+  // Union all SKU keys across all rows to avoid missing SKUs absent from first row
+  const skuKeySet = new Set<string>()
+  for (const row of productionSkuData) {
+    for (const k of Object.keys(row)) {
+      if (k !== 'date') skuKeySet.add(k)
+    }
+  }
+  const skuKeys = Array.from(skuKeySet).sort()
 
   let top5: AgingRow[] = []
   if (user.role !== 'operator') {
@@ -58,28 +75,7 @@ export default async function DashboardPage({
     }
   }
 
-  // Determine trends
-  const hdpTrend = kpis.hdpDelta > 0
-    ? { direction: 'up' as const, label: `+${kpis.hdpDelta.toFixed(1)}% vs kemarin` }
-    : kpis.hdpDelta < 0
-    ? { direction: 'down' as const, label: `${kpis.hdpDelta.toFixed(1)}% vs kemarin` }
-    : { direction: 'neutral' as const, label: 'Sama vs kemarin' }
-
-  const fcrTrend = kpis.fcrCumulative > 2.0
-    ? { direction: 'down' as const, label: `FCR ${kpis.fcrCumulative.toFixed(2)}` }
-    : { direction: 'up' as const, label: `FCR ${kpis.fcrCumulative.toFixed(2)}` }
-
-  const productionTrend = kpis.productionDelta > 0
-    ? { direction: 'up' as const, label: `+${kpis.productionDelta.toLocaleString('id')} vs kemarin` }
-    : kpis.productionDelta < 0
-    ? { direction: 'down' as const, label: `${kpis.productionDelta.toLocaleString('id')} vs kemarin` }
-    : { direction: 'neutral' as const, label: 'Sama vs kemarin' }
-
-  const feedTrend = kpis.feedPerBirdDelta > 0
-    ? { direction: 'up' as const, label: `+${kpis.feedPerBirdDelta.toFixed(0)}g vs kemarin` }
-    : kpis.feedPerBirdDelta < 0
-    ? { direction: 'down' as const, label: `${kpis.feedPerBirdDelta.toFixed(0)}g vs kemarin` }
-    : { direction: 'neutral' as const, label: 'Sama vs kemarin' }
+  const periodLabel = days === 0 ? 'Hari Ini' : days === 1 ? 'Kemarin' : `${days} Hari Terakhir`
 
   return (
     <div className="p-6 space-y-6">
@@ -98,23 +94,21 @@ export default async function DashboardPage({
       {/* KPI Grid — 2 cols mobile / 3 cols tablet / 6 cols desktop */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <KpiCard
-          label="HDP Hari Ini"
+          label="HDP"
           value={kpis.hdpToday.toFixed(1)}
           unit="%"
           subText="Target ≥ 80%"
-          trend={hdpTrend}
         />
         <KpiCard
           label="FCR Kumulatif"
           value={kpis.fcrCumulative.toFixed(2)}
           subText="Target ≤ 2.0"
-          trend={fcrTrend}
         />
         <KpiCard
-          label="Produksi Hari Ini"
+          label="Produksi"
           value={kpis.productionToday.toLocaleString('id')}
           unit="butir"
-          trend={productionTrend}
+          subText={periodLabel}
         />
         <KpiCard
           label="Stok Siap Jual"
@@ -126,14 +120,13 @@ export default async function DashboardPage({
           label="Populasi Aktif"
           value={kpis.activePopulation.toLocaleString('id')}
           unit="ekor"
-          subText={`Deplesi hari ini: ${kpis.depletionToday}`}
+          subText={`Deplesi: ${kpis.depletionToday}`}
         />
         <KpiCard
           label="Pakan/Ekor"
           value={kpis.feedPerBirdToday.toFixed(0)}
           unit="g"
           subText="Standar 110g"
-          trend={feedTrend}
         />
       </div>
 
@@ -149,7 +142,7 @@ export default async function DashboardPage({
       {/* Recent records table — 7 columns */}
       <div className="bg-white rounded-2xl p-4 shadow-lf-sm border border-[var(--lf-border)]">
         <p className="text-xs font-medium text-[var(--lf-text-soft)] uppercase tracking-wide mb-3">
-          {days} Catatan Terakhir
+          Catatan — {periodLabel}
         </p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

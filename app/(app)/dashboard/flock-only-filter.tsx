@@ -10,10 +10,11 @@ interface Props {
 }
 
 const PERIOD_OPTIONS = [
+  { label: 'H', days: 0 },
   { label: 'H-1', days: 1 },
   { label: '7H', days: 7 },
-  { label: '14H', days: 14 },
-  { label: '21H', days: 21 },
+  { label: '14D', days: 14 },
+  { label: '21D', days: 21 },
 ]
 
 export default function FlockOnlyFilter({ flocks, selectedFlockId, selectedDays }: Props) {
@@ -35,7 +36,7 @@ export default function FlockOnlyFilter({ flocks, selectedFlockId, selectedDays 
     navigate(selectedFlockId ?? '', days)
   }
 
-  const activeDays = selectedDays ?? 7
+  const activeDays = selectedDays ?? 0
 
   return (
     <div className="flex flex-wrap items-center gap-3 mb-4">
