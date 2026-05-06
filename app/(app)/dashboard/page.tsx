@@ -95,8 +95,8 @@ export default async function DashboardPage({
         selectedDays={days}
       />
 
-      {/* KPI Grid — 6 cards, 2 cols mobile / 3 cols desktop */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+      {/* KPI Grid — 2 cols mobile / 3 cols tablet / 6 cols desktop */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <KpiCard
           label="HDP Hari Ini"
           value={kpis.hdpToday.toFixed(1)}
