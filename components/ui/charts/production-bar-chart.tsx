@@ -3,9 +3,14 @@
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
-type DataPoint = { date: string; gradeA: number; gradeB: number }
+const SKU_COLORS = ['#7aadd4', '#d4a96a', '#7ab8b0', '#e8a5a0', '#a0b87a', '#b87aa0']
 
-export function ProductionBarChart({ data }: { data: DataPoint[] }) {
+type ProductionBarChartProps = {
+  data: Array<{ date: string } & Record<string, number>>
+  skuKeys: string[]
+}
+
+export function ProductionBarChart({ data, skuKeys }: ProductionBarChartProps) {
   return (
     <ResponsiveContainer width="100%" height={200}>
       <BarChart data={data} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
@@ -14,8 +19,16 @@ export function ProductionBarChart({ data }: { data: DataPoint[] }) {
         <YAxis tick={{ fontSize: 11, fill: '#8fa08f' }} />
         <Tooltip />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        <Bar dataKey="gradeA" name="Grade A" fill="#7aadd4" radius={[3, 3, 0, 0]} />
-        <Bar dataKey="gradeB" name="Grade B" fill="#d4a96a" radius={[3, 3, 0, 0]} />
+        {skuKeys.map((key, i) => (
+          <Bar
+            key={key}
+            dataKey={key}
+            name={key}
+            stackId="eggs"
+            fill={SKU_COLORS[i % SKU_COLORS.length]}
+            radius={i === skuKeys.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+          />
+        ))}
       </BarChart>
     </ResponsiveContainer>
   )
