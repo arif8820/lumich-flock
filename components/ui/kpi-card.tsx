@@ -1,13 +1,20 @@
 import { cn } from '@/lib/utils'
 
+type KpiTrend = {
+  direction: 'up' | 'down' | 'neutral'
+  label: string
+}
+
 type KpiCardProps = {
   label: string
   value: string | number
   unit?: string
+  subText?: string
+  trend?: KpiTrend
   className?: string
 }
 
-export function KpiCard({ label, value, unit, className }: KpiCardProps) {
+export function KpiCard({ label, value, unit, subText, trend, className }: KpiCardProps) {
   return (
     <div className={cn('bg-white rounded-2xl p-4 shadow-lf-sm border border-[var(--lf-border)]', className)}>
       <p className="text-[10px] font-medium text-[var(--lf-text-soft)] uppercase tracking-[0.8px]">{label}</p>
@@ -15,6 +22,25 @@ export function KpiCard({ label, value, unit, className }: KpiCardProps) {
         <span className="text-2xl font-bold text-[var(--lf-text-dark)]">{value}</span>
         {unit && <span className="text-xs text-[var(--lf-text-mid)]">{unit}</span>}
       </div>
+      {subText && (
+        <p className="text-[10px] text-[var(--lf-text-soft)] mt-1">{subText}</p>
+      )}
+      {trend && (
+        <p
+          className="text-[10px] font-semibold mt-1"
+          style={{
+            color:
+              trend.direction === 'up'
+                ? '#5a8a5a'
+                : trend.direction === 'down'
+                ? '#b05050'
+                : 'var(--lf-text-soft)',
+          }}
+        >
+          {trend.direction === 'up' ? '▲' : trend.direction === 'down' ? '▼' : '—'}{' '}
+          {trend.label}
+        </p>
+      )}
     </div>
   )
 }
