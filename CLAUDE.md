@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**lumich-flock** — ERP system for layer chicken farms (ayam petelur). Tracks egg production, inventory, sales, and flock management. Single-tenant MVP; one farm instance per deployment.
+**lumich-flock** — ERP system for layer chicken farms (ayam petelur). Tracks egg production, inventory, sales, and flock management. Multi-farm: one Supabase project hosts multiple farms, each isolated in its own PostgreSQL schema (e.g. `farm1`, `farm2`). User login determines which farm schema is queried via `public.farm_users` mapping.
 
 Full spec in [docs/PRD_ERP_Ayam_Petelur_v1_8.md](docs/PRD_ERP_Ayam_Petelur_v1_8.md). Sprint plan in [docs/development_plan.md](docs/development_plan.md).
 
@@ -43,6 +43,23 @@ npm run db:studio  # Drizzle Studio GUI
 Migration files: `lib/db/migrations/` — committed to git, source of truth for DB history.
 Phase 1 baseline: `lib/db/migrations/0000_complex_ultron.sql`
 Phase 2 schemas (daily_records, inventory_movements, etc.) harus ada migration file sendiri.
+
+## Multi-Farm Schema Rules (STRICT)
+
+Every time a new Drizzle schema table is added to `lib/db/schema/`:
+1. Add the table definition to `getFarmSchema()` in `lib/db/schema-factory.ts`
+2. Add the `CREATE TABLE` DDL to `lib/db/farm-template.sql`
+3. Add `farmSchema: string` as first param to all new query and service functions
+
+Every time a Drizzle migration alters an existing table (ADD COLUMN, new index, etc.):
+1. Apply the same alteration in `lib/db/farm-template.sql`
+2. Run the SQL manually against all existing farm schemas in Supabase SQL Editor
+
+Farm provisioning:
+```bash
+npx tsx lib/admin/provision-farm.ts <schema_name> "<farm_name>"
+# Then: INSERT INTO public.farm_users (email, farm_schema) VALUES ('user@example.com', '<schema_name>')
+```
 
 ## Codebase Context
 
