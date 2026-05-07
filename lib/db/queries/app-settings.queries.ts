@@ -1,9 +1,10 @@
 import { db } from '@/lib/db'
-import { appSettings } from '@/lib/db/schema'
+import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq } from 'drizzle-orm'
 
 // USED BY: [app-settings.service] — count: 1
-export async function getAppSetting(key: string): Promise<string | null> {
+export async function getAppSetting(farmSchema: string, key: string): Promise<string | null> {
+  const { appSettings } = getFarmSchema(farmSchema)
   const [row] = await db
     .select({ value: appSettings.value })
     .from(appSettings)
@@ -12,7 +13,8 @@ export async function getAppSetting(key: string): Promise<string | null> {
   return row?.value ?? null
 }
 
-export async function upsertAppSetting(key: string, value: string, updatedBy: string): Promise<void> {
+export async function upsertAppSetting(farmSchema: string, key: string, value: string, updatedBy: string): Promise<void> {
+  const { appSettings } = getFarmSchema(farmSchema)
   const now = new Date()
   await db
     .insert(appSettings)

@@ -1,9 +1,9 @@
 import { db, DrizzleTx } from '@/lib/db'
-import { customerCredits } from '@/lib/db/schema'
+import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq, sql, desc, and } from 'drizzle-orm'
-import type { CustomerCredit, NewCustomerCredit } from '@/lib/db/schema'
 
-export async function listCreditsByCustomer(customerId: string): Promise<CustomerCredit[]> {
+export async function listCreditsByCustomer(farmSchema: string, customerId: string) {
+  const { customerCredits } = getFarmSchema(farmSchema)
   return db
     .select()
     .from(customerCredits)
@@ -11,7 +11,8 @@ export async function listCreditsByCustomer(customerId: string): Promise<Custome
     .orderBy(desc(customerCredits.createdAt))
 }
 
-export async function getAvailableCredit(customerId: string): Promise<number> {
+export async function getAvailableCredit(farmSchema: string, customerId: string): Promise<number> {
+  const { customerCredits } = getFarmSchema(farmSchema)
   const [row] = await db
     .select({
       total: sql<number>`COALESCE(SUM(${customerCredits.amount} - ${customerCredits.usedAmount}), 0)`,
@@ -26,7 +27,8 @@ export async function getAvailableCredit(customerId: string): Promise<number> {
   return Number(row?.total ?? 0)
 }
 
-export async function findCreditById(id: string, tx?: DrizzleTx): Promise<CustomerCredit | null> {
+export async function findCreditById(farmSchema: string, id: string, tx?: DrizzleTx) {
+  const { customerCredits } = getFarmSchema(farmSchema)
   const executor = tx ?? db
   const [row] = await executor
     .select()
@@ -36,19 +38,24 @@ export async function findCreditById(id: string, tx?: DrizzleTx): Promise<Custom
   return row ?? null
 }
 
+// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
 export async function createCustomerCredit(
-  credit: NewCustomerCredit,
+  farmSchema: string,
+  credit: any,
   tx?: DrizzleTx
 ): Promise<void> {
+  const { customerCredits } = getFarmSchema(farmSchema)
   const executor = tx ?? db
   await executor.insert(customerCredits).values(credit)
 }
 
 export async function updateCreditUsedAmount(
+  farmSchema: string,
   creditId: string,
   additionalUsed: number,
   tx?: DrizzleTx
 ): Promise<void> {
+  const { customerCredits } = getFarmSchema(farmSchema)
   const executor = tx ?? db
   await executor
     .update(customerCredits)

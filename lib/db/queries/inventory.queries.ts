@@ -1,11 +1,6 @@
 import { db } from '@/lib/db'
-import { inventoryMovements, stockAdjustments, regradeRequests, stockItems, stockCategories } from '@/lib/db/schema'
+import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq, desc, sql, sum } from 'drizzle-orm'
-import type {
-  NewInventoryMovement,
-  StockAdjustment, NewStockAdjustment,
-  RegradeRequest, NewRegradeRequest,
-} from '@/lib/db/schema'
 
 export type StockBalance = {
   stockItemId: string
@@ -16,7 +11,8 @@ export type StockBalance = {
   balance: number
 }
 
-export async function getStockBalance(stockItemId: string): Promise<number> {
+export async function getStockBalance(farmSchema: string, stockItemId: string): Promise<number> {
+  const { inventoryMovements } = getFarmSchema(farmSchema)
   const [row] = await db
     .select({
       balance: sum(sql<number>`CASE WHEN ${inventoryMovements.movementType} = 'in' THEN ${inventoryMovements.quantity} ELSE -${inventoryMovements.quantity} END`),
@@ -26,7 +22,8 @@ export async function getStockBalance(stockItemId: string): Promise<number> {
   return Number(row?.balance ?? '0')
 }
 
-export async function getAllStockBalances(): Promise<StockBalance[]> {
+export async function getAllStockBalances(farmSchema: string): Promise<StockBalance[]> {
+  const { inventoryMovements, stockItems, stockCategories } = getFarmSchema(farmSchema)
   const rows = await db
     .select({
       stockItemId: inventoryMovements.stockItemId,
@@ -49,14 +46,19 @@ export async function getAllStockBalances(): Promise<StockBalance[]> {
   return rows.map((r) => ({ ...r, balance: Number(r.balance ?? '0') }))
 }
 
-export async function insertInventoryMovement(data: NewInventoryMovement): Promise<void> {
+// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+export async function insertInventoryMovement(farmSchema: string, data: any): Promise<void> {
+  const { inventoryMovements } = getFarmSchema(farmSchema)
   await db.insert(inventoryMovements).values(data)
 }
 
+// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
 export async function insertStockAdjustmentWithMovement(
-  adjustment: NewStockAdjustment,
-  movement: NewInventoryMovement
-): Promise<StockAdjustment> {
+  farmSchema: string,
+  adjustment: any,
+  movement: any
+) {
+  const { stockAdjustments, inventoryMovements } = getFarmSchema(farmSchema)
   return db.transaction(async (tx) => {
     const [adj] = await tx.insert(stockAdjustments).values(adjustment).returning()
     await tx.insert(inventoryMovements).values({ ...movement, sourceId: adj!.id })
@@ -64,7 +66,8 @@ export async function insertStockAdjustmentWithMovement(
   })
 }
 
-export async function findPendingRegradeRequests(): Promise<RegradeRequest[]> {
+export async function findPendingRegradeRequests(farmSchema: string) {
+  const { regradeRequests } = getFarmSchema(farmSchema)
   return db
     .select()
     .from(regradeRequests)
@@ -72,29 +75,36 @@ export async function findPendingRegradeRequests(): Promise<RegradeRequest[]> {
     .orderBy(desc(regradeRequests.createdAt))
 }
 
-export async function findRegradeRequestById(id: string): Promise<RegradeRequest | null> {
+export async function findRegradeRequestById(farmSchema: string, id: string) {
+  const { regradeRequests } = getFarmSchema(farmSchema)
   const [req] = await db.select().from(regradeRequests).where(eq(regradeRequests.id, id)).limit(1)
   return req ?? null
 }
 
-export async function insertRegradeRequest(data: NewRegradeRequest): Promise<RegradeRequest> {
+// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+export async function insertRegradeRequest(farmSchema: string, data: any) {
+  const { regradeRequests } = getFarmSchema(farmSchema)
   const [req] = await db.insert(regradeRequests).values(data).returning()
   return req!
 }
 
 export async function updateRegradeRequestStatus(
+  farmSchema: string,
   id: string,
   status: 'APPROVED' | 'REJECTED',
   reviewedBy: string
 ): Promise<void> {
+  const { regradeRequests } = getFarmSchema(farmSchema)
   await db
     .update(regradeRequests)
     .set({ status, reviewedBy, reviewedAt: new Date() })
     .where(eq(regradeRequests.id, id))
 }
 
-export async function approveRegradeRequestTx(requestId: string, reviewedBy: string): Promise<void> {
-  await db.transaction(async (tx) => {
+export async function approveRegradeRequestTx(farmSchema: string, requestId: string, reviewedBy: string): Promise<void> {
+  const { regradeRequests, inventoryMovements } = getFarmSchema(farmSchema)
+  // any: tx typed against public schema; farm schema tables need cast to use in transactions
+  await db.transaction(async (tx: any) => {
     const [request] = await tx
       .select()
       .from(regradeRequests)

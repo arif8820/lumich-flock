@@ -1,27 +1,33 @@
 import { db } from '@/lib/db'
-import { coops } from '@/lib/db/schema'
+import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq } from 'drizzle-orm'
-import type { Coop, NewCoop } from '@/lib/db/schema'
 
-export async function findAllCoops(): Promise<Coop[]> {
+export async function findAllCoops(farmSchema: string) {
+  const { coops } = getFarmSchema(farmSchema)
   return db.select().from(coops).orderBy(coops.name)
 }
 
-export async function findCoopById(id: string): Promise<Coop | null> {
+export async function findCoopById(farmSchema: string, id: string) {
+  const { coops } = getFarmSchema(farmSchema)
   const [coop] = await db.select().from(coops).where(eq(coops.id, id)).limit(1)
   return coop ?? null
 }
 
-export async function insertCoop(data: NewCoop): Promise<Coop> {
+// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+export async function insertCoop(farmSchema: string, data: any) {
+  const { coops } = getFarmSchema(farmSchema)
   const [coop] = await db.insert(coops).values(data).returning()
   return coop!
 }
 
-export async function updateCoop(id: string, data: Partial<NewCoop>): Promise<Coop | null> {
+// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+export async function updateCoop(farmSchema: string, id: string, data: any) {
+  const { coops } = getFarmSchema(farmSchema)
   const [coop] = await db.update(coops).set(data).where(eq(coops.id, id)).returning()
   return coop ?? null
 }
 
-export async function deleteCoop(id: string): Promise<void> {
+export async function deleteCoop(farmSchema: string, id: string): Promise<void> {
+  const { coops } = getFarmSchema(farmSchema)
   await db.delete(coops).where(eq(coops.id, id))
 }
