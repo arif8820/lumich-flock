@@ -1,9 +1,9 @@
 import { db } from '@/lib/db'
-import { userCoopAssignments, coops } from '@/lib/db/schema'
+import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq, and } from 'drizzle-orm'
-import type { UserCoopAssignment } from '@/lib/db/schema'
 
-export async function findAssignmentsByUser(userId: string): Promise<(UserCoopAssignment & { coopName: string })[]> {
+export async function findAssignmentsByUser(farmSchema: string, userId: string) {
+  const { userCoopAssignments, coops } = getFarmSchema(farmSchema)
   const result = await db
     .select({ assignment: userCoopAssignments, coopName: coops.name })
     .from(userCoopAssignments)
@@ -13,7 +13,8 @@ export async function findAssignmentsByUser(userId: string): Promise<(UserCoopAs
   return result.map(({ assignment, coopName }) => ({ ...assignment, coopName }))
 }
 
-export async function findAssignedCoopIds(userId: string): Promise<string[]> {
+export async function findAssignedCoopIds(farmSchema: string, userId: string): Promise<string[]> {
+  const { userCoopAssignments } = getFarmSchema(farmSchema)
   const result = await db
     .select({ coopId: userCoopAssignments.coopId })
     .from(userCoopAssignments)
@@ -22,7 +23,8 @@ export async function findAssignedCoopIds(userId: string): Promise<string[]> {
   return result.map((r) => r.coopId)
 }
 
-export async function insertAssignment(userId: string, coopId: string): Promise<UserCoopAssignment> {
+export async function insertAssignment(farmSchema: string, userId: string, coopId: string) {
+  const { userCoopAssignments } = getFarmSchema(farmSchema)
   const [assignment] = await db
     .insert(userCoopAssignments)
     .values({ userId, coopId })
@@ -31,7 +33,8 @@ export async function insertAssignment(userId: string, coopId: string): Promise<
   return assignment!
 }
 
-export async function deleteAssignment(userId: string, coopId: string): Promise<void> {
+export async function deleteAssignment(farmSchema: string, userId: string, coopId: string): Promise<void> {
+  const { userCoopAssignments } = getFarmSchema(farmSchema)
   await db
     .delete(userCoopAssignments)
     .where(and(eq(userCoopAssignments.userId, userId), eq(userCoopAssignments.coopId, coopId)))

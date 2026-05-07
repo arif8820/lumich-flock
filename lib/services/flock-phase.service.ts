@@ -8,13 +8,13 @@ import {
 import type { FlockPhase } from '@/lib/db/schema'
 
 export const getAllFlockPhases = unstable_cache(
-  async (): Promise<FlockPhase[]> => findAllFlockPhases(),
+  async (farmSchema: string): Promise<FlockPhase[]> => findAllFlockPhases(farmSchema),
   ['flock-phases'],
   { revalidate: 3600 }
 )
 
-export async function getPhaseForWeeks(ageWeeks: number): Promise<FlockPhase | null> {
-  const phases = await findAllFlockPhases()
+export async function getPhaseForWeeks(farmSchema: string, ageWeeks: number): Promise<FlockPhase | null> {
+  const phases = await findAllFlockPhases(farmSchema)
   return phases.find((p) => {
     const aboveMin = ageWeeks >= p.minWeeks
     const belowMax = p.maxWeeks === null || ageWeeks <= p.maxWeeks
@@ -22,22 +22,23 @@ export async function getPhaseForWeeks(ageWeeks: number): Promise<FlockPhase | n
   }) ?? null
 }
 
-export async function createFlockPhase(input: {
+export async function createFlockPhase(farmSchema: string, input: {
   name: string
   minWeeks: number
   maxWeeks?: number
   sortOrder: number
 }): Promise<FlockPhase> {
-  return insertFlockPhase({ ...input, maxWeeks: input.maxWeeks ?? null })
+  return insertFlockPhase(farmSchema, { ...input, maxWeeks: input.maxWeeks ?? null })
 }
 
 export async function updateFlockPhaseById(
+  farmSchema: string,
   id: string,
   input: Partial<{ name: string; minWeeks: number; maxWeeks: number | null; sortOrder: number }>
 ): Promise<FlockPhase | null> {
-  return updateFlockPhase(id, input)
+  return updateFlockPhase(farmSchema, id, input)
 }
 
-export async function deleteFlockPhaseById(id: string): Promise<void> {
-  await deleteFlockPhase(id)
+export async function deleteFlockPhaseById(farmSchema: string, id: string): Promise<void> {
+  await deleteFlockPhase(farmSchema, id)
 }

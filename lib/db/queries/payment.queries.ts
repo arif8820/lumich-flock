@@ -1,16 +1,19 @@
 import { db, DrizzleTx } from '@/lib/db'
-import { payments } from '@/lib/db/schema'
+import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq, sql, asc } from 'drizzle-orm'
-import type { Payment, NewPayment } from '@/lib/db/schema'
 
-export async function createPayment(payment: NewPayment, tx?: DrizzleTx): Promise<Payment> {
+// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function createPayment(farmSchema: string, payment: any, tx?: DrizzleTx) {
+  const { payments } = getFarmSchema(farmSchema)
   const executor = tx ?? db
   const [row] = await executor.insert(payments).values(payment).returning()
   if (!row) throw new Error('Insert payment gagal')
   return row
 }
 
-export async function listPaymentsByInvoice(invoiceId: string): Promise<Payment[]> {
+export async function listPaymentsByInvoice(farmSchema: string, invoiceId: string) {
+  const { payments } = getFarmSchema(farmSchema)
   return db
     .select()
     .from(payments)
@@ -18,7 +21,8 @@ export async function listPaymentsByInvoice(invoiceId: string): Promise<Payment[
     .orderBy(asc(payments.paymentDate), asc(payments.createdAt))
 }
 
-export async function sumPaymentsByInvoice(invoiceId: string, tx?: DrizzleTx): Promise<number> {
+export async function sumPaymentsByInvoice(farmSchema: string, invoiceId: string, tx?: DrizzleTx): Promise<number> {
+  const { payments } = getFarmSchema(farmSchema)
   const executor = tx ?? db
   const [row] = await executor
     .select({

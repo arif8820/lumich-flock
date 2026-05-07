@@ -10,11 +10,11 @@ export default async function ProduksiInputPage() {
   if (!session) redirect('/login')
 
   const [flocks, eggItems, feedItems, vaccineItems, balances] = await Promise.all([
-    getFlockOptionsForInput(session.id, session.role),
-    getActiveEggItems(),
-    getActiveFeedItems(),
-    getActiveVaccineItems(),
-    getAllStockBalances(),
+    getFlockOptionsForInput(session.farmSchema, session.id, session.role),
+    getActiveEggItems(session.farmSchema),
+    getActiveFeedItems(session.farmSchema),
+    getActiveVaccineItems(session.farmSchema),
+    getAllStockBalances(session.farmSchema),
   ])
 
   const balanceMap = new Map(balances.map((b) => [b.stockItemId, b.balance]))

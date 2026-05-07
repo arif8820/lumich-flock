@@ -12,7 +12,7 @@ export async function GET(): Promise<Response> {
     return new Response('Forbidden', { status: 403 })
   }
 
-  const rows = await getAgingData()
+  const rows = await getAgingData(session.farmSchema)
 
   const header = [
     'invoiceNumber',

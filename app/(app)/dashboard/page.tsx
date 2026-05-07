@@ -39,7 +39,7 @@ export default async function DashboardPage({
   const days = Number.isFinite(parsedDays) && parsedDays >= 0 ? parsedDays : 0
   const { since, until } = getPeriodRange(days)
 
-  const allFlocks = await findAllActiveFlocks()
+  const allFlocks = await findAllActiveFlocks(user.farmSchema)
 
   let flockIds: string[] | undefined
   if (flockId) {
@@ -48,12 +48,12 @@ export default async function DashboardPage({
   }
 
   const [kpis, depletionData, recentRecords, hdpData, fcrData, productionSkuData] = await Promise.all([
-    getDashboardKpis(since, until, flockIds),
-    getProductionChartData(since, until, flockIds),
-    getRecentDashboardRecords(since, until, flockIds),
-    getHdpChartData(since, until, flockIds),
-    getFcrChartData(since, until, flockIds),
-    getProductionBySkuChartData(since, until, flockIds),
+    getDashboardKpis(user.farmSchema, since, until, flockIds),
+    getProductionChartData(user.farmSchema, since, until, flockIds),
+    getRecentDashboardRecords(user.farmSchema, since, until, flockIds),
+    getHdpChartData(user.farmSchema, since, until, flockIds),
+    getFcrChartData(user.farmSchema, since, until, flockIds),
+    getProductionBySkuChartData(user.farmSchema, since, until, flockIds),
   ])
 
   // Union all SKU keys across all rows to avoid missing SKUs absent from first row
@@ -68,7 +68,7 @@ export default async function DashboardPage({
   let top5: AgingRow[] = []
   if (user.role !== 'operator') {
     try {
-      const agingData = await getAgingData()
+      const agingData = await getAgingData(user.farmSchema)
       top5 = agingData.slice(0, 5)
     } catch {
       top5 = []

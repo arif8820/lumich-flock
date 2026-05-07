@@ -1,16 +1,17 @@
 import { db, DrizzleTx } from '@/lib/db'
-import { alertCooldowns } from '@/lib/db/schema'
-import type { AlertCooldown } from '@/lib/db/schema'
+import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq, and, gt } from 'drizzle-orm'
 
 // USED BY: [alert.service] — count: 1
 
 export async function findActiveCooldown(
+  farmSchema: string,
   alertType: string,
   entityId: string,
   cooldownHours: number,
   tx?: DrizzleTx
-): Promise<AlertCooldown | null> {
+): Promise<{ id: string; alertType: string; entityType: string; entityId: string; lastSentAt: Date } | null> {
+  const { alertCooldowns } = getFarmSchema(farmSchema)
   const executor = tx ?? db
   const cutoff = new Date(Date.now() - cooldownHours * 60 * 60 * 1000)
   const [row] = await executor
@@ -28,11 +29,13 @@ export async function findActiveCooldown(
 }
 
 export async function upsertCooldown(
+  farmSchema: string,
   alertType: string,
   entityType: string,
   entityId: string,
   tx?: DrizzleTx
 ): Promise<void> {
+  const { alertCooldowns } = getFarmSchema(farmSchema)
   const executor = tx ?? db
   const now = new Date()
   await executor

@@ -1,7 +1,7 @@
 'use server'
 
 import { z } from 'zod'
-import { requireAdmin } from '@/lib/auth/guards'
+import { getRequiredSession } from '@/lib/auth/guards'
 import {
   createCategory,
   createStockItem,
@@ -25,8 +25,9 @@ const createStockItemSchema = z.object({
 export async function createCategoryAction(
   formData: FormData
 ): Promise<ActionResult<{ id: string }>> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   const parsed = createCategorySchema.safeParse({
     name: formData.get('name'),
@@ -37,7 +38,7 @@ export async function createCategoryAction(
   }
 
   try {
-    const category = await createCategory(parsed.data)
+    const category = await createCategory(session.farmSchema, parsed.data)
     return { success: true, data: { id: category.id } }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal membuat kategori' }
@@ -47,8 +48,9 @@ export async function createCategoryAction(
 export async function createStockItemAction(
   formData: FormData
 ): Promise<ActionResult<{ id: string }>> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   const parsed = createStockItemSchema.safeParse({
     categoryId: formData.get('categoryId'),
@@ -59,7 +61,7 @@ export async function createStockItemAction(
   }
 
   try {
-    const item = await createStockItem(parsed.data)
+    const item = await createStockItem(session.farmSchema, parsed.data)
     return { success: true, data: { id: item.id } }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal membuat item stok' }
@@ -69,14 +71,15 @@ export async function createStockItemAction(
 export async function toggleStockItemActiveAction(
   itemId: string
 ): Promise<ActionResult> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   const parsed = z.string().uuid().safeParse(itemId)
   if (!parsed.success) return { success: false, error: 'ID tidak valid' }
 
   try {
-    await toggleStockItemActive(parsed.data)
+    await toggleStockItemActive(session.farmSchema, parsed.data)
     return { success: true, data: undefined }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal mengubah status item' }

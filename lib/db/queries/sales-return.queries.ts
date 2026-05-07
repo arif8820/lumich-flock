@@ -1,18 +1,20 @@
 import { db } from '@/lib/db'
-import { salesReturns, salesReturnItems, salesOrders, inventoryMovements, invoices, customerCredits } from '@/lib/db/schema'
+import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq, desc, sql, count, getTableColumns } from 'drizzle-orm'
-import type { SalesReturn, SalesReturnItem, NewSalesReturn, NewSalesReturnItem, NewInventoryMovement, NewInvoice, NewCustomerCredit } from '@/lib/db/schema'
 
-export async function findSalesReturnById(id: string): Promise<SalesReturn | null> {
+export async function findSalesReturnById(farmSchema: string, id: string) {
+  const { salesReturns } = getFarmSchema(farmSchema)
   const [row] = await db.select().from(salesReturns).where(eq(salesReturns.id, id)).limit(1)
   return row ?? null
 }
 
-export async function findSalesReturnItems(returnId: string): Promise<SalesReturnItem[]> {
+export async function findSalesReturnItems(farmSchema: string, returnId: string) {
+  const { salesReturnItems } = getFarmSchema(farmSchema)
   return db.select().from(salesReturnItems).where(eq(salesReturnItems.returnId, returnId))
 }
 
-export async function countSalesReturnsThisMonth(prefix: string): Promise<number> {
+export async function countSalesReturnsThisMonth(farmSchema: string, prefix: string): Promise<number> {
+  const { salesReturns } = getFarmSchema(farmSchema)
   const now = new Date()
   const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`
   const pattern = `${prefix}-${yearMonth}-%`
@@ -23,26 +25,38 @@ export async function countSalesReturnsThisMonth(prefix: string): Promise<number
   return row?.maxSeq ? parseInt(row.maxSeq) : 0
 }
 
+// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
 export async function insertSalesReturnWithItems(
-  ret: NewSalesReturn,
-  items: Omit<NewSalesReturnItem, 'returnId'>[]
-): Promise<SalesReturn> {
+  farmSchema: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ret: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  items: any[]
+) {
+  const { salesReturns, salesReturnItems } = getFarmSchema(farmSchema)
   return db.transaction(async (tx) => {
     const [sr] = await tx.insert(salesReturns).values(ret).returning()
     if (items.length > 0) {
-      await tx.insert(salesReturnItems).values(items.map(i => ({ ...i, returnId: sr!.id })))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await tx.insert(salesReturnItems).values(items.map((i: any) => ({ ...i, returnId: sr!.id })))
     }
     return sr!
   })
 }
 
+// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
 export async function approveSalesReturnTx(
+  farmSchema: string,
   returnId: string,
   userId: string,
-  movements: NewInventoryMovement[],
-  creditNoteInvoice: NewInvoice,
-  customerCredit: NewCustomerCredit
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  movements: any[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  creditNoteInvoice: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  customerCredit: any
 ): Promise<void> {
+  const { salesReturns, inventoryMovements, invoices, customerCredits } = getFarmSchema(farmSchema)
   await db.transaction(async (tx) => {
     const [sr] = await tx
       .select()
@@ -76,16 +90,19 @@ export async function approveSalesReturnTx(
 }
 
 export async function rejectSalesReturn(
+  farmSchema: string,
   returnId: string,
   userId: string
 ): Promise<void> {
+  const { salesReturns } = getFarmSchema(farmSchema)
   await db
     .update(salesReturns)
     .set({ status: 'rejected', reviewedBy: userId, reviewedAt: new Date() })
     .where(eq(salesReturns.id, returnId))
 }
 
-export async function findSalesReturnsByOrderId(orderId: string): Promise<SalesReturn[]> {
+export async function findSalesReturnsByOrderId(farmSchema: string, orderId: string) {
+  const { salesReturns } = getFarmSchema(farmSchema)
   return db
     .select()
     .from(salesReturns)
@@ -93,13 +110,13 @@ export async function findSalesReturnsByOrderId(orderId: string): Promise<SalesR
     .orderBy(desc(salesReturns.createdAt))
 }
 
-export type SalesReturnWithOrder = SalesReturn & { orderNumber: string | null }
-
 export async function listSalesReturnsWithOrder(
+  farmSchema: string,
   page: number = 1,
   pageSize: number = 20,
   status?: string
-): Promise<{ data: SalesReturnWithOrder[]; total: number }> {
+) {
+  const { salesReturns, salesOrders } = getFarmSchema(farmSchema)
   const conditions = status
     ? eq(salesReturns.status, status as 'pending' | 'approved' | 'rejected')
     : undefined
@@ -119,14 +136,17 @@ export async function listSalesReturnsWithOrder(
     .limit(pageSize)
     .offset((page - 1) * pageSize)
 
-  return { data: rows as SalesReturnWithOrder[], total: countRow?.cnt ?? 0 }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return { data: rows as any[], total: countRow?.cnt ?? 0 }
 }
 
 export async function listSalesReturns(
+  farmSchema: string,
   page: number = 1,
   pageSize: number = 20,
   status?: string
-): Promise<{ data: SalesReturn[]; total: number }> {
+) {
+  const { salesReturns } = getFarmSchema(farmSchema)
   const conditions = status
     ? eq(salesReturns.status, status as 'pending' | 'approved' | 'rejected')
     : undefined

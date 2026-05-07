@@ -35,7 +35,7 @@ export default async function InvoicesPage({
       ? (status as Invoice['status'])
       : undefined
 
-  const result = await listInvoices(currentPage, PAGE_SIZE, statusFilter)
+  const result = await listInvoices(session.farmSchema, currentPage, PAGE_SIZE, statusFilter)
 
   return (
     <div className="p-6 space-y-6">

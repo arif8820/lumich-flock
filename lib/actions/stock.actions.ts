@@ -1,8 +1,7 @@
 'use server'
 
 import { z } from 'zod'
-import { getSession } from '@/lib/auth/get-session'
-import { requireSupervisorOrAdmin, requireAdmin } from '@/lib/auth/guards'
+import { getRequiredSession } from '@/lib/auth/guards'
 import {
   getStockBalance,
   getAllStockBalances,
@@ -21,14 +20,14 @@ type ActionResult<T = void> =
 export async function getStockBalanceAction(
   stockItemId: string
 ): Promise<ActionResult<number>> {
-  const session = await getSession()
-  if (!session) return { success: false, error: 'Tidak terautentikasi' }
+  const session = await getRequiredSession()
+  if ('error' in session) return session
 
   const parsed = z.string().uuid().safeParse(stockItemId)
   if (!parsed.success) return { success: false, error: 'Input tidak valid' }
 
   try {
-    const balance = await getStockBalance(parsed.data)
+    const balance = await getStockBalance(session.farmSchema, parsed.data)
     return { success: true, data: balance }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal memuat saldo stok' }
@@ -36,11 +35,11 @@ export async function getStockBalanceAction(
 }
 
 export async function getAllStockBalancesAction(): Promise<ActionResult<StockBalance[]>> {
-  const session = await getSession()
-  if (!session) return { success: false, error: 'Tidak terautentikasi' }
+  const session = await getRequiredSession()
+  if ('error' in session) return session
 
   try {
-    const balances = await getAllStockBalances()
+    const balances = await getAllStockBalances(session.farmSchema)
     return { success: true, data: balances }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal memuat stok' }
@@ -73,10 +72,9 @@ const stockPurchaseSchema = z.object({
 export async function createStockAdjustmentAction(
   formData: FormData
 ): Promise<ActionResult<{ id: string }>> {
-  const guard = await requireSupervisorOrAdmin()
-  if (guard) return guard
-
-  const session = await getSession()
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (!['supervisor', 'admin'].includes(session.role)) return { success: false, error: 'Akses ditolak' }
 
   const parsed = stockAdjustmentSchema.safeParse({
     stockItemId: formData.get('stockItemId'),
@@ -90,7 +88,7 @@ export async function createStockAdjustmentAction(
   }
 
   try {
-    const result = await createStockAdjustment(parsed.data, session!.id, session!.role)
+    const result = await createStockAdjustment(session.farmSchema, parsed.data, session.id, session.role)
     return { success: true, data: { id: result.id } }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal menyimpan penyesuaian stok' }
@@ -100,10 +98,9 @@ export async function createStockAdjustmentAction(
 export async function submitRegradeRequestAction(
   formData: FormData
 ): Promise<ActionResult<{ id: string }>> {
-  const guard = await requireSupervisorOrAdmin()
-  if (guard) return guard
-
-  const session = await getSession()
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (!['supervisor', 'admin'].includes(session.role)) return { success: false, error: 'Akses ditolak' }
 
   const parsed = regradeRequestSchema.safeParse({
     fromItemId: formData.get('fromItemId'),
@@ -117,7 +114,7 @@ export async function submitRegradeRequestAction(
   }
 
   try {
-    const result = await submitRegradeRequest(parsed.data, session!.id)
+    const result = await submitRegradeRequest(session.farmSchema, parsed.data, session.id)
     return { success: true, data: { id: result.id } }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal mengajukan permintaan regrade' }
@@ -127,13 +124,12 @@ export async function submitRegradeRequestAction(
 export async function approveRegradeRequestAction(
   requestId: string
 ): Promise<ActionResult> {
-  const guard = await requireAdmin()
-  if (guard) return guard
-
-  const session = await getSession()
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   try {
-    await approveRegradeRequest(requestId, session!.id)
+    await approveRegradeRequest(session.farmSchema, requestId, session.id)
     return { success: true, data: undefined }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal menyetujui permintaan regrade' }
@@ -143,13 +139,12 @@ export async function approveRegradeRequestAction(
 export async function rejectRegradeRequestAction(
   requestId: string
 ): Promise<ActionResult> {
-  const guard = await requireAdmin()
-  if (guard) return guard
-
-  const session = await getSession()
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   try {
-    await rejectRegradeRequest(requestId, session!.id)
+    await rejectRegradeRequest(session.farmSchema, requestId, session.id)
     return { success: true, data: undefined }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal menolak permintaan regrade' }
@@ -159,10 +154,9 @@ export async function rejectRegradeRequestAction(
 export async function createStockPurchaseAction(
   formData: FormData
 ): Promise<ActionResult> {
-  const guard = await requireSupervisorOrAdmin()
-  if (guard) return guard
-
-  const session = await getSession()
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (!['supervisor', 'admin'].includes(session.role)) return { success: false, error: 'Akses ditolak' }
 
   const parsed = stockPurchaseSchema.safeParse({
     stockItemId: formData.get('stockItemId'),
@@ -175,7 +169,7 @@ export async function createStockPurchaseAction(
   }
 
   try {
-    await createStockPurchase(parsed.data, session!.id)
+    await createStockPurchase(session.farmSchema, parsed.data, session.id)
     return { success: true, data: undefined }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal menyimpan pembelian stok' }

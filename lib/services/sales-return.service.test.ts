@@ -36,6 +36,8 @@ import {
   rejectSalesReturn,
 } from './sales-return.service'
 
+const FARM = 'test-farm'
+
 type CreateReturnInput = {
   orderId: string
   returnDate: Date
@@ -94,7 +96,7 @@ describe('sales-return.service', () => {
         ],
       }
 
-      const result = await createSalesReturn(input, 'user-1', 'supervisor')
+      const result = await createSalesReturn(FARM, input, 'user-1', 'supervisor')
 
       expect(salesReturnQueries.insertSalesReturnWithItems).toHaveBeenCalled()
       expect(result.returnNumber).toBe('RTN-202604-0001')
@@ -117,7 +119,7 @@ describe('sales-return.service', () => {
         ],
       }
 
-      await expect(createSalesReturn(input, 'user-1', 'supervisor')).rejects.toThrow(
+      await expect(createSalesReturn(FARM, input, 'user-1', 'supervisor')).rejects.toThrow(
         'Jumlah return melebihi jumlah SO asli'
       )
     })
@@ -139,7 +141,7 @@ describe('sales-return.service', () => {
         ],
       }
 
-      await expect(createSalesReturn(input, 'user-1', 'supervisor')).rejects.toThrow(
+      await expect(createSalesReturn(FARM, input, 'user-1', 'supervisor')).rejects.toThrow(
         'Return hanya bisa dibuat untuk SO yang sudah fulfilled'
       )
     })
@@ -147,6 +149,7 @@ describe('sales-return.service', () => {
     it('throws for operator role', async () => {
       await expect(
         createSalesReturn(
+          FARM,
           {
             orderId: 'so-1',
             returnDate: new Date('2026-04-23'),
@@ -184,9 +187,10 @@ describe('sales-return.service', () => {
       vi.mocked(salesReturnQueries.findSalesReturnItems).mockResolvedValue(mockReturnItems as any)
       vi.mocked(salesReturnQueries.approveSalesReturnTx).mockResolvedValue(undefined)
 
-      await approveSalesReturn('rt-1', 'admin-1', 'admin')
+      await approveSalesReturn(FARM, 'rt-1', 'admin-1', 'admin')
 
       expect(salesReturnQueries.approveSalesReturnTx).toHaveBeenCalledWith(
+        FARM,
         'rt-1',
         'admin-1',
         expect.any(Array),
@@ -196,7 +200,7 @@ describe('sales-return.service', () => {
     })
 
     it('throws for non-admin role', async () => {
-      await expect(approveSalesReturn('rt-1', 'supervisor-1', 'supervisor')).rejects.toThrow(
+      await expect(approveSalesReturn(FARM, 'rt-1', 'supervisor-1', 'supervisor')).rejects.toThrow(
         'Akses ditolak'
       )
     })
@@ -205,7 +209,7 @@ describe('sales-return.service', () => {
       const mockApprovedReturn = { ...mockPendingReturn, status: 'approved' as const }
       vi.mocked(salesReturnQueries.findSalesReturnById).mockResolvedValue(mockApprovedReturn as any)
 
-      await expect(approveSalesReturn('rt-1', 'admin-1', 'admin')).rejects.toThrow(
+      await expect(approveSalesReturn(FARM, 'rt-1', 'admin-1', 'admin')).rejects.toThrow(
         'Status return tidak valid untuk operasi ini'
       )
     })
@@ -224,13 +228,13 @@ describe('sales-return.service', () => {
       vi.mocked(salesReturnQueries.findSalesReturnById).mockResolvedValue(mockPendingReturn as any)
       vi.mocked(salesReturnQueries.rejectSalesReturn).mockResolvedValue(undefined)
 
-      await rejectSalesReturn('rt-1', 'admin-1', 'admin')
+      await rejectSalesReturn(FARM, 'rt-1', 'admin-1', 'admin')
 
-      expect(salesReturnQueries.rejectSalesReturn).toHaveBeenCalledWith('rt-1', 'admin-1')
+      expect(salesReturnQueries.rejectSalesReturn).toHaveBeenCalledWith(FARM, 'rt-1', 'admin-1')
     })
 
     it('throws for non-admin role', async () => {
-      await expect(rejectSalesReturn('rt-1', 'supervisor-1', 'supervisor')).rejects.toThrow(
+      await expect(rejectSalesReturn(FARM, 'rt-1', 'supervisor-1', 'supervisor')).rejects.toThrow(
         'Akses ditolak'
       )
     })
@@ -239,7 +243,7 @@ describe('sales-return.service', () => {
       const mockApprovedReturn = { ...mockPendingReturn, status: 'approved' as const }
       vi.mocked(salesReturnQueries.findSalesReturnById).mockResolvedValue(mockApprovedReturn as any)
 
-      await expect(rejectSalesReturn('rt-1', 'admin-1', 'admin')).rejects.toThrow(
+      await expect(rejectSalesReturn(FARM, 'rt-1', 'admin-1', 'admin')).rejects.toThrow(
         'Status return tidak valid untuk operasi ini'
       )
     })

@@ -49,6 +49,8 @@ import {
   fulfillSO,
 } from './sales-order.service'
 
+const FARM = 'test-farm'
+
 type CreateDraftInput = {
   customerId: string
   orderDate: Date
@@ -111,6 +113,7 @@ describe('sales-order.service', () => {
       } as any)
 
       const result = await createDraftSO(
+        FARM,
         {
           customerId: 'cust-1',
           orderDate: new Date('2026-04-23'),
@@ -121,7 +124,7 @@ describe('sales-order.service', () => {
         'supervisor'
       )
 
-      expect(customerQueries.findCustomerById).toHaveBeenCalledWith('cust-1')
+      expect(customerQueries.findCustomerById).toHaveBeenCalledWith(FARM, 'cust-1')
       expect(salesOrderQueries.insertSalesOrderWithItems).toHaveBeenCalled()
       expect(result.orderNumber).toBe('SO-202604-0001')
     })
@@ -132,6 +135,7 @@ describe('sales-order.service', () => {
 
       await expect(
         createDraftSO(
+          FARM,
           {
             customerId: 'cust-1',
             orderDate: new Date('2026-04-23'),
@@ -157,6 +161,7 @@ describe('sales-order.service', () => {
       } as any)
 
       const result = await createDraftSO(
+        FARM,
         {
           customerId: 'cust-1',
           orderDate: new Date('2026-04-23'),
@@ -169,6 +174,7 @@ describe('sales-order.service', () => {
       )
 
       expect(salesOrderQueries.insertSalesOrderWithItems).toHaveBeenCalledWith(
+        FARM,
         expect.objectContaining({
           notes: expect.stringContaining('Override untuk pelanggan lama'),
         }),
@@ -181,6 +187,7 @@ describe('sales-order.service', () => {
 
       await expect(
         createDraftSO(
+          FARM,
           {
             customerId: 'cust-1',
             orderDate: new Date('2026-04-23'),
@@ -196,6 +203,7 @@ describe('sales-order.service', () => {
     it('throws for operator role', async () => {
       await expect(
         createDraftSO(
+          FARM,
           {
             customerId: 'cust-1',
             orderDate: new Date('2026-04-23'),
@@ -222,9 +230,9 @@ describe('sales-order.service', () => {
       vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue([] as any)
       vi.mocked(inventoryQueries.getStockBalance).mockResolvedValue(1000)
 
-      const result = await confirmSO('so-1', 'user-1', 'supervisor')
+      const result = await confirmSO(FARM, 'so-1', 'user-1', 'supervisor')
 
-      expect(salesOrderQueries.updateSalesOrderStatus).toHaveBeenCalledWith('so-1', 'confirmed', 'user-1')
+      expect(salesOrderQueries.updateSalesOrderStatus).toHaveBeenCalledWith(FARM, 'so-1', 'confirmed', 'user-1')
     })
 
     it('throws when Grade A stock is insufficient', async () => {
@@ -234,7 +242,7 @@ describe('sales-order.service', () => {
       ] as any)
       vi.mocked(inventoryQueries.getStockBalance).mockResolvedValue(500)
 
-      await expect(confirmSO('so-1', 'user-1', 'supervisor'))
+      await expect(confirmSO(FARM, 'so-1', 'user-1', 'supervisor'))
         .rejects.toThrow('Stok tidak mencukupi: Grade A')
     })
 
@@ -245,7 +253,7 @@ describe('sales-order.service', () => {
       ] as any)
       vi.mocked(inventoryQueries.getStockBalance).mockResolvedValue(300)
 
-      await expect(confirmSO('so-1', 'user-1', 'supervisor'))
+      await expect(confirmSO(FARM, 'so-1', 'user-1', 'supervisor'))
         .rejects.toThrow('Stok tidak mencukupi: Grade B')
     })
 
@@ -253,13 +261,13 @@ describe('sales-order.service', () => {
       const mockConfirmedSO = { ...mockDraftSO, status: 'confirmed' as const }
       vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockConfirmedSO as any)
 
-      await expect(confirmSO('so-1', 'user-1', 'supervisor')).rejects.toThrow(
+      await expect(confirmSO(FARM, 'so-1', 'user-1', 'supervisor')).rejects.toThrow(
         'Status SO tidak valid untuk operasi ini'
       )
     })
 
     it('throws for operator role', async () => {
-      await expect(confirmSO('so-1', 'user-1', 'operator' as any)).rejects.toThrow('Akses ditolak')
+      await expect(confirmSO(FARM, 'so-1', 'user-1', 'operator' as any)).rejects.toThrow('Akses ditolak')
     })
   })
 
@@ -273,22 +281,22 @@ describe('sales-order.service', () => {
     it('cancels confirmed SO', async () => {
       vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockConfirmedSO as any)
 
-      const result = await cancelSO('so-1', 'user-1', 'supervisor')
+      const result = await cancelSO(FARM, 'so-1', 'user-1', 'supervisor')
 
-      expect(salesOrderQueries.updateSalesOrderStatus).toHaveBeenCalledWith('so-1', 'cancelled', 'user-1')
+      expect(salesOrderQueries.updateSalesOrderStatus).toHaveBeenCalledWith(FARM, 'so-1', 'cancelled', 'user-1')
     })
 
     it('throws when SO is not confirmed', async () => {
       const mockDraftSO = { ...mockConfirmedSO, status: 'draft' as const }
       vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockDraftSO as any)
 
-      await expect(cancelSO('so-1', 'user-1', 'supervisor')).rejects.toThrow(
+      await expect(cancelSO(FARM, 'so-1', 'user-1', 'supervisor')).rejects.toThrow(
         'Status SO tidak valid untuk operasi ini'
       )
     })
 
     it('throws for operator role', async () => {
-      await expect(cancelSO('so-1', 'user-1', 'operator' as any)).rejects.toThrow('Akses ditolak')
+      await expect(cancelSO(FARM, 'so-1', 'user-1', 'operator' as any)).rejects.toThrow('Akses ditolak')
     })
   })
 
@@ -303,22 +311,22 @@ describe('sales-order.service', () => {
       vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockDraftSO as any)
       vi.mocked(salesOrderQueries.deleteDraftSO).mockResolvedValue(undefined)
 
-      await deleteDraftSO('so-1', 'user-1', 'supervisor')
+      await deleteDraftSO(FARM, 'so-1', 'user-1', 'supervisor')
 
-      expect(salesOrderQueries.deleteDraftSO).toHaveBeenCalledWith('so-1')
+      expect(salesOrderQueries.deleteDraftSO).toHaveBeenCalledWith(FARM, 'so-1')
     })
 
     it('throws when SO is not draft', async () => {
       const mockConfirmedSO = { ...mockDraftSO, status: 'confirmed' as const }
       vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockConfirmedSO as any)
 
-      await expect(deleteDraftSO('so-1', 'user-1', 'supervisor')).rejects.toThrow(
+      await expect(deleteDraftSO(FARM, 'so-1', 'user-1', 'supervisor')).rejects.toThrow(
         'Status SO tidak valid untuk operasi ini'
       )
     })
 
     it('throws for operator role', async () => {
-      await expect(deleteDraftSO('so-1', 'user-1', 'operator' as any)).rejects.toThrow('Akses ditolak')
+      await expect(deleteDraftSO(FARM, 'so-1', 'user-1', 'operator' as any)).rejects.toThrow('Akses ditolak')
     })
   })
 
@@ -358,7 +366,7 @@ describe('sales-order.service', () => {
       vi.mocked(customerQueries.findCustomerById).mockResolvedValue(mockCustomer as any)
       vi.mocked(salesOrderQueries.fulfillSOTx).mockResolvedValue(undefined)
 
-      await fulfillSO('so-1', 'user-1', 'supervisor')
+      await fulfillSO(FARM, 'so-1', 'user-1', 'supervisor')
 
       expect(salesOrderQueries.fulfillSOTx).toHaveBeenCalled()
     })
@@ -368,7 +376,7 @@ describe('sales-order.service', () => {
       vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue(mockSOItems as any)
       vi.mocked(inventoryQueries.getStockBalance).mockResolvedValue(500)
 
-      await expect(fulfillSO('so-1', 'user-1', 'supervisor')).rejects.toThrow(
+      await expect(fulfillSO(FARM, 'so-1', 'user-1', 'supervisor')).rejects.toThrow(
         'Stok tidak mencukupi saat transaksi diproses'
       )
     })
@@ -381,20 +389,20 @@ describe('sales-order.service', () => {
       vi.mocked(salesOrderQueries.getCustomerOutstandingCredit).mockResolvedValue(9500000)
       vi.mocked(customerQueries.findCustomerById).mockResolvedValue(mockCustomer as any)
 
-      await expect(fulfillSO('so-1', 'user-1', 'supervisor')).rejects.toThrow(
+      await expect(fulfillSO(FARM, 'so-1', 'user-1', 'supervisor')).rejects.toThrow(
         'Credit limit pelanggan terlampaui'
       )
     })
 
     it('throws for operator role', async () => {
-      await expect(fulfillSO('so-1', 'user-1', 'operator' as any)).rejects.toThrow('Akses ditolak')
+      await expect(fulfillSO(FARM, 'so-1', 'user-1', 'operator' as any)).rejects.toThrow('Akses ditolak')
     })
 
     it('throws when SO is not confirmed', async () => {
       const mockDraftSO = { ...mockConfirmedSO, status: 'draft' as const }
       vi.mocked(salesOrderQueries.findSalesOrderById).mockResolvedValue(mockDraftSO as any)
 
-      await expect(fulfillSO('so-1', 'user-1', 'supervisor')).rejects.toThrow(
+      await expect(fulfillSO(FARM, 'so-1', 'user-1', 'supervisor')).rejects.toThrow(
         'Status SO tidak valid untuk operasi ini'
       )
     })
@@ -407,9 +415,9 @@ describe('sales-order.service', () => {
       vi.mocked(invoiceQueries.countInvoicesThisMonth).mockResolvedValue(0)
       vi.mocked(salesOrderQueries.fulfillSOTx).mockResolvedValue(undefined)
 
-      await fulfillSO('so-1', 'user-1', 'supervisor')
+      await fulfillSO(FARM, 'so-1', 'user-1', 'supervisor')
 
-      const invoiceArg = vi.mocked(salesOrderQueries.fulfillSOTx).mock.calls[0]![3]
+      const invoiceArg = vi.mocked(salesOrderQueries.fulfillSOTx).mock.calls[0]![4]
       expect((invoiceArg as any).invoiceNumber).toMatch(/^RCP-/)
     })
 
@@ -423,9 +431,9 @@ describe('sales-order.service', () => {
       vi.mocked(invoiceQueries.countInvoicesThisMonth).mockResolvedValue(0)
       vi.mocked(salesOrderQueries.fulfillSOTx).mockResolvedValue(undefined)
 
-      await fulfillSO('so-1', 'user-1', 'supervisor')
+      await fulfillSO(FARM, 'so-1', 'user-1', 'supervisor')
 
-      const invoiceArg = vi.mocked(salesOrderQueries.fulfillSOTx).mock.calls[0]![3]
+      const invoiceArg = vi.mocked(salesOrderQueries.fulfillSOTx).mock.calls[0]![4]
       expect((invoiceArg as any).invoiceNumber).toMatch(/^INV-/)
     })
 
@@ -437,7 +445,7 @@ describe('sales-order.service', () => {
       vi.mocked(inventoryQueries.getStockBalance).mockResolvedValue(1000)
       vi.mocked(invoiceQueries.countInvoicesThisMonth).mockResolvedValue(0)
 
-      await expect(fulfillSO('so-1', 'user-1', 'admin'))
+      await expect(fulfillSO(FARM, 'so-1', 'user-1', 'admin'))
         .rejects.toThrow('Total SO harus lebih dari Rp 0 sebelum dapat diproses')
     })
   })

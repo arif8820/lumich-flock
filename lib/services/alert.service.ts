@@ -5,13 +5,7 @@
  */
 
 import { db } from '@/lib/db'
-import {
-  flocks,
-  dailyRecords,
-  dailyEggRecords,
-  dailyFeedRecords,
-  invoices,
-} from '@/lib/db/schema'
+import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq, isNull, desc, and, lte, sql, inArray } from 'drizzle-orm'
 // sql is used in checkDepletionAlerts aggregation
 import { getAppSetting } from '@/lib/services/app-settings.service'
@@ -31,12 +25,13 @@ function weeksOld(arrivalDate: Date): number {
   return Math.floor(daysSince(arrivalDate) / 7)
 }
 
-async function getNumericSetting(key: string, fallback: number): Promise<number> {
-  const val = await getAppSetting(key)
+async function getNumericSetting(farmSchema: string, key: string, fallback: number): Promise<number> {
+  const val = await getAppSetting(farmSchema, key)
   return val != null ? parseFloat(val) : fallback
 }
 
-async function getTotalEggsForRecord(dailyRecordId: string): Promise<number> {
+async function getTotalEggsForRecord(farmSchema: string, dailyRecordId: string): Promise<number> {
+  const { dailyEggRecords } = getFarmSchema(farmSchema)
   const [row] = await db
     .select({ total: sql<string>`COALESCE(SUM(${dailyEggRecords.qtyButir}), 0)` })
     .from(dailyEggRecords)
@@ -44,7 +39,8 @@ async function getTotalEggsForRecord(dailyRecordId: string): Promise<number> {
   return Number(row?.total ?? 0)
 }
 
-async function getTotalFeedKgForRecord(dailyRecordId: string): Promise<number> {
+async function getTotalFeedKgForRecord(farmSchema: string, dailyRecordId: string): Promise<number> {
+  const { dailyFeedRecords } = getFarmSchema(farmSchema)
   const [row] = await db
     .select({ total: sql<string>`COALESCE(SUM(${dailyFeedRecords.qtyUsed}), 0)` })
     .from(dailyFeedRecords)
@@ -58,7 +54,8 @@ async function getTotalFeedKgForRecord(dailyRecordId: string): Promise<number> {
  * Phase change alert — fires once per phase per flock, no repeat.
  * Dedup key: alert_cooldowns with alertType = 'phase_change:<phaseName>'
  */
-async function checkPhaseChangeAlerts(): Promise<void> {
+async function checkPhaseChangeAlerts(farmSchema: string): Promise<void> {
+  const { flocks } = getFarmSchema(farmSchema)
   const activeFlocks = await db
     .select()
     .from(flocks)
@@ -66,16 +63,16 @@ async function checkPhaseChangeAlerts(): Promise<void> {
 
   for (const flock of activeFlocks) {
     const ageWeeks = weeksOld(new Date(flock.arrivalDate))
-    const phase = await getPhaseForWeeks(ageWeeks)
+    const phase = await getPhaseForWeeks(farmSchema, ageWeeks)
     if (!phase) continue
 
     const alertType = `phase_change:${phase.name}`
     // Cooldown = unlimited (never fire same phase again for same flock)
-    const cooldown = await findActiveCooldown(alertType, flock.id, 999_999)
+    const cooldown = await findActiveCooldown(farmSchema, alertType, flock.id, 999_999)
     if (cooldown) continue
 
     await db.transaction(async (tx) => {
-      await createNotification({
+      await createNotification(farmSchema, {
         type: 'phase_change',
         title: `Fase baru: ${phase.name}`,
         body: `Flock "${flock.name}" telah memasuki fase ${phase.name} (umur ${ageWeeks} minggu).`,
@@ -83,7 +80,7 @@ async function checkPhaseChangeAlerts(): Promise<void> {
         relatedEntityType: 'flocks',
         relatedEntityId: flock.id,
       }, tx)
-      await upsertCooldown(alertType, 'flocks', flock.id, tx)
+      await upsertCooldown(farmSchema, alertType, 'flocks', flock.id, tx)
     })
   }
 }
@@ -92,7 +89,8 @@ async function checkPhaseChangeAlerts(): Promise<void> {
  * HDP drop alert — fires if today's HDP dropped > threshold% vs yesterday.
  * Cooldown: 24h per flock.
  */
-async function checkHdpDropAlerts(hdpDropThreshold: number): Promise<void> {
+async function checkHdpDropAlerts(farmSchema: string, hdpDropThreshold: number): Promise<void> {
+  const { flocks, dailyRecords } = getFarmSchema(farmSchema)
   const activeFlocks = await db
     .select()
     .from(flocks)
@@ -121,11 +119,11 @@ async function checkHdpDropAlerts(hdpDropThreshold: number): Promise<void> {
 
     const totalDepletion =
       Number(depResult[0]?.totalDeaths ?? 0) + Number(depResult[0]?.totalCulled ?? 0)
-    const flockTotalCount = await sumDeliveriesQuantityByFlockId(flock.id)
+    const flockTotalCount = await sumDeliveriesQuantityByFlockId(farmSchema, flock.id)
     const livePop = Math.max(1, flockTotalCount - totalDepletion)
 
-    const eggsToday = await getTotalEggsForRecord(today!.id)
-    const eggsYesterday = await getTotalEggsForRecord(yesterday!.id)
+    const eggsToday = await getTotalEggsForRecord(farmSchema, today!.id)
+    const eggsYesterday = await getTotalEggsForRecord(farmSchema, yesterday!.id)
 
     const hdpToday = (eggsToday / livePop) * 100
     const hdpYesterday = (eggsYesterday / livePop) * 100
@@ -135,11 +133,11 @@ async function checkHdpDropAlerts(hdpDropThreshold: number): Promise<void> {
     if (dropPct < hdpDropThreshold) continue
 
     const alertType = 'hdp_drop'
-    const cooldown = await findActiveCooldown(alertType, flock.id, 24)
+    const cooldown = await findActiveCooldown(farmSchema, alertType, flock.id, 24)
     if (cooldown) continue
 
     await db.transaction(async (tx) => {
-      await createNotification({
+      await createNotification(farmSchema, {
         type: 'production_alert',
         title: 'HDP Turun Signifikan',
         body: `Flock "${flock.name}": HDP turun ${dropPct.toFixed(1)}% (${hdpYesterday.toFixed(1)}% → ${hdpToday.toFixed(1)}%).`,
@@ -147,7 +145,7 @@ async function checkHdpDropAlerts(hdpDropThreshold: number): Promise<void> {
         relatedEntityType: 'flocks',
         relatedEntityId: flock.id,
       }, tx)
-      await upsertCooldown(alertType, 'flocks', flock.id, tx)
+      await upsertCooldown(farmSchema, alertType, 'flocks', flock.id, tx)
     })
   }
 }
@@ -156,7 +154,8 @@ async function checkHdpDropAlerts(hdpDropThreshold: number): Promise<void> {
  * Daily depletion alert — fires if deaths+culled > threshold% of population.
  * Cooldown: 24h per flock.
  */
-async function checkDepletionAlerts(depletionThreshold: number): Promise<void> {
+async function checkDepletionAlerts(farmSchema: string, depletionThreshold: number): Promise<void> {
+  const { flocks, dailyRecords } = getFarmSchema(farmSchema)
   const activeFlocks = await db
     .select()
     .from(flocks)
@@ -183,7 +182,7 @@ async function checkDepletionAlerts(depletionThreshold: number): Promise<void> {
 
     const totalDepletion =
       Number(depResult[0]?.totalDeaths ?? 0) + Number(depResult[0]?.totalCulled ?? 0)
-    const flockTotalCount = await sumDeliveriesQuantityByFlockId(flock.id)
+    const flockTotalCount = await sumDeliveriesQuantityByFlockId(farmSchema, flock.id)
     const currentPop = Math.max(1, flockTotalCount - totalDepletion)
     const todayDepletion = latest.deaths + latest.culled
     const depletionPct = (todayDepletion / currentPop) * 100
@@ -191,11 +190,11 @@ async function checkDepletionAlerts(depletionThreshold: number): Promise<void> {
     if (depletionPct < depletionThreshold) continue
 
     const alertType = 'depletion'
-    const cooldown = await findActiveCooldown(alertType, flock.id, 24)
+    const cooldown = await findActiveCooldown(farmSchema, alertType, flock.id, 24)
     if (cooldown) continue
 
     await db.transaction(async (tx) => {
-      await createNotification({
+      await createNotification(farmSchema, {
         type: 'production_alert',
         title: 'Depletion Tinggi',
         body: `Flock "${flock.name}": depletion hari ini ${depletionPct.toFixed(2)}% (${todayDepletion} ekor dari ${currentPop} populasi).`,
@@ -203,7 +202,7 @@ async function checkDepletionAlerts(depletionThreshold: number): Promise<void> {
         relatedEntityType: 'flocks',
         relatedEntityId: flock.id,
       }, tx)
-      await upsertCooldown(alertType, 'flocks', flock.id, tx)
+      await upsertCooldown(farmSchema, alertType, 'flocks', flock.id, tx)
     })
   }
 }
@@ -212,7 +211,8 @@ async function checkDepletionAlerts(depletionThreshold: number): Promise<void> {
  * FCR alert — fires if FCR > threshold.
  * Cooldown: 24h per flock.
  */
-async function checkFcrAlerts(fcrThreshold: number): Promise<void> {
+async function checkFcrAlerts(farmSchema: string, fcrThreshold: number): Promise<void> {
+  const { flocks, dailyRecords } = getFarmSchema(farmSchema)
   const activeFlocks = await db
     .select()
     .from(flocks)
@@ -228,10 +228,10 @@ async function checkFcrAlerts(fcrThreshold: number): Promise<void> {
 
     if (!latest) continue
 
-    const feedKg = await getTotalFeedKgForRecord(latest.id)
+    const feedKg = await getTotalFeedKgForRecord(farmSchema, latest.id)
     if (feedKg <= 0) continue
 
-    const totalEggs = await getTotalEggsForRecord(latest.id)
+    const totalEggs = await getTotalEggsForRecord(farmSchema, latest.id)
     if (totalEggs <= 0) continue
 
     const fcr = feedKg / (totalEggs / 12)
@@ -239,11 +239,11 @@ async function checkFcrAlerts(fcrThreshold: number): Promise<void> {
     if (fcr <= fcrThreshold) continue
 
     const alertType = 'fcr_high'
-    const cooldown = await findActiveCooldown(alertType, flock.id, 24)
+    const cooldown = await findActiveCooldown(farmSchema, alertType, flock.id, 24)
     if (cooldown) continue
 
     await db.transaction(async (tx) => {
-      await createNotification({
+      await createNotification(farmSchema, {
         type: 'production_alert',
         title: 'FCR Melewati Batas',
         body: `Flock "${flock.name}": FCR ${fcr.toFixed(2)} melebihi batas ${fcrThreshold}.`,
@@ -251,7 +251,7 @@ async function checkFcrAlerts(fcrThreshold: number): Promise<void> {
         relatedEntityType: 'flocks',
         relatedEntityId: flock.id,
       }, tx)
-      await upsertCooldown(alertType, 'flocks', flock.id, tx)
+      await upsertCooldown(farmSchema, alertType, 'flocks', flock.id, tx)
     })
   }
 }
@@ -259,7 +259,8 @@ async function checkFcrAlerts(fcrThreshold: number): Promise<void> {
 /**
  * Invoice overdue alert — fires every day an invoice is overdue (no cooldown).
  */
-async function checkOverdueInvoiceAlerts(overdueDelayDays: number): Promise<void> {
+async function checkOverdueInvoiceAlerts(farmSchema: string, overdueDelayDays: number): Promise<void> {
+  const { invoices } = getFarmSchema(farmSchema)
   const today = new Date()
   today.setUTCHours(0, 0, 0, 0)
 
@@ -280,7 +281,7 @@ async function checkOverdueInvoiceAlerts(overdueDelayDays: number): Promise<void
     if (overdueDays < overdueDelayDays) continue
 
     // No cooldown — fires daily
-    await createNotification({
+    await createNotification(farmSchema, {
       type: 'overdue_invoice',
       title: 'Invoice Jatuh Tempo',
       body: `Invoice ${inv.invoiceNumber} telah jatuh tempo ${overdueDays} hari. Total: Rp ${Number(inv.totalAmount).toLocaleString('id-ID')}.`,
@@ -295,8 +296,8 @@ async function checkOverdueInvoiceAlerts(overdueDelayDays: number): Promise<void
  * Stock overstock alert — fires if total Telur stock > threshold.
  * Cooldown: 24h (fixed entity id '00000000-0000-0000-0000-000000000001').
  */
-async function checkStockAlerts(threshold: number): Promise<void> {
-  const balances = await getAllStockBalances()
+async function checkStockAlerts(farmSchema: string, threshold: number): Promise<void> {
+  const balances = await getAllStockBalances(farmSchema)
   const totalEggs = balances
     .filter((b) => b.categoryName === 'Telur')
     .reduce((sum, b) => sum + b.balance, 0)
@@ -305,17 +306,17 @@ async function checkStockAlerts(threshold: number): Promise<void> {
 
   const alertType = 'stock_warning'
   const fixedEntityId = '00000000-0000-0000-0000-000000000001'
-  const cooldown = await findActiveCooldown(alertType, fixedEntityId, 24)
+  const cooldown = await findActiveCooldown(farmSchema, alertType, fixedEntityId, 24)
   if (cooldown) return
 
   await db.transaction(async (tx) => {
-    await createNotification({
+    await createNotification(farmSchema, {
       type: 'stock_warning',
       title: 'Stok Terlalu Tinggi',
       body: `Total stok telur saat ini ${totalEggs} butir melebihi batas ${threshold} butir`,
       targetRole: 'all',
     }, tx)
-    await upsertCooldown(alertType, 'stock', fixedEntityId, tx)
+    await upsertCooldown(farmSchema, alertType, 'stock', fixedEntityId, tx)
   })
 }
 
@@ -325,20 +326,20 @@ async function checkStockAlerts(threshold: number): Promise<void> {
  * runDailyAlerts — called by the pg_cron webhook API route.
  * Evaluates all alert conditions in sequence.
  */
-export async function runDailyAlerts(): Promise<void> {
+export async function runDailyAlerts(farmSchema: string): Promise<void> {
   const [fcrThreshold, depletionThreshold, hdpDropThreshold, overdueDelayDays, stockMaxThreshold] = await Promise.all([
-    getNumericSetting('alert_fcr_threshold', 2.5),
-    getNumericSetting('alert_depletion_pct', 0.5),
-    getNumericSetting('alert_hdp_drop_pct', 5),
-    getNumericSetting('alert_overdue_delay_days', 1),
-    getNumericSetting('alert_stock_max_threshold', 10000),
+    getNumericSetting(farmSchema, 'alert_fcr_threshold', 2.5),
+    getNumericSetting(farmSchema, 'alert_depletion_pct', 0.5),
+    getNumericSetting(farmSchema, 'alert_hdp_drop_pct', 5),
+    getNumericSetting(farmSchema, 'alert_overdue_delay_days', 1),
+    getNumericSetting(farmSchema, 'alert_stock_max_threshold', 10000),
   ])
 
   // Run sequentially to avoid DB contention
-  await checkPhaseChangeAlerts()
-  await checkHdpDropAlerts(hdpDropThreshold)
-  await checkDepletionAlerts(depletionThreshold)
-  await checkFcrAlerts(fcrThreshold)
-  await checkOverdueInvoiceAlerts(overdueDelayDays)
-  await checkStockAlerts(stockMaxThreshold)
+  await checkPhaseChangeAlerts(farmSchema)
+  await checkHdpDropAlerts(farmSchema, hdpDropThreshold)
+  await checkDepletionAlerts(farmSchema, depletionThreshold)
+  await checkFcrAlerts(farmSchema, fcrThreshold)
+  await checkOverdueInvoiceAlerts(farmSchema, overdueDelayDays)
+  await checkStockAlerts(farmSchema, stockMaxThreshold)
 }

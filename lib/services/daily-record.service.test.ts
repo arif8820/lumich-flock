@@ -25,6 +25,12 @@ vi.mock('@/lib/services/lock-period.service', () => ({
   assertCanEdit: vi.fn(), // no-op by default
 }))
 
+vi.mock('@/lib/db/schema-factory', () => ({
+  getFarmSchema: vi.fn().mockReturnValue({
+    dailyRecords: {},
+  }),
+}))
+
 vi.mock('@/lib/db', () => ({
   db: {
     select: vi.fn().mockReturnThis(),
@@ -46,6 +52,8 @@ import {
   saveDailyRecord,
   getProductionReportData,
 } from './daily-record.service'
+
+const FARM = 'test-farm'
 
 describe('daily-record.service — pure functions', () => {
   describe('validateBackdate', () => {
@@ -118,7 +126,7 @@ describe('daily-record.service — pure functions', () => {
 
     it('throws Akses ditolak for operator role', async () => {
       await expect(
-        getProductionReportData('2026-04-01', '2026-04-30', 'operator')
+        getProductionReportData(FARM, '2026-04-01', '2026-04-30', 'operator')
       ).rejects.toThrow('Akses ditolak')
     })
 
@@ -126,7 +134,7 @@ describe('daily-record.service — pure functions', () => {
       vi.mocked(queries.getProductionReport).mockResolvedValue([mockRawRow])
       vi.mocked(queries.getCumulativeDepletionByFlockUpTo).mockResolvedValue({ deaths: 5, culled: 2 })
 
-      const result = await getProductionReportData('2026-04-01', '2026-04-30', 'supervisor')
+      const result = await getProductionReportData(FARM, '2026-04-01', '2026-04-30', 'supervisor')
 
       expect(result.rows).toHaveLength(1)
 
@@ -144,7 +152,7 @@ describe('daily-record.service — pure functions', () => {
     it('returns zero kpi when there are no rows', async () => {
       vi.mocked(queries.getProductionReport).mockResolvedValue([])
 
-      const result = await getProductionReportData('2026-04-01', '2026-04-30', 'admin')
+      const result = await getProductionReportData(FARM, '2026-04-01', '2026-04-30', 'admin')
 
       expect(result.rows).toHaveLength(0)
       expect(result.kpi.totalDeaths).toBe(0)
@@ -163,6 +171,7 @@ describe('daily-record.service — pure functions', () => {
 
     it('calls upsertDailyRecordTx with correct input', async () => {
       await saveDailyRecord(
+        FARM,
         {
           flockId: 'f1',
           recordDate: '2026-04-20',
@@ -178,6 +187,7 @@ describe('daily-record.service — pure functions', () => {
       )
 
       expect(queries.upsertDailyRecordTx).toHaveBeenCalledWith(
+        FARM,
         expect.objectContaining({
           record: expect.objectContaining({ flockId: 'f1', deaths: 2 }),
         })
@@ -186,6 +196,7 @@ describe('daily-record.service — pure functions', () => {
 
     it('sets isLateInput true when submitted next calendar day', async () => {
       await saveDailyRecord(
+        FARM,
         {
           flockId: 'f1',
           recordDate: '2026-04-20',
@@ -201,6 +212,7 @@ describe('daily-record.service — pure functions', () => {
       )
 
       expect(queries.upsertDailyRecordTx).toHaveBeenCalledWith(
+        FARM,
         expect.objectContaining({
           record: expect.objectContaining({ isLateInput: true }),
         })
@@ -212,6 +224,7 @@ describe('daily-record.service — pure functions', () => {
 
       await expect(
         saveDailyRecord(
+          FARM,
           {
             flockId: 'f1',
             recordDate: '2026-04-20',

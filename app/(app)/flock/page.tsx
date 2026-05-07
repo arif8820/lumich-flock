@@ -6,7 +6,7 @@ import { FlockListClient } from '@/components/forms/flock-list-client'
 export default async function FlockPage() {
   const session = await getSession()
   if (!session) redirect('/login')
-  const flocks = await getAllActiveFlocks()
+  const flocks = await getAllActiveFlocks(session.farmSchema)
 
   return (
     <div className="p-6 space-y-5">

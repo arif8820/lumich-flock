@@ -34,7 +34,7 @@ export default async function WaTemplatePage({
 
   const { success, error } = await searchParams
 
-  const currentTemplate = await getAppSetting('wa_invoice_template') ?? DEFAULT_TEMPLATE
+  const currentTemplate = await getAppSetting(session.farmSchema, 'wa_invoice_template') ?? DEFAULT_TEMPLATE
 
   async function handleSaveTemplate(formData: FormData) {
     'use server'

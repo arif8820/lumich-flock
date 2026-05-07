@@ -1,17 +1,38 @@
 import { createSupabaseServerClient } from './server'
 import { db } from '@/lib/db'
-import { users } from '@/lib/db/schema'
+import { farmUsers } from '@/lib/db/schema'
+import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
 import type { User } from '@/lib/db/schema'
 
-export type SessionUser = User
+export type SessionUser = User & { farmSchema: string }
 
-function getCachedDbUser(userId: string) {
+function getCachedSession(userId: string, email: string) {
   return unstable_cache(
-    async () => {
-      const [dbUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1)
-      return dbUser ?? null
+    async (): Promise<SessionUser | null> => {
+      // 1. Lookup farm schema from public.farm_users
+      const [farmUserRow] = await db
+        .select()
+        .from(farmUsers)
+        .where(eq(farmUsers.email, email))
+        .limit(1)
+
+      if (!farmUserRow) return null
+
+      const { farmSchema } = farmUserRow
+
+      // 2. Fetch DB user from farm schema
+      const { users } = getFarmSchema(farmSchema)
+      const [dbUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1)
+
+      if (!dbUser || !dbUser.isActive) return null
+
+      return { ...dbUser, farmSchema }
     },
     [`user-session-${userId}`],
     { revalidate: 60, tags: [`user-${userId}`] }
@@ -21,12 +42,10 @@ function getCachedDbUser(userId: string) {
 export async function getSession(): Promise<SessionUser | null> {
   const supabase = await createSupabaseServerClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) return null
+  if (authError || !user || !user.email) return null
 
   try {
-    const dbUser = await getCachedDbUser(user.id)
-    if (!dbUser || !dbUser.isActive) return null
-    return dbUser
+    return await getCachedSession(user.id, user.email)
   } catch {
     return null
   }

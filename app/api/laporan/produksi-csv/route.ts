@@ -41,7 +41,7 @@ export async function GET(request: Request): Promise<Response> {
 
   let result: ProductionReportResult
   try {
-    result = await getProductionReportData(from, to, session.role as Role)
+    result = await getProductionReportData(session.farmSchema, from, to, session.role as Role)
   } catch {
     return new Response('Gagal mengambil data laporan', { status: 500 })
   }

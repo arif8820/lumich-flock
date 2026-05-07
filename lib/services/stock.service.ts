@@ -17,12 +17,12 @@ export type { StockBalance }
 
 type Role = 'operator' | 'supervisor' | 'admin'
 
-export async function getStockBalance(stockItemId: string): Promise<number> {
-  return _getStockBalance(stockItemId)
+export async function getStockBalance(farmSchema: string, stockItemId: string): Promise<number> {
+  return _getStockBalance(farmSchema, stockItemId)
 }
 
-export async function getAllStockBalances(): Promise<StockBalance[]> {
-  return _getAllStockBalances()
+export async function getAllStockBalances(farmSchema: string): Promise<StockBalance[]> {
+  return _getAllStockBalances(farmSchema)
 }
 
 export function validateStockNotBelowZero(currentBalance: number, quantity: number): void {
@@ -38,6 +38,7 @@ type AdjustmentInput = {
 }
 
 export async function createStockAdjustment(
+  farmSchema: string,
   input: AdjustmentInput,
   userId: string,
   role: Role = 'admin',
@@ -45,12 +46,14 @@ export async function createStockAdjustment(
 ): Promise<StockAdjustment> {
   assertCanEdit(new Date(input.adjustmentDate), role, now)
 
-  const balance = await _getStockBalance(input.stockItemId)
+  const balance = await _getStockBalance(farmSchema, input.stockItemId)
   validateStockNotBelowZero(balance, input.quantity)
   const movementType = input.quantity >= 0 ? 'in' : 'out'
   const qty = Math.abs(input.quantity)
 
+  // any: farm schema date fields (adjustmentDate: Date) differ from public StockAdjustment (adjustmentDate: string)
   return insertStockAdjustmentWithMovement(
+    farmSchema,
     {
       stockItemId: input.stockItemId,
       adjustmentDate: input.adjustmentDate,
@@ -69,7 +72,7 @@ export async function createStockAdjustment(
       movementDate: input.adjustmentDate,
       createdBy: userId,
     }
-  )
+  ) as unknown as StockAdjustment
 }
 
 type RegradeInput = {
@@ -81,31 +84,34 @@ type RegradeInput = {
 }
 
 export async function submitRegradeRequest(
+  farmSchema: string,
   input: RegradeInput,
   userId: string
 ): Promise<RegradeRequest> {
   if (input.fromItemId === input.toItemId) throw new Error('Item asal dan tujuan tidak boleh sama')
-  const balance = await _getStockBalance(input.fromItemId)
+  const balance = await _getStockBalance(farmSchema, input.fromItemId)
   validateStockNotBelowZero(balance, -input.quantity)
-  return insertRegradeRequest({ ...input, status: 'PENDING', createdBy: userId })
+  // any: farm schema date fields (requestDate: Date) differ from public RegradeRequest (requestDate: string)
+  return insertRegradeRequest(farmSchema, { ...input, status: 'PENDING', createdBy: userId }) as unknown as RegradeRequest
 }
 
-export async function approveRegradeRequest(requestId: string, adminId: string): Promise<void> {
-  const req = await findRegradeRequestById(requestId)
+export async function approveRegradeRequest(farmSchema: string, requestId: string, adminId: string): Promise<void> {
+  const req = await findRegradeRequestById(farmSchema, requestId)
   if (!req) throw new Error('Permintaan regrade tidak ditemukan')
   if (req.status !== 'PENDING') throw new Error('Permintaan sudah diproses')
-  await approveRegradeRequestTx(requestId, adminId)
+  await approveRegradeRequestTx(farmSchema, requestId, adminId)
 }
 
-export async function rejectRegradeRequest(requestId: string, adminId: string): Promise<void> {
-  const req = await findRegradeRequestById(requestId)
+export async function rejectRegradeRequest(farmSchema: string, requestId: string, adminId: string): Promise<void> {
+  const req = await findRegradeRequestById(farmSchema, requestId)
   if (!req) throw new Error('Permintaan regrade tidak ditemukan')
   if (req.status !== 'PENDING') throw new Error('Permintaan sudah diproses')
-  await updateRegradeRequestStatus(requestId, 'REJECTED', adminId)
+  await updateRegradeRequestStatus(farmSchema, requestId, 'REJECTED', adminId)
 }
 
-export async function getPendingRegradeRequests(): Promise<RegradeRequest[]> {
-  return findPendingRegradeRequests()
+export async function getPendingRegradeRequests(farmSchema: string): Promise<RegradeRequest[]> {
+  // any: farm schema date fields (requestDate: Date) differ from public RegradeRequest (requestDate: string)
+  return findPendingRegradeRequests(farmSchema) as unknown as Promise<RegradeRequest[]>
 }
 
 type StockPurchaseInput = {
@@ -116,10 +122,11 @@ type StockPurchaseInput = {
 }
 
 export async function createStockPurchase(
+  farmSchema: string,
   input: StockPurchaseInput,
   userId: string
 ): Promise<void> {
-  await insertInventoryMovement({
+  await insertInventoryMovement(farmSchema, {
     stockItemId: input.stockItemId,
     movementType: 'in',
     source: 'purchase',

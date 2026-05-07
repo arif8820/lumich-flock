@@ -39,11 +39,11 @@ export default async function SODetailPage({
 
   const { id } = await params
   const { error } = await searchParams
-  const so = await findSalesOrderById(id)
+  const so = await findSalesOrderById(session.farmSchema, id)
   if (!so) redirect('/penjualan')
 
-  const items = await findSalesOrderItems(id)
-  const returns = await findSalesReturnsByOrderId(id)
+  const items = await findSalesOrderItems(session.farmSchema, id)
+  const returns = await findSalesReturnsByOrderId(session.farmSchema, id)
 
   async function confirmAction() {
     'use server'

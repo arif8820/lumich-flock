@@ -1,23 +1,30 @@
 import { db } from '@/lib/db'
-import { customers } from '@/lib/db/schema'
+import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq } from 'drizzle-orm'
-import type { Customer, NewCustomer } from '@/lib/db/schema'
 
-export async function findCustomerById(id: string): Promise<Customer | null> {
+export async function findCustomerById(farmSchema: string, id: string) {
+  const { customers } = getFarmSchema(farmSchema)
   const [customer] = await db.select().from(customers).where(eq(customers.id, id)).limit(1)
   return customer ?? null
 }
 
-export async function listCustomers(): Promise<Customer[]> {
+export async function listCustomers(farmSchema: string) {
+  const { customers } = getFarmSchema(farmSchema)
   return db.select().from(customers).orderBy(customers.name)
 }
 
-export async function insertCustomer(data: NewCustomer): Promise<Customer> {
+// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function insertCustomer(farmSchema: string, data: any) {
+  const { customers } = getFarmSchema(farmSchema)
   const [customer] = await db.insert(customers).values(data).returning()
   return customer!
 }
 
-export async function updateCustomer(id: string, data: Partial<NewCustomer>): Promise<Customer | null> {
+// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function updateCustomer(farmSchema: string, id: string, data: any) {
+  const { customers } = getFarmSchema(farmSchema)
   const [customer] = await db.update(customers).set(data).where(eq(customers.id, id)).returning()
   return customer ?? null
 }

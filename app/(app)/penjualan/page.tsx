@@ -71,12 +71,12 @@ export default async function PenjualanPage({
 
   const soResult =
     activeTab === 'so'
-      ? await listSalesOrders(currentSOPage, SO_PAGE_SIZE, status || undefined)
+      ? await listSalesOrders(session.farmSchema, currentSOPage, SO_PAGE_SIZE, status || undefined)
       : { data: [], total: 0 }
 
   const returnResult =
     activeTab === 'return'
-      ? await listSalesReturnsWithOrder(currentReturnPage, RETURN_PAGE_SIZE, returnStatus || undefined)
+      ? await listSalesReturnsWithOrder(session.farmSchema, currentReturnPage, RETURN_PAGE_SIZE, returnStatus || undefined)
       : { data: [], total: 0 }
 
   return (
@@ -282,11 +282,11 @@ export default async function PenjualanPage({
                       <span
                         className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
                         style={{
-                          color: returnStatusColors[ret.status],
-                          backgroundColor: `${returnStatusColors[ret.status]}20`,
+                          color: returnStatusColors[ret.status as 'pending' | 'approved' | 'rejected'],
+                          backgroundColor: `${returnStatusColors[ret.status as 'pending' | 'approved' | 'rejected']}20`,
                         }}
                       >
-                        {returnStatusLabels[ret.status]}
+                        {returnStatusLabels[ret.status as 'pending' | 'approved' | 'rejected']}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-right">

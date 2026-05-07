@@ -1,23 +1,30 @@
 import { db } from '@/lib/db'
-import { users } from '@/lib/db/schema'
+import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq } from 'drizzle-orm'
-import type { NewUser, User } from '@/lib/db/schema'
 
-export async function findAllUsers(): Promise<User[]> {
+export async function findAllUsers(farmSchema: string) {
+  const { users } = getFarmSchema(farmSchema)
   return db.select().from(users).orderBy(users.fullName)
 }
 
-export async function findUserById(id: string): Promise<User | null> {
+export async function findUserById(farmSchema: string, id: string) {
+  const { users } = getFarmSchema(farmSchema)
   const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1)
   return user ?? null
 }
 
-export async function insertUser(data: NewUser): Promise<User> {
+// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function insertUser(farmSchema: string, data: any) {
+  const { users } = getFarmSchema(farmSchema)
   const [user] = await db.insert(users).values(data).returning()
   return user!
 }
 
-export async function updateUser(id: string, data: Partial<NewUser>): Promise<User | null> {
+// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function updateUser(farmSchema: string, id: string, data: any) {
+  const { users } = getFarmSchema(farmSchema)
   const [user] = await db.update(users).set(data).where(eq(users.id, id)).returning()
   return user ?? null
 }

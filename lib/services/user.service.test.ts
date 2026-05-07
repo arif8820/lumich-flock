@@ -22,6 +22,8 @@ import * as userQueries from '@/lib/db/queries/user.queries'
 import { supabaseAdmin } from '@/lib/auth/admin'
 import { createUser, updateUserRole, deactivateUser, changeUserPassword } from './user.service'
 
+const FARM = 'test-farm'
+
 describe('user.service', () => {
   beforeEach(() => vi.clearAllMocks())
 
@@ -43,7 +45,7 @@ describe('user.service', () => {
         updatedAt: null,
       })
 
-      const result = await createUser({
+      const result = await createUser(FARM, {
         email: 'test@test.com',
         password: 'Password1',
         fullName: 'Test User',
@@ -56,7 +58,7 @@ describe('user.service', () => {
         password: 'Password1',
         email_confirm: true,
       })
-      expect(userQueries.insertUser).toHaveBeenCalledWith(expect.objectContaining({
+      expect(userQueries.insertUser).toHaveBeenCalledWith(FARM, expect.objectContaining({
         id: 'uuid-123',
         email: 'test@test.com',
         fullName: 'Test User',
@@ -71,7 +73,7 @@ describe('user.service', () => {
         error: { message: 'Email already exists' },
       } as any) // any: Supabase return type is complex union
 
-      await expect(createUser({
+      await expect(createUser(FARM, {
         email: 'dup@test.com',
         password: 'Password1',
         fullName: 'Dup',
@@ -88,9 +90,9 @@ describe('user.service', () => {
         isActive: false,
       } as any) // any: partial User for mock
 
-      await deactivateUser('uuid-123')
+      await deactivateUser(FARM, 'uuid-123')
 
-      expect(userQueries.updateUser).toHaveBeenCalledWith('uuid-123', { isActive: false })
+      expect(userQueries.updateUser).toHaveBeenCalledWith(FARM, 'uuid-123', { isActive: false })
     })
   })
 

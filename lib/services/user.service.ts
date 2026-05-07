@@ -15,7 +15,7 @@ type CreateUserInput = {
   createdBy: string
 }
 
-export async function createUser(input: CreateUserInput): Promise<User> {
+export async function createUser(farmSchema: string, input: CreateUserInput): Promise<User> {
   const { data, error } = await supabaseAdmin.auth.admin.createUser({
     email: input.email,
     password: input.password,
@@ -27,7 +27,7 @@ export async function createUser(input: CreateUserInput): Promise<User> {
     throw new Error('Gagal membuat user')
   }
 
-  return insertUser({
+  return insertUser(farmSchema, {
     id: data.user.id,
     email: input.email,
     fullName: input.fullName,
@@ -37,27 +37,28 @@ export async function createUser(input: CreateUserInput): Promise<User> {
   })
 }
 
-export async function getAllUsers(): Promise<User[]> {
-  return findAllUsers()
+export async function getAllUsers(farmSchema: string): Promise<User[]> {
+  return findAllUsers(farmSchema)
 }
 
-export async function getUserById(id: string): Promise<User | null> {
-  return findUserById(id)
+export async function getUserById(farmSchema: string, id: string): Promise<User | null> {
+  return findUserById(farmSchema, id)
 }
 
 export async function updateUserRole(
+  farmSchema: string,
   id: string,
   role: 'operator' | 'supervisor' | 'admin'
 ): Promise<User | null> {
-  return updateUser(id, { role })
+  return updateUser(farmSchema, id, { role })
 }
 
-export async function deactivateUser(id: string): Promise<void> {
-  await updateUser(id, { isActive: false })
+export async function deactivateUser(farmSchema: string, id: string): Promise<void> {
+  await updateUser(farmSchema, id, { isActive: false })
 }
 
-export async function activateUser(id: string): Promise<void> {
-  await updateUser(id, { isActive: true })
+export async function activateUser(farmSchema: string, id: string): Promise<void> {
+  await updateUser(farmSchema, id, { isActive: true })
 }
 
 export async function changeUserPassword(id: string, newPassword: string): Promise<void> {

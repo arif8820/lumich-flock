@@ -13,7 +13,7 @@ export default async function ProduksiEditPage({ params }: Props) {
   if (!session) redirect('/login')
 
   const { id } = await params
-  const record = await findDailyRecordById(id)
+  const record = await findDailyRecordById(session.farmSchema, id)
   if (!record) redirect('/produksi')
 
   const now = new Date()
@@ -29,11 +29,11 @@ export default async function ProduksiEditPage({ params }: Props) {
   if (!editable && !isAdmin) redirect('/produksi')
 
   const [subRecords, eggItems, feedItems, vaccineItems, balances] = await Promise.all([
-    findDailySubRecordsByRecordId(id),
-    getActiveEggItems(),
-    getActiveFeedItems(),
-    getActiveVaccineItems(),
-    getAllStockBalances(),
+    findDailySubRecordsByRecordId(session.farmSchema, id),
+    getActiveEggItems(session.farmSchema),
+    getActiveFeedItems(session.farmSchema),
+    getActiveVaccineItems(session.farmSchema),
+    getAllStockBalances(session.farmSchema),
   ])
 
   const balanceMap = new Map(balances.map((b) => [b.stockItemId, b.balance]))
@@ -54,7 +54,7 @@ export default async function ProduksiEditPage({ params }: Props) {
       )}
 
       <DailyRecordEditForm
-        record={record}
+        record={{ ...record, recordDate: record.recordDate instanceof Date ? record.recordDate.toISOString().split('T')[0]! : record.recordDate }}
         subRecords={subRecords}
         eggItems={eggItems}
         feedItems={feedItems.map((i) => ({ ...i, balance: balanceMap.get(i.id) ?? 0 }))}

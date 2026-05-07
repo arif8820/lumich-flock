@@ -1,8 +1,7 @@
 'use server'
 
 import { z } from 'zod'
-import { getSession } from '@/lib/auth/get-session'
-import { requireAdmin } from '@/lib/auth/guards'
+import { getRequiredSession } from '@/lib/auth/guards'
 import { createCoop, getAllCoops, updateCoop, deactivateCoop, activateCoop } from '@/lib/services/coop.service'
 
 const coopSchema = z.object({
@@ -16,8 +15,9 @@ type ActionResult<T = void> =
   | { success: false; error: string }
 
 export async function createCoopAction(formData: FormData): Promise<ActionResult<{ id: string }>> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   const parsed = coopSchema.safeParse({
     name: formData.get('name'),
@@ -27,7 +27,7 @@ export async function createCoopAction(formData: FormData): Promise<ActionResult
   if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
 
   try {
-    const coop = await createCoop(parsed.data)
+    const coop = await createCoop(session.farmSchema, parsed.data)
     return { success: true, data: { id: coop.id } }
   } catch {
     return { success: false, error: 'Gagal membuat kandang. Nama mungkin sudah digunakan.' }
@@ -35,8 +35,9 @@ export async function createCoopAction(formData: FormData): Promise<ActionResult
 }
 
 export async function updateCoopAction(id: string, formData: FormData): Promise<ActionResult> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   const parsed = coopSchema.safeParse({
     name: formData.get('name'),
@@ -46,7 +47,7 @@ export async function updateCoopAction(id: string, formData: FormData): Promise<
   if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
 
   try {
-    await updateCoop(id, parsed.data)
+    await updateCoop(session.farmSchema, id, parsed.data)
     return { success: true, data: undefined }
   } catch {
     return { success: false, error: 'Gagal mengubah kandang' }
@@ -54,10 +55,11 @@ export async function updateCoopAction(id: string, formData: FormData): Promise<
 }
 
 export async function deactivateCoopAction(id: string): Promise<ActionResult> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
   try {
-    await deactivateCoop(id)
+    await deactivateCoop(session.farmSchema, id)
     return { success: true, data: undefined }
   } catch {
     return { success: false, error: 'Gagal menonaktifkan kandang' }
@@ -65,10 +67,11 @@ export async function deactivateCoopAction(id: string): Promise<ActionResult> {
 }
 
 export async function activateCoopAction(id: string): Promise<ActionResult> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
   try {
-    await activateCoop(id)
+    await activateCoop(session.farmSchema, id)
     return { success: true, data: undefined }
   } catch {
     return { success: false, error: 'Gagal mengaktifkan kandang' }
@@ -76,10 +79,10 @@ export async function activateCoopAction(id: string): Promise<ActionResult> {
 }
 
 export async function getCoopsAction(): Promise<ActionResult<Awaited<ReturnType<typeof getAllCoops>>>> {
-  const session = await getSession()
-  if (!session) return { success: false, error: 'Tidak terautentikasi' }
+  const session = await getRequiredSession()
+  if ('error' in session) return session
   try {
-    const coops = await getAllCoops()
+    const coops = await getAllCoops(session.farmSchema)
     return { success: true, data: coops }
   } catch {
     return { success: false, error: 'Gagal memuat daftar kandang' }

@@ -1,6 +1,6 @@
 'use server'
 
-import { getSession } from '@/lib/auth/get-session'
+import { getRequiredSession } from '@/lib/auth/guards'
 import {
   findAssignmentsByUser,
   findAssignedCoopIds,
@@ -12,20 +12,15 @@ type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: false; error: string }
 
-async function requireAdmin(): Promise<{ success: false; error: string } | null> {
-  const session = await getSession()
-  if (!session || session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
-  return null
-}
-
 export async function getAssignmentsForUserAction(
   userId: string
 ): Promise<ActionResult<Awaited<ReturnType<typeof findAssignmentsByUser>>>> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   try {
-    const assignments = await findAssignmentsByUser(userId)
+    const assignments = await findAssignmentsByUser(session.farmSchema, userId)
     return { success: true, data: assignments }
   } catch {
     return { success: false, error: 'Gagal memuat assignment' }
@@ -33,19 +28,20 @@ export async function getAssignmentsForUserAction(
 }
 
 export async function getAssignedCoopIdsAction(userId: string): Promise<string[]> {
-  const session = await getSession()
-  if (!session) return []
+  const session = await getRequiredSession()
+  if ('error' in session) return []
   // User bisa lihat coop assignment mereka sendiri; admin bisa lihat semua
   if (session.role !== 'admin' && session.id !== userId) return []
-  return findAssignedCoopIds(userId)
+  return findAssignedCoopIds(session.farmSchema, userId)
 }
 
 export async function assignCoopToUserAction(userId: string, coopId: string): Promise<ActionResult> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   try {
-    await insertAssignment(userId, coopId)
+    await insertAssignment(session.farmSchema, userId, coopId)
     return { success: true, data: undefined }
   } catch {
     return { success: false, error: 'Gagal assign kandang' }
@@ -53,11 +49,12 @@ export async function assignCoopToUserAction(userId: string, coopId: string): Pr
 }
 
 export async function removeCoopFromUserAction(userId: string, coopId: string): Promise<ActionResult> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   try {
-    await deleteAssignment(userId, coopId)
+    await deleteAssignment(session.farmSchema, userId, coopId)
     return { success: true, data: undefined }
   } catch {
     return { success: false, error: 'Gagal hapus assignment' }

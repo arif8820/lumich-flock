@@ -12,10 +12,10 @@ export default async function CreateReturnPage({
   if (!session || session.role === 'operator') redirect('/dashboard')
 
   const { id } = await params
-  const so = await findSalesOrderById(id)
+  const so = await findSalesOrderById(session.farmSchema, id)
   if (!so || so.status !== 'fulfilled') redirect(`/penjualan/${id}`)
 
-  const soItems = await findSalesOrderItems(id)
+  const soItems = await findSalesOrderItems(session.farmSchema, id)
 
   return <CreateReturnClient orderId={id} soItems={soItems} />
 }

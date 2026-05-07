@@ -1,22 +1,28 @@
 import { db, DrizzleTx } from '@/lib/db'
-import { notifications, notificationReads } from '@/lib/db/schema'
-import type { NewNotification, Notification } from '@/lib/db/schema'
+import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq, and, not, inArray, sql, desc } from 'drizzle-orm'
 
 // USED BY: [notification.service, alert.service] — count: 2
+
+// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
 export async function createNotification(
-  notification: NewNotification,
+  farmSchema: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  notification: any,
   tx?: DrizzleTx
-): Promise<Notification> {
+) {
+  const { notifications } = getFarmSchema(farmSchema)
   const executor = tx ?? db
   const [row] = await executor.insert(notifications).values(notification).returning()
   return row!
 }
 
 export async function listNotificationsForRole(
+  farmSchema: string,
   role: 'operator' | 'supervisor' | 'admin',
   limit = 50
-): Promise<Notification[]> {
+) {
+  const { notifications } = getFarmSchema(farmSchema)
   return db
     .select()
     .from(notifications)
@@ -28,9 +34,11 @@ export async function listNotificationsForRole(
 }
 
 export async function countUnreadForUser(
+  farmSchema: string,
   userId: string,
   role: 'operator' | 'supervisor' | 'admin'
 ): Promise<number> {
+  const { notifications, notificationReads } = getFarmSchema(farmSchema)
   // Get all notification IDs already read by the user
   const readRows = await db
     .select({ notificationId: notificationReads.notificationId })
@@ -64,9 +72,11 @@ export async function countUnreadForUser(
 }
 
 export async function markNotificationRead(
+  farmSchema: string,
   notificationId: string,
   userId: string
 ): Promise<void> {
+  const { notificationReads } = getFarmSchema(farmSchema)
   await db
     .insert(notificationReads)
     .values({ notificationId, userId })
@@ -74,10 +84,12 @@ export async function markNotificationRead(
 }
 
 export async function markAllReadForUser(
+  farmSchema: string,
   userId: string,
   role: 'operator' | 'supervisor' | 'admin'
 ): Promise<void> {
-  const visibleNotifications = await listNotificationsForRole(role, 500)
+  const { notificationReads } = getFarmSchema(farmSchema)
+  const visibleNotifications = await listNotificationsForRole(farmSchema, role, 500)
   if (visibleNotifications.length === 0) return
 
   const values = visibleNotifications.map((n) => ({ notificationId: n.id, userId }))
@@ -85,8 +97,10 @@ export async function markAllReadForUser(
 }
 
 export async function getReadNotificationIdsForUser(
+  farmSchema: string,
   userId: string
 ): Promise<{ notificationId: string }[]> {
+  const { notificationReads } = getFarmSchema(farmSchema)
   return db
     .select({ notificationId: notificationReads.notificationId })
     .from(notificationReads)

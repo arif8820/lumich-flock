@@ -6,7 +6,7 @@ import { CustomerManagementClient } from '@/components/forms/customer-management
 export default async function PelangganPage() {
   const session = await getSession()
   if (!session || session.role === 'operator') redirect('/dashboard')
-  const customers = await getAllCustomers()
+  const customers = await getAllCustomers(session.farmSchema)
 
   return (
     <div className="p-6 space-y-5">

@@ -47,7 +47,7 @@ export default async function LaporanProduksiPage({
     kpi: { totalDeaths: 0, totalCulled: 0 },
   }
   try {
-    result = await getProductionReportData(safeFrom, safeTo, session.role as Role)
+    result = await getProductionReportData(session.farmSchema, safeFrom, safeTo, session.role as Role)
   } catch {
     // DB error — render empty state
   }

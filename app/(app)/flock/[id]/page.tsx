@@ -11,12 +11,12 @@ export default async function FlockDetailPage({ params }: { params: Promise<{ id
   if (!session) redirect('/login')
 
   const { id } = await params
-  const flock = await findFlockById(id)
+  const flock = await findFlockById(session.farmSchema, id)
   if (!flock) redirect('/flock')
 
   const [deliveries, coop] = await Promise.all([
-    findDeliveriesByFlockId(id),
-    getCoopById(flock.coopId),
+    findDeliveriesByFlockId(session.farmSchema, id),
+    getCoopById(session.farmSchema, flock.coopId),
   ])
 
   const coopName = coop?.name ?? flock.coopId

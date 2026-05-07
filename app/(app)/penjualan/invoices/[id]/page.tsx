@@ -33,7 +33,7 @@ export default async function InvoiceDetailPage({
   const { id } = await params
   const { error, success } = await searchParams
 
-  const invoice = await getInvoiceDetails(id).catch(() => null)
+  const invoice = await getInvoiceDetails(session.farmSchema, id).catch(() => null)
   if (!invoice) redirect('/penjualan/invoices')
 
   const isAdmin = session.role === 'admin'
@@ -41,7 +41,7 @@ export default async function InvoiceDetailPage({
   const outstanding = Number(invoice.totalAmount) - Number(invoice.paidAmount)
 
   // WA share setup (admin only)
-  const waTemplate = isAdmin ? (await getAppSetting('wa_invoice_template') ?? '') : ''
+  const waTemplate = isAdmin ? (await getAppSetting(session.farmSchema, 'wa_invoice_template') ?? '') : ''
   const waMessage = waTemplate
     .replace('{customerName}', invoice.customer.name)
     .replace('{invoiceNumber}', invoice.invoiceNumber)

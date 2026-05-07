@@ -13,7 +13,7 @@ export default async function BeliPage({
   if (!session || session.role === 'operator') redirect('/stok')
 
   // Exclude Telur — eggs enter via production input, not purchase
-  const allCategories = await getCategoriesWithActiveItems()
+  const allCategories = await getCategoriesWithActiveItems(session.farmSchema)
   const categories = allCategories.filter((c) => c.name !== 'Telur')
   const { error } = await searchParams
 

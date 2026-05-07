@@ -1,48 +1,60 @@
 import { db } from '@/lib/db'
-import { stockCategories, stockItems } from '@/lib/db/schema'
+import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq, and } from 'drizzle-orm'
-import type { StockCategory, StockItem, NewStockCategory, NewStockItem } from '@/lib/db/schema'
 
-export async function findAllCategories(): Promise<StockCategory[]> {
+export async function findAllCategories(farmSchema: string) {
+  const { stockCategories } = getFarmSchema(farmSchema)
   return db.select().from(stockCategories)
 }
 
-export async function findCategoryById(id: string): Promise<StockCategory | null> {
+export async function findCategoryById(farmSchema: string, id: string) {
+  const { stockCategories } = getFarmSchema(farmSchema)
   const [row] = await db.select().from(stockCategories).where(eq(stockCategories.id, id)).limit(1)
   return row ?? null
 }
 
-export async function findCategoryByName(name: string): Promise<StockCategory | null> {
+export async function findCategoryByName(farmSchema: string, name: string) {
+  const { stockCategories } = getFarmSchema(farmSchema)
   const [row] = await db.select().from(stockCategories).where(eq(stockCategories.name, name)).limit(1)
   return row ?? null
 }
 
-export async function findItemsByCategory(categoryId: string): Promise<StockItem[]> {
+export async function findItemsByCategory(farmSchema: string, categoryId: string) {
+  const { stockItems } = getFarmSchema(farmSchema)
   return db.select().from(stockItems).where(eq(stockItems.categoryId, categoryId))
 }
 
-export async function findActiveItemsByCategory(categoryId: string): Promise<StockItem[]> {
+export async function findActiveItemsByCategory(farmSchema: string, categoryId: string) {
+  const { stockItems } = getFarmSchema(farmSchema)
   return db
     .select()
     .from(stockItems)
     .where(and(eq(stockItems.categoryId, categoryId), eq(stockItems.isActive, true)))
 }
 
-export async function findItemById(id: string): Promise<StockItem | null> {
+export async function findItemById(farmSchema: string, id: string) {
+  const { stockItems } = getFarmSchema(farmSchema)
   const [row] = await db.select().from(stockItems).where(eq(stockItems.id, id)).limit(1)
   return row ?? null
 }
 
-export async function insertCategory(data: NewStockCategory): Promise<StockCategory> {
+// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function insertCategory(farmSchema: string, data: any) {
+  const { stockCategories } = getFarmSchema(farmSchema)
   const [row] = await db.insert(stockCategories).values(data).returning()
   return row!
 }
 
-export async function insertStockItem(data: NewStockItem): Promise<StockItem> {
+// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function insertStockItem(farmSchema: string, data: any) {
+  const { stockItems } = getFarmSchema(farmSchema)
   const [row] = await db.insert(stockItems).values(data).returning()
   return row!
 }
 
-export async function updateStockItemActive(id: string, isActive: boolean): Promise<void> {
+export async function updateStockItemActive(farmSchema: string, id: string, isActive: boolean): Promise<void> {
+  const { stockItems } = getFarmSchema(farmSchema)
   await db.update(stockItems).set({ isActive }).where(eq(stockItems.id, id))
 }

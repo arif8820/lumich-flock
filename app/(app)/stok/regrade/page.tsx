@@ -14,8 +14,8 @@ export default async function RegradePage({
   if (!session || session.role === 'operator') redirect('/stok')
 
   const [eggItems, pending] = await Promise.all([
-    getActiveEggItems(),
-    findPendingRegradeRequests(),
+    getActiveEggItems(session.farmSchema),
+    findPendingRegradeRequests(session.farmSchema),
   ])
   const { error } = await searchParams
 
@@ -78,7 +78,7 @@ export default async function RegradePage({
               <div key={r.id} className="bg-white rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)] flex items-center justify-between">
                 <div className="text-sm">
                   <span className="font-medium text-[var(--lf-text-dark)]">{r.quantity.toLocaleString('id')} butir</span>
-                  <span className="ml-2 text-xs text-[var(--lf-text-soft)]">{r.requestDate}</span>
+                  <span className="ml-2 text-xs text-[var(--lf-text-soft)]">{r.requestDate instanceof Date ? r.requestDate.toLocaleDateString('id-ID') : String(r.requestDate)}</span>
                 </div>
                 {session.role === 'admin' && (
                   <Link href={`/stok/regrade/${r.id}`} className="text-xs text-[var(--lf-blue-active)] hover:underline">

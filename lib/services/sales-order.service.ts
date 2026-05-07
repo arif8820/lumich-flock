@@ -38,7 +38,7 @@ type CreateDraftInput = {
   overrideReason?: string
 }
 
-export async function createDraftSO(input: CreateDraftInput, userId: string, role: string) {
+export async function createDraftSO(farmSchema: string, input: CreateDraftInput, userId: string, role: string) {
   if (!['supervisor', 'admin'].includes(role)) {
     throw new Error('Akses ditolak')
   }
@@ -47,7 +47,7 @@ export async function createDraftSO(input: CreateDraftInput, userId: string, rol
     throw new Error('Item tidak boleh kosong')
   }
 
-  const customer = await findCustomerById(input.customerId)
+  const customer = await findCustomerById(farmSchema, input.customerId)
   if (!customer) throw new Error('Pelanggan tidak ditemukan')
 
   if (customer.status === 'blocked' && !input.overrideReason) {
@@ -72,7 +72,7 @@ export async function createDraftSO(input: CreateDraftInput, userId: string, rol
   const totalAmount = subtotal + taxAmount
 
   // Generate order number
-  const lastSeq = await countSalesOrdersThisMonth('SO')
+  const lastSeq = await countSalesOrdersThisMonth(farmSchema, 'SO')
   const orderNumber = generateOrderNumber('SO', lastSeq)
 
   const notes = input.overrideReason
@@ -104,15 +104,15 @@ export async function createDraftSO(input: CreateDraftInput, userId: string, rol
     subtotal: item.subtotal.toString(),
   }))
 
-  return insertSalesOrderWithItems(salesOrder, salesOrderItems)
+  return insertSalesOrderWithItems(farmSchema, salesOrder, salesOrderItems)
 }
 
-export async function confirmSO(orderId: string, userId: string, role: string) {
+export async function confirmSO(farmSchema: string, orderId: string, userId: string, role: string) {
   if (!['supervisor', 'admin'].includes(role)) {
     throw new Error('Akses ditolak')
   }
 
-  const so = await findSalesOrderById(orderId)
+  const so = await findSalesOrderById(farmSchema, orderId)
   if (!so) throw new Error('SO tidak ditemukan')
   if (so.status !== 'draft') throw new Error('Status SO tidak valid untuk operasi ini')
 
@@ -120,10 +120,10 @@ export async function confirmSO(orderId: string, userId: string, role: string) {
   assertCanEdit(new Date(so.orderDate), role as 'operator' | 'supervisor' | 'admin')
 
   // Stock availability check before confirming
-  const items = await findSalesOrderItems(orderId)
+  const items = await findSalesOrderItems(farmSchema, orderId)
   for (const item of items) {
     if ((item.itemType === 'egg_grade_a' || item.itemType === 'egg_grade_b') && item.itemRefId) {
-      const available = await getStockBalance(item.itemRefId)
+      const available = await getStockBalance(farmSchema, item.itemRefId)
       const gradeLabel = item.itemType === 'egg_grade_a' ? 'A' : 'B'
       if (available < item.quantity) {
         throw new Error(`Stok tidak mencukupi: Grade ${gradeLabel} tersedia ${available} butir, dibutuhkan ${item.quantity} butir`)
@@ -131,57 +131,57 @@ export async function confirmSO(orderId: string, userId: string, role: string) {
     }
   }
 
-  await updateSalesOrderStatus(orderId, 'confirmed', userId)
+  await updateSalesOrderStatus(farmSchema, orderId, 'confirmed', userId)
   return so
 }
 
-export async function cancelSO(orderId: string, userId: string, role: string) {
+export async function cancelSO(farmSchema: string, orderId: string, userId: string, role: string) {
   if (!['supervisor', 'admin'].includes(role)) {
     throw new Error('Akses ditolak')
   }
 
-  const so = await findSalesOrderById(orderId)
+  const so = await findSalesOrderById(farmSchema, orderId)
   if (!so) throw new Error('SO tidak ditemukan')
   if (so.status !== 'confirmed') throw new Error('Status SO tidak valid untuk operasi ini')
 
   // Lock period check — use orderDate as the record date
   assertCanEdit(new Date(so.orderDate), role as 'operator' | 'supervisor' | 'admin')
 
-  await updateSalesOrderStatus(orderId, 'cancelled', userId)
+  await updateSalesOrderStatus(farmSchema, orderId, 'cancelled', userId)
   return so
 }
 
-export async function deleteDraftSO(orderId: string, userId: string, role: string) {
+export async function deleteDraftSO(farmSchema: string, orderId: string, userId: string, role: string) {
   if (!['supervisor', 'admin'].includes(role)) {
     throw new Error('Akses ditolak')
   }
 
-  const so = await findSalesOrderById(orderId)
+  const so = await findSalesOrderById(farmSchema, orderId)
   if (!so) throw new Error('SO tidak ditemukan')
   if (so.status !== 'draft') throw new Error('Status SO tidak valid untuk operasi ini')
 
-  await deleteDraftSOQuery(orderId)
+  await deleteDraftSOQuery(farmSchema, orderId)
   return so
 }
 
-export async function fulfillSO(orderId: string, userId: string, role: string) {
+export async function fulfillSO(farmSchema: string, orderId: string, userId: string, role: string) {
   if (!['supervisor', 'admin'].includes(role)) {
     throw new Error('Akses ditolak')
   }
 
-  const so = await findSalesOrderById(orderId)
+  const so = await findSalesOrderById(farmSchema, orderId)
   if (!so) throw new Error('SO tidak ditemukan')
   if (so.status !== 'confirmed') throw new Error('Status SO tidak valid untuk operasi ini')
 
-  const items = await findSalesOrderItems(orderId)
-  const customer = await findCustomerById(so.customerId)
+  const items = await findSalesOrderItems(farmSchema, orderId)
+  const customer = await findCustomerById(farmSchema, so.customerId)
 
   if (!customer) throw new Error('Pelanggan tidak ditemukan')
 
   // Check stock for egg items
   for (const item of items) {
     if ((item.itemType === 'egg_grade_a' || item.itemType === 'egg_grade_b') && item.itemRefId) {
-      const available = await getStockBalance(item.itemRefId)
+      const available = await getStockBalance(farmSchema, item.itemRefId)
       if (available < item.quantity) {
         throw new Error('Stok tidak mencukupi saat transaksi diproses')
       }
@@ -190,7 +190,7 @@ export async function fulfillSO(orderId: string, userId: string, role: string) {
 
   // Check credit limit for credit orders
   if (so.paymentMethod === 'credit') {
-    const outstanding = await getCustomerOutstandingCredit(so.customerId)
+    const outstanding = await getCustomerOutstandingCredit(farmSchema, so.customerId)
     const creditLimit = Number(customer.creditLimit)
     const remaining = creditLimit - Number(outstanding)
     if (remaining < Number(so.totalAmount)) {
@@ -222,7 +222,7 @@ export async function fulfillSO(orderId: string, userId: string, role: string) {
 
   // Build invoice
   const prefix = so.paymentMethod === 'cash' ? 'RCP' : 'INV'
-  const invSeq = await countInvoicesThisMonth(prefix)
+  const invSeq = await countInvoicesThisMonth(farmSchema, prefix)
   const invoiceNumber = generateOrderNumber(prefix, invSeq)
 
   // Guard: invoice number must be non-empty and total must be > 0
@@ -261,6 +261,6 @@ export async function fulfillSO(orderId: string, userId: string, role: string) {
       retiredAt: new Date(),
     }))
 
-  await fulfillSOTx(orderId, userId, movements, invoice, flockUpdates)
+  await fulfillSOTx(farmSchema, orderId, userId, movements, invoice, flockUpdates)
   return so
 }

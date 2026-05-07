@@ -6,7 +6,7 @@ import { CoopManagementClient } from '@/components/forms/coop-management-client'
 export default async function KandangPage() {
   const session = await getSession()
   if (!session || session.role !== 'admin') redirect('/dashboard')
-  const coops = await getAllCoops()
+  const coops = await getAllCoops(session.farmSchema)
 
   return (
     <div className="p-6 space-y-5">

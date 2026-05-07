@@ -27,6 +27,8 @@ import * as assignmentQueries from '@/lib/db/queries/user-coop-assignment.querie
 import { createFlockDelivery } from './flock-delivery.service'
 import type { FlockDelivery } from '@/lib/db/schema'
 
+const FARM = 'test-farm'
+
 describe('flock-delivery.service', () => {
   beforeEach(() => vi.clearAllMocks())
 
@@ -69,7 +71,7 @@ describe('flock-delivery.service', () => {
     it('throws when flock not found', async () => {
       vi.mocked(flockQueries.findFlockById).mockResolvedValue(null)
 
-      await expect(createFlockDelivery(baseInput)).rejects.toThrow('Flock tidak ditemukan')
+      await expect(createFlockDelivery(FARM, baseInput)).rejects.toThrow('Flock tidak ditemukan')
     })
 
     it('throws when flock is retired', async () => {
@@ -78,7 +80,7 @@ describe('flock-delivery.service', () => {
         retiredAt: new Date('2025-02-01'),
       })
 
-      await expect(createFlockDelivery(baseInput)).rejects.toThrow('sudah pensiun')
+      await expect(createFlockDelivery(FARM, baseInput)).rejects.toThrow('sudah pensiun')
     })
 
     it('allows operator when coop is in assignment', async () => {
@@ -86,7 +88,7 @@ describe('flock-delivery.service', () => {
       vi.mocked(assignmentQueries.findAssignedCoopIds).mockResolvedValue(['coop-1', 'coop-2'])
       vi.mocked(deliveryQueries.insertFlockDelivery).mockResolvedValue(mockDelivery)
 
-      await expect(createFlockDelivery(baseInput, 'operator')).resolves.not.toThrow()
+      await expect(createFlockDelivery(FARM, baseInput, 'operator')).resolves.not.toThrow()
       expect(deliveryQueries.insertFlockDelivery).toHaveBeenCalledOnce()
     })
 
@@ -94,7 +96,7 @@ describe('flock-delivery.service', () => {
       vi.mocked(flockQueries.findFlockById).mockResolvedValue(mockFlock)
       vi.mocked(assignmentQueries.findAssignedCoopIds).mockResolvedValue(['coop-99'])
 
-      await expect(createFlockDelivery(baseInput, 'operator')).rejects.toThrow('Akses ditolak')
+      await expect(createFlockDelivery(FARM, baseInput, 'operator')).rejects.toThrow('Akses ditolak')
     })
 
     it('inserts delivery with correct fields', async () => {
@@ -102,11 +104,13 @@ describe('flock-delivery.service', () => {
       vi.mocked(deliveryQueries.insertFlockDelivery).mockResolvedValue(mockDelivery)
 
       const result = await createFlockDelivery(
+        FARM,
         { ...baseInput, ageAtArrivalDays: 3, notes: 'first batch' },
         'admin'
       )
 
       expect(deliveryQueries.insertFlockDelivery).toHaveBeenCalledWith(
+        FARM,
         expect.objectContaining({
           flockId: 'flock-1',
           quantity: 500,
@@ -122,7 +126,7 @@ describe('flock-delivery.service', () => {
       vi.mocked(flockQueries.findFlockById).mockResolvedValue(mockFlock)
       vi.mocked(deliveryQueries.insertFlockDelivery).mockResolvedValue(mockDelivery)
 
-      await createFlockDelivery(baseInput, 'supervisor')
+      await createFlockDelivery(FARM, baseInput, 'supervisor')
 
       expect(assignmentQueries.findAssignedCoopIds).not.toHaveBeenCalled()
     })
@@ -131,7 +135,7 @@ describe('flock-delivery.service', () => {
       vi.mocked(flockQueries.findFlockById).mockResolvedValue(mockFlock)
       vi.mocked(deliveryQueries.insertFlockDelivery).mockResolvedValue(mockDelivery)
 
-      await createFlockDelivery(baseInput, 'admin')
+      await createFlockDelivery(FARM, baseInput, 'admin')
 
       expect(assignmentQueries.findAssignedCoopIds).not.toHaveBeenCalled()
     })

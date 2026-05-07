@@ -9,8 +9,8 @@ export default async function NewFlockPage() {
   const session = await getSession()
   if (!session || session.role === 'operator') redirect('/flock')
 
-  const allCoops = await getAllCoops()
-  const activeFlocks = await findAllActiveFlocks()
+  const allCoops = await getAllCoops(session.farmSchema)
+  const activeFlocks = await findAllActiveFlocks(session.farmSchema)
   const occupiedCoopIds = new Set(activeFlocks.map((f) => f.coopId))
   const availableCoops = allCoops
     .filter((c) => c.status === 'active' && !occupiedCoopIds.has(c.id))

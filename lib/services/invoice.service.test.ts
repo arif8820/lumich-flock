@@ -52,6 +52,8 @@ import {
   getInvoiceForPdf,
 } from './invoice.service'
 
+const FARM = 'test-farm'
+
 const mockInvoice = {
   id: 'inv-1',
   invoiceNumber: 'INV-202604-0001',
@@ -78,13 +80,14 @@ describe('invoice.service', () => {
       vi.mocked(invoiceQueries.updateInvoiceStatus).mockResolvedValue(undefined)
 
       const result = await recordPayment(
+        FARM,
         'inv-1',
         { amount: 500_000, method: 'cash', paymentDate: new Date() },
         'user-1'
       )
 
       expect(result.overpayment).toBe(false)
-      expect(invoiceQueries.updateInvoiceStatus).toHaveBeenCalledWith('inv-1', 'partial', expect.anything())
+      expect(invoiceQueries.updateInvoiceStatus).toHaveBeenCalledWith(FARM, 'inv-1', 'partial', expect.anything())
     })
 
     it('records final payment → status becomes paid (paid 1_000_000, total 1_000_000)', async () => {
@@ -95,13 +98,14 @@ describe('invoice.service', () => {
       vi.mocked(invoiceQueries.updateInvoiceStatus).mockResolvedValue(undefined)
 
       const result = await recordPayment(
+        FARM,
         'inv-1',
         { amount: 1_000_000, method: 'transfer', paymentDate: new Date() },
         'user-1'
       )
 
       expect(result.overpayment).toBe(false)
-      expect(invoiceQueries.updateInvoiceStatus).toHaveBeenCalledWith('inv-1', 'paid', expect.anything())
+      expect(invoiceQueries.updateInvoiceStatus).toHaveBeenCalledWith(FARM, 'inv-1', 'paid', expect.anything())
     })
 
     it('rounding tolerance: paid 999_999, total 1_000_000 → status paid (within Rp1)', async () => {
@@ -112,13 +116,14 @@ describe('invoice.service', () => {
       vi.mocked(invoiceQueries.updateInvoiceStatus).mockResolvedValue(undefined)
 
       const result = await recordPayment(
+        FARM,
         'inv-1',
         { amount: 999_999, method: 'cash', paymentDate: new Date() },
         'user-1'
       )
 
       expect(result.overpayment).toBe(false)
-      expect(invoiceQueries.updateInvoiceStatus).toHaveBeenCalledWith('inv-1', 'paid', expect.anything())
+      expect(invoiceQueries.updateInvoiceStatus).toHaveBeenCalledWith(FARM, 'inv-1', 'paid', expect.anything())
     })
 
     it('overpayment detected → returns { overpayment: true, overpaymentAmount: 500 }', async () => {
@@ -131,6 +136,7 @@ describe('invoice.service', () => {
       vi.mocked(notificationQueries.createNotification).mockResolvedValue(undefined as any) // any: mock doesn't need full Notification shape
 
       const result = await recordPayment(
+        FARM,
         'inv-1',
         { amount: 1_000_500, method: 'cash', paymentDate: new Date() },
         'user-1'
@@ -147,7 +153,7 @@ describe('invoice.service', () => {
       vi.mocked(invoiceQueries.getInvoiceWithDetails).mockResolvedValue(null)
 
       await expect(
-        recordPayment('inv-999', { amount: 100_000, method: 'cash', paymentDate: new Date() }, 'user-1')
+        recordPayment(FARM, 'inv-999', { amount: 100_000, method: 'cash', paymentDate: new Date() }, 'user-1')
       ).rejects.toThrow('Invoice tidak ditemukan')
     })
 
@@ -156,7 +162,7 @@ describe('invoice.service', () => {
       vi.mocked(invoiceQueries.getInvoiceWithDetails).mockResolvedValue(paidInvoice as any)
 
       await expect(
-        recordPayment('inv-1', { amount: 100_000, method: 'cash', paymentDate: new Date() }, 'user-1')
+        recordPayment(FARM, 'inv-1', { amount: 100_000, method: 'cash', paymentDate: new Date() }, 'user-1')
       ).rejects.toThrow('Invoice tidak dapat dibayar pada status ini')
     })
 
@@ -165,7 +171,7 @@ describe('invoice.service', () => {
       vi.mocked(invoiceQueries.getInvoiceWithDetails).mockResolvedValue(cancelledInvoice as any)
 
       await expect(
-        recordPayment('inv-1', { amount: 100_000, method: 'cash', paymentDate: new Date() }, 'user-1')
+        recordPayment(FARM, 'inv-1', { amount: 100_000, method: 'cash', paymentDate: new Date() }, 'user-1')
       ).rejects.toThrow('Invoice tidak dapat dibayar pada status ini')
     })
 
@@ -174,7 +180,7 @@ describe('invoice.service', () => {
       vi.mocked(invoiceQueries.getInvoiceWithDetails).mockResolvedValue(draftInvoice as any)
 
       await expect(
-        recordPayment('inv-1', { amount: 100_000, method: 'cash', paymentDate: new Date() }, 'user-1')
+        recordPayment(FARM, 'inv-1', { amount: 100_000, method: 'cash', paymentDate: new Date() }, 'user-1')
       ).rejects.toThrow('Invoice tidak dapat dibayar pada status ini')
     })
   })
@@ -201,8 +207,9 @@ describe('invoice.service', () => {
       vi.mocked(invoiceQueries.updateInvoicePaidAmount).mockResolvedValue(undefined)
       vi.mocked(invoiceQueries.updateInvoiceStatus).mockResolvedValue(undefined)
 
-      await expect(applyCredit('inv-1', 'credit-1', 200_000, 'user-1')).resolves.toBeUndefined()
+      await expect(applyCredit(FARM, 'inv-1', 'credit-1', 200_000, 'user-1')).resolves.toBeUndefined()
       expect(paymentQueries.createPayment).toHaveBeenCalledWith(
+        FARM,
         expect.objectContaining({ method: 'credit', amount: '200000' }),
         expect.anything()
       )
@@ -212,7 +219,7 @@ describe('invoice.service', () => {
       vi.mocked(invoiceQueries.getInvoiceWithDetails).mockResolvedValue(mockInvoice as any)
       vi.mocked(creditQueries.findCreditById).mockResolvedValue(mockCredit as any)
 
-      await expect(applyCredit('inv-1', 'credit-1', 600_000, 'user-1')).rejects.toThrow(
+      await expect(applyCredit(FARM, 'inv-1', 'credit-1', 600_000, 'user-1')).rejects.toThrow(
         'Kredit tidak mencukupi'
       )
     })
@@ -220,7 +227,7 @@ describe('invoice.service', () => {
     it('throws Jumlah kredit tidak valid (amount = 0)', async () => {
       vi.mocked(invoiceQueries.getInvoiceWithDetails).mockResolvedValue(mockInvoice as any)
 
-      await expect(applyCredit('inv-1', 'credit-1', 0, 'user-1')).rejects.toThrow(
+      await expect(applyCredit(FARM, 'inv-1', 'credit-1', 0, 'user-1')).rejects.toThrow(
         'Jumlah kredit tidak valid'
       )
     })
@@ -229,7 +236,7 @@ describe('invoice.service', () => {
       vi.mocked(invoiceQueries.getInvoiceWithDetails).mockResolvedValue(mockInvoice as any)
       vi.mocked(creditQueries.findCreditById).mockResolvedValue(null)
 
-      await expect(applyCredit('inv-1', 'credit-999', 100_000, 'user-1')).rejects.toThrow(
+      await expect(applyCredit(FARM, 'inv-1', 'credit-999', 100_000, 'user-1')).rejects.toThrow(
         'Kredit tidak ditemukan'
       )
     })
@@ -240,7 +247,7 @@ describe('invoice.service', () => {
       const mockRows = [{ invoiceId: 'inv-1', bucket: '0-7' }]
       vi.mocked(invoiceQueries.getAgingReport).mockResolvedValue(mockRows as any)
 
-      const result = await getAgingData()
+      const result = await getAgingData(FARM)
 
       expect(result).toBe(mockRows)
       expect(invoiceQueries.getAgingReport).toHaveBeenCalledOnce()
@@ -269,10 +276,10 @@ describe('invoice.service', () => {
       vi.mocked(invoiceQueries.getInvoiceWithDetails).mockResolvedValue(mockInvoiceWithOrder as any)
       vi.mocked(salesOrderQueries.findSalesOrderItems).mockResolvedValue(mockItems as any)
 
-      const result = await getInvoiceForPdf('inv-1')
+      const result = await getInvoiceForPdf(FARM, 'inv-1')
 
       expect(result.items).toEqual(mockItems)
-      expect(salesOrderQueries.findSalesOrderItems).toHaveBeenCalledWith('so-1')
+      expect(salesOrderQueries.findSalesOrderItems).toHaveBeenCalledWith(FARM, 'so-1')
     })
 
     it('returns empty items array when orderId is null', async () => {
@@ -292,7 +299,7 @@ describe('invoice.service', () => {
 
       vi.mocked(invoiceQueries.getInvoiceWithDetails).mockResolvedValue(mockInvoiceNoOrder as any)
 
-      const result = await getInvoiceForPdf('inv-1')
+      const result = await getInvoiceForPdf(FARM, 'inv-1')
 
       expect(result.items).toEqual([])
       expect(salesOrderQueries.findSalesOrderItems).not.toHaveBeenCalled()
