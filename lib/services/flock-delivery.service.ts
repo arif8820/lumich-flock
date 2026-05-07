@@ -13,10 +13,11 @@ type CreateFlockDeliveryInput = {
 }
 
 export async function createFlockDelivery(
+  farmSchema: string,
   input: CreateFlockDeliveryInput,
   callerRole?: 'operator' | 'supervisor' | 'admin'
 ): Promise<FlockDelivery> {
-  const flock = await findFlockById(input.flockId)
+  const flock = await findFlockById(farmSchema, input.flockId)
   if (!flock) throw new Error('Flock tidak ditemukan')
 
   if (flock.retiredAt !== null) {
@@ -24,13 +25,13 @@ export async function createFlockDelivery(
   }
 
   if (callerRole === 'operator') {
-    const assignedCoopIds = await findAssignedCoopIds(input.createdBy)
+    const assignedCoopIds = await findAssignedCoopIds(farmSchema, input.createdBy)
     if (!assignedCoopIds.includes(flock.coopId)) {
       throw new Error('Akses ditolak: kandang tidak dalam assignment Anda')
     }
   }
 
-  return insertFlockDelivery({
+  return insertFlockDelivery(farmSchema, {
     flockId: input.flockId,
     deliveryDate: input.deliveryDate,
     quantity: input.quantity,
@@ -40,6 +41,6 @@ export async function createFlockDelivery(
   })
 }
 
-export async function getDeliveriesByFlockId(flockId: string): Promise<FlockDelivery[]> {
-  return findDeliveriesByFlockId(flockId)
+export async function getDeliveriesByFlockId(farmSchema: string, flockId: string): Promise<FlockDelivery[]> {
+  return findDeliveriesByFlockId(farmSchema, flockId)
 }

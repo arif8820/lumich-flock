@@ -11,6 +11,8 @@ vi.mock('@/lib/db/queries/coop.queries', () => ({
 import * as coopQueries from '@/lib/db/queries/coop.queries'
 import { createCoop, getAllCoops, deactivateCoop } from './coop.service'
 
+const FARM = 'test-farm'
+
 describe('coop.service', () => {
   beforeEach(() => vi.clearAllMocks())
 
@@ -26,9 +28,10 @@ describe('coop.service', () => {
         updatedAt: null,
       })
 
-      const result = await createCoop({ name: 'Kandang A', capacity: 5000 })
+      const result = await createCoop(FARM, { name: 'Kandang A', capacity: 5000 })
 
       expect(coopQueries.insertCoop).toHaveBeenCalledWith(
+        FARM,
         expect.objectContaining({ name: 'Kandang A', status: 'active' })
       )
       expect(result.name).toBe('Kandang A')
@@ -39,9 +42,9 @@ describe('coop.service', () => {
     it('sets status to inactive', async () => {
       vi.mocked(coopQueries.updateCoop).mockResolvedValue({ id: 'coop-1', status: 'inactive' } as any) // any: partial Coop for mock
 
-      await deactivateCoop('coop-1')
+      await deactivateCoop(FARM, 'coop-1')
 
-      expect(coopQueries.updateCoop).toHaveBeenCalledWith('coop-1', { status: 'inactive' })
+      expect(coopQueries.updateCoop).toHaveBeenCalledWith(FARM, 'coop-1', { status: 'inactive' })
     })
   })
 })

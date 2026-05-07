@@ -49,14 +49,14 @@ function formatDate(dateStr: string): string {
   return `${day}/${month}`
 }
 
-export async function getDashboardKpis(since: string, until: string, flockIds?: string[]): Promise<DashboardKpis> {
+export async function getDashboardKpis(farmSchema: string, since: string, until: string, flockIds?: string[]): Promise<DashboardKpis> {
   const [popRows, stockSummary, hdpTrend, fcrTrend, feedTrend, extRecords] = await Promise.all([
-    getActiveFlockPopulations(flockIds),
-    getStockSummary(),
-    getHdpTrend(since, until, flockIds),
-    getFcrTrend(since, until, flockIds),
-    getFeedPerBirdTrend(since, until, flockIds),
-    getExtendedDailyRecords(since, until, flockIds),
+    getActiveFlockPopulations(farmSchema, flockIds),
+    getStockSummary(farmSchema),
+    getHdpTrend(farmSchema, since, until, flockIds),
+    getFcrTrend(farmSchema, since, until, flockIds),
+    getFeedPerBirdTrend(farmSchema, since, until, flockIds),
+    getExtendedDailyRecords(farmSchema, since, until, flockIds),
   ])
 
   const activePopulation = popRows.reduce(
@@ -99,27 +99,28 @@ export async function getDashboardKpis(since: string, until: string, flockIds?: 
   }
 }
 
-export async function getHdpChartData(since: string, until: string, flockIds?: string[]): Promise<HdpPoint[]> {
-  const raw = await getHdpTrend(since, until, flockIds)
+export async function getHdpChartData(farmSchema: string, since: string, until: string, flockIds?: string[]): Promise<HdpPoint[]> {
+  const raw = await getHdpTrend(farmSchema, since, until, flockIds)
   return raw.map((r) => ({ date: formatDate(r.date), hdp: r.hdp }))
 }
 
-export async function getFcrChartData(since: string, until: string, flockIds?: string[]): Promise<FcrPoint[]> {
-  const raw = await getFcrTrend(since, until, flockIds)
+export async function getFcrChartData(farmSchema: string, since: string, until: string, flockIds?: string[]): Promise<FcrPoint[]> {
+  const raw = await getFcrTrend(farmSchema, since, until, flockIds)
   return raw.map((r) => ({ date: formatDate(r.date), fcr: r.fcr }))
 }
 
 export async function getProductionBySkuChartData(
+  farmSchema: string,
   since: string,
   until: string,
   flockIds?: string[]
 ): Promise<ProductionChartPoint[]> {
-  const raw = await getProductionBySkuTrend(since, until, flockIds)
+  const raw = await getProductionBySkuTrend(farmSchema, since, until, flockIds)
   return raw.map((r) => ({ date: formatDate(r.date), ...r.skuBreakdown }))
 }
 
-export async function getProductionChartData(since: string, until: string, flockIds?: string[]): Promise<DepletionPoint[]> {
-  const aggRows = await getDailyProductionAgg(since, until, flockIds)
+export async function getProductionChartData(farmSchema: string, since: string, until: string, flockIds?: string[]): Promise<DepletionPoint[]> {
+  const aggRows = await getDailyProductionAgg(farmSchema, since, until, flockIds)
   return aggRows.map((r: DailyAggRow) => ({
     date: formatDate(r.date),
     deaths: r.totalDeaths,
@@ -127,13 +128,14 @@ export async function getProductionChartData(since: string, until: string, flock
 }
 
 export async function getRecentDashboardRecords(
+  farmSchema: string,
   since: string,
   until: string,
   flockIds?: string[]
 ): Promise<DashboardRecentRecord[]> {
   const [extRecords, popRows] = await Promise.all([
-    getExtendedDailyRecords(since, until, flockIds),
-    getActiveFlockPopulations(flockIds),
+    getExtendedDailyRecords(farmSchema, since, until, flockIds),
+    getActiveFlockPopulations(farmSchema, flockIds),
   ])
 
   const totalPop = popRows.reduce(

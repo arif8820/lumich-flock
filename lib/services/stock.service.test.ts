@@ -25,6 +25,8 @@ import {
   rejectRegradeRequest,
 } from './stock.service'
 
+const FARM = 'test-farm'
+
 describe('stock.service', () => {
   beforeEach(() => vi.clearAllMocks())
 
@@ -44,12 +46,14 @@ describe('stock.service', () => {
       vi.mocked(q.insertStockAdjustmentWithMovement).mockResolvedValue({ id: 'adj-1' } as any) // any: partial mock
 
       await createStockAdjustment(
+        FARM,
         { stockItemId: 'item-grade-a', adjustmentDate: '2026-04-20', quantity: -30, reason: 'Koreksi' },
         'user-1'
       )
 
-      expect(q.getStockBalance).toHaveBeenCalledWith('item-grade-a')
+      expect(q.getStockBalance).toHaveBeenCalledWith(FARM, 'item-grade-a')
       expect(q.insertStockAdjustmentWithMovement).toHaveBeenCalledWith(
+        FARM,
         expect.objectContaining({ quantity: -30 }),
         expect.objectContaining({ movementType: 'out', quantity: 30 })
       )
@@ -60,6 +64,7 @@ describe('stock.service', () => {
 
       await expect(
         createStockAdjustment(
+          FARM,
           { stockItemId: 'item-grade-a', adjustmentDate: '2026-04-20', quantity: -50, reason: 'Koreksi' },
           'user-1'
         )
@@ -71,12 +76,14 @@ describe('stock.service', () => {
       vi.mocked(q.insertStockAdjustmentWithMovement).mockResolvedValue({ id: 'adj-1' } as any) // any: partial mock
 
       await createStockAdjustment(
+        FARM,
         { stockItemId: 'item-grade-a', adjustmentDate: '2026-04-20', quantity: 100, reason: 'Tambah stok' },
         'user-1'
       )
 
-      expect(q.getStockBalance).toHaveBeenCalledWith('item-grade-a')
+      expect(q.getStockBalance).toHaveBeenCalledWith(FARM, 'item-grade-a')
       expect(q.insertStockAdjustmentWithMovement).toHaveBeenCalledWith(
+        FARM,
         expect.objectContaining({ quantity: 100 }),
         expect.objectContaining({ movementType: 'in', quantity: 100 })
       )
@@ -87,6 +94,7 @@ describe('stock.service', () => {
     it('throws when fromItemId equals toItemId', async () => {
       await expect(
         submitRegradeRequest(
+          FARM,
           { fromItemId: 'item-a', toItemId: 'item-a', quantity: 100, requestDate: '2026-04-20' },
           'user-1'
         )
@@ -98,11 +106,12 @@ describe('stock.service', () => {
       vi.mocked(q.insertRegradeRequest).mockResolvedValue({ id: 'rr-1' } as any) // any: partial mock
 
       await submitRegradeRequest(
+        FARM,
         { fromItemId: 'item-a', toItemId: 'item-b', quantity: 200, requestDate: '2026-04-20' },
         'user-1'
       )
 
-      expect(q.getStockBalance).toHaveBeenCalledWith('item-a')
+      expect(q.getStockBalance).toHaveBeenCalledWith(FARM, 'item-a')
     })
 
     it('throws when source item has insufficient stock', async () => {
@@ -110,6 +119,7 @@ describe('stock.service', () => {
 
       await expect(
         submitRegradeRequest(
+          FARM,
           { fromItemId: 'item-a', toItemId: 'item-b', quantity: 500, requestDate: '2026-04-20' },
           'user-1'
         )
@@ -120,37 +130,37 @@ describe('stock.service', () => {
   describe('approveRegradeRequest', () => {
     it('throws when request not found', async () => {
       vi.mocked(q.findRegradeRequestById).mockResolvedValue(null)
-      await expect(approveRegradeRequest('req-1', 'admin-1')).rejects.toThrow('tidak ditemukan')
+      await expect(approveRegradeRequest(FARM, 'req-1', 'admin-1')).rejects.toThrow('tidak ditemukan')
     })
 
     it('throws when request already processed', async () => {
       vi.mocked(q.findRegradeRequestById).mockResolvedValue({ id: 'req-1', status: 'APPROVED' } as any) // any: partial mock
-      await expect(approveRegradeRequest('req-1', 'admin-1')).rejects.toThrow('sudah diproses')
+      await expect(approveRegradeRequest(FARM, 'req-1', 'admin-1')).rejects.toThrow('sudah diproses')
     })
 
     it('calls approveRegradeRequestTx for pending requests', async () => {
       vi.mocked(q.findRegradeRequestById).mockResolvedValue({ id: 'req-1', status: 'PENDING' } as any) // any: partial mock
       vi.mocked(q.approveRegradeRequestTx).mockResolvedValue(undefined)
 
-      await approveRegradeRequest('req-1', 'admin-1')
+      await approveRegradeRequest(FARM, 'req-1', 'admin-1')
 
-      expect(q.approveRegradeRequestTx).toHaveBeenCalledWith('req-1', 'admin-1')
+      expect(q.approveRegradeRequestTx).toHaveBeenCalledWith(FARM, 'req-1', 'admin-1')
     })
   })
 
   describe('rejectRegradeRequest', () => {
     it('throws when request not found', async () => {
       vi.mocked(q.findRegradeRequestById).mockResolvedValue(null)
-      await expect(rejectRegradeRequest('req-1', 'admin-1')).rejects.toThrow('tidak ditemukan')
+      await expect(rejectRegradeRequest(FARM, 'req-1', 'admin-1')).rejects.toThrow('tidak ditemukan')
     })
 
     it('updates status to REJECTED', async () => {
       vi.mocked(q.findRegradeRequestById).mockResolvedValue({ id: 'req-1', status: 'PENDING' } as any) // any: partial mock
       vi.mocked(q.updateRegradeRequestStatus).mockResolvedValue(undefined)
 
-      await rejectRegradeRequest('req-1', 'admin-1')
+      await rejectRegradeRequest(FARM, 'req-1', 'admin-1')
 
-      expect(q.updateRegradeRequestStatus).toHaveBeenCalledWith('req-1', 'REJECTED', 'admin-1')
+      expect(q.updateRegradeRequestStatus).toHaveBeenCalledWith(FARM, 'req-1', 'REJECTED', 'admin-1')
     })
   })
 })

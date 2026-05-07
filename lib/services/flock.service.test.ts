@@ -17,6 +17,13 @@ vi.mock('@/lib/services/flock-phase.service', () => ({
   getPhaseForWeeks: vi.fn(),
 }))
 
+vi.mock('@/lib/db/schema-factory', () => ({
+  getFarmSchema: vi.fn().mockReturnValue({
+    flocks: {},
+    flockDeliveries: {},
+  }),
+}))
+
 vi.mock('@/lib/db', () => ({
   db: {
     transaction: vi.fn(),
@@ -27,6 +34,8 @@ import * as flockQueries from '@/lib/db/queries/flock.queries'
 import * as flockPhaseService from '@/lib/services/flock-phase.service'
 import { db } from '@/lib/db'
 import { getFlockAgeDays, getFlockAgeWeeks, createFlock, retireFlock } from './flock.service'
+
+const FARM = 'test-farm'
 
 describe('flock.service', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -80,9 +89,10 @@ describe('flock.service', () => {
       // any: partial Flock for mock
       vi.mocked(flockQueries.updateFlock).mockResolvedValue({ id: 'flock-1', retiredAt: new Date() } as unknown as Awaited<ReturnType<typeof flockQueries.updateFlock>>)
 
-      await retireFlock('flock-1', 'admin-id')
+      await retireFlock(FARM, 'flock-1', 'admin-id')
 
       expect(flockQueries.updateFlock).toHaveBeenCalledWith(
+        FARM,
         'flock-1',
         expect.objectContaining({ retiredAt: expect.any(Date), updatedBy: 'admin-id' })
       )
@@ -119,7 +129,7 @@ describe('flock.service', () => {
     it('throws when coop already has active flock', async () => {
       vi.mocked(flockQueries.findActiveFlockByCoopId).mockResolvedValue(mockFlock)
 
-      await expect(createFlock(baseInput)).rejects.toThrow('sudah memiliki flock aktif')
+      await expect(createFlock(FARM, baseInput)).rejects.toThrow('sudah memiliki flock aktif')
     })
 
     it('calculates docDate as firstDeliveryDate when ageAtArrivalDays = 0', async () => {
@@ -137,7 +147,7 @@ describe('flock.service', () => {
         return callback(tx as unknown as Parameters<typeof db.transaction>[0] extends (tx: infer T) => unknown ? T : never)
       })
 
-      await createFlock({ ...baseInput, ageAtArrivalDays: 0 })
+      await createFlock(FARM, { ...baseInput, ageAtArrivalDays: 0 })
 
       // docDate should equal firstDeliveryDate (Jan 10 - 0 days = Jan 10)
       expect(vi.mocked(db.transaction)).toHaveBeenCalled()
@@ -166,7 +176,7 @@ describe('flock.service', () => {
       })
 
       const firstDeliveryDate = new Date('2025-01-20')
-      await createFlock({ ...baseInput, firstDeliveryDate, ageAtArrivalDays: 10 })
+      await createFlock(FARM, { ...baseInput, firstDeliveryDate, ageAtArrivalDays: 10 })
 
       // docDate should be Jan 20 - 10 days = Jan 10
       expect(capturedDocDate).toBeDefined()
@@ -198,7 +208,7 @@ describe('flock.service', () => {
         return callback(tx as unknown as Parameters<typeof db.transaction>[0] extends (tx: infer T) => unknown ? T : never)
       })
 
-      const result = await createFlock(baseInput)
+      const result = await createFlock(FARM, baseInput)
 
       expect(vi.mocked(db.transaction)).toHaveBeenCalledOnce()
       expect(flockInsertCalled).toBe(true)

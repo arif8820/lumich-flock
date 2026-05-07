@@ -12,7 +12,7 @@
  */
 
 import { db } from '@/lib/db'
-import { dailyRecords } from '@/lib/db/schema'
+import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq } from 'drizzle-orm'
 import { insertCorrectionRecord } from '@/lib/db/queries/correction-record.queries'
 import type { CorrectionRecord } from '@/lib/db/schema'
@@ -68,6 +68,7 @@ type DailyRecordPatch = {
  * this service only patches the core daily_record fields.
  */
 export async function correctDailyRecord(
+  farmSchema: string,
   recordId: string,
   patch: DailyRecordPatch,
   reason: string,
@@ -76,6 +77,8 @@ export async function correctDailyRecord(
   if (!reason || reason.trim().length === 0) {
     throw new Error('Alasan koreksi wajib diisi')
   }
+
+  const { dailyRecords } = getFarmSchema(farmSchema)
 
   const [existing] = await db
     .select()
@@ -98,7 +101,7 @@ export async function correctDailyRecord(
       const oldVal = String((existing as Record<string, unknown>)[field] ?? '')
       const newVal = String(patch[field] ?? '')
 
-      const rec = await insertCorrectionRecord({
+      const rec = await insertCorrectionRecord(farmSchema, {
         entityType: 'daily_records',
         entityId: recordId,
         fieldName: field,

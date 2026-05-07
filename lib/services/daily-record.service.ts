@@ -10,7 +10,7 @@ import { findAllActiveFlocks, findFlockById } from '@/lib/db/queries/flock.queri
 import { sumDeliveriesQuantityByFlockId } from '@/lib/db/queries/flock-delivery.queries'
 import { findAssignedCoopIds } from '@/lib/db/queries/user-coop-assignment.queries'
 import { db } from '@/lib/db'
-import { dailyRecords } from '@/lib/db/schema'
+import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq } from 'drizzle-orm'
 import { assertCanEdit } from '@/lib/services/lock-period.service'
 import type { DailyRecord } from '@/lib/db/schema'
@@ -61,6 +61,7 @@ type SaveDailyRecordInput = {
 }
 
 export async function saveDailyRecord(
+  farmSchema: string,
   input: SaveDailyRecordInput,
   userId: string,
   role: Role,
@@ -70,14 +71,14 @@ export async function saveDailyRecord(
   validateBackdate(recordDate, now, role)
 
   const [flock, dep] = await Promise.all([
-    findFlockById(input.flockId),
-    getTotalDepletionByFlock(input.flockId),
+    findFlockById(farmSchema, input.flockId),
+    getTotalDepletionByFlock(farmSchema, input.flockId),
   ])
   if (!flock) throw new Error('Flock tidak ditemukan')
 
-  const existing = await findDailyRecord(input.flockId, input.recordDate)
+  const existing = await findDailyRecord(farmSchema, input.flockId, input.recordDate)
   if (!existing) {
-    const flockTotalCount = await sumDeliveriesQuantityByFlockId(input.flockId)
+    const flockTotalCount = await sumDeliveriesQuantityByFlockId(farmSchema, input.flockId)
     const currentPop = Math.max(0, flockTotalCount - dep.deaths - dep.culled)
     const todayDepletion = input.deaths + input.culled
     if (todayDepletion > currentPop) {
@@ -88,14 +89,14 @@ export async function saveDailyRecord(
   // Validate feed/vaccine stock
   for (const entry of input.feedEntries) {
     if (entry.qtyUsed <= 0) continue
-    const balance = await getStockBalance(entry.stockItemId)
+    const balance = await getStockBalance(farmSchema, entry.stockItemId)
     if (entry.qtyUsed > balance) {
       throw new Error(`Stok pakan tidak mencukupi (tersedia: ${balance})`)
     }
   }
   for (const entry of input.vaccineEntries) {
     if (entry.qtyUsed <= 0) continue
-    const balance = await getStockBalance(entry.stockItemId)
+    const balance = await getStockBalance(farmSchema, entry.stockItemId)
     if (entry.qtyUsed > balance) {
       throw new Error(`Stok vaksin tidak mencukupi (tersedia: ${balance})`)
     }
@@ -103,7 +104,8 @@ export async function saveDailyRecord(
 
   const isLateInput = computeIsLateInput(recordDate, now)
 
-  return upsertDailyRecordTx({
+  // any: farm schema returns recordDate as Date; cast to public DailyRecord (string) expected by callers
+  return upsertDailyRecordTx(farmSchema, {
     record: {
       flockId: input.flockId,
       recordDate: input.recordDate,
@@ -176,7 +178,8 @@ export async function saveDailyRecord(
         movementDate: input.recordDate,
         createdBy: userId,
       })),
-  })
+  // any: farm schema date fields (recordDate: Date) differ from public DailyRecord type (recordDate: string)
+  }) as unknown as DailyRecord
 }
 
 export type FlockOption = {
@@ -187,17 +190,17 @@ export type FlockOption = {
   currentPopulation: number
 }
 
-export async function getFlockOptionsForInput(userId: string, role: Role): Promise<FlockOption[]> {
-  let rawFlocks = await findAllActiveFlocks()
+export async function getFlockOptionsForInput(farmSchema: string, userId: string, role: Role): Promise<FlockOption[]> {
+  let rawFlocks = await findAllActiveFlocks(farmSchema)
   if (role === 'operator') {
-    const coopIds = new Set(await findAssignedCoopIds(userId))
+    const coopIds = new Set(await findAssignedCoopIds(farmSchema, userId))
     rawFlocks = rawFlocks.filter((f) => coopIds.has(f.coopId))
   }
   return Promise.all(
     rawFlocks.map(async (f) => {
       const [dep, flockTotalCount] = await Promise.all([
-        getTotalDepletionByFlock(f.id),
-        sumDeliveriesQuantityByFlockId(f.id),
+        getTotalDepletionByFlock(farmSchema, f.id),
+        sumDeliveriesQuantityByFlockId(farmSchema, f.id),
       ])
       return {
         id: f.id,
@@ -230,23 +233,25 @@ export type ProductionReportResult = {
 }
 
 export async function getProductionReportData(
+  farmSchema: string,
   from: string,
   to: string,
   role: Role
 ): Promise<ProductionReportResult> {
   if (role === 'operator') throw new Error('Akses ditolak')
 
-  const rawRows = await getProductionReport(from, to)
+  const rawRows = await getProductionReport(farmSchema, from, to)
 
   const enriched: EnrichedProductionRow[] = await Promise.all(
     rawRows.map(async (row) => {
       const { deaths: cumDeaths, culled: cumCulled } = await getCumulativeDepletionByFlockUpTo(
+        farmSchema,
         row.flockId,
-        row.recordDate
+        row.recordDate as string
       )
       const activePopulation = Math.max(0, row.flockTotalCount - cumDeaths - cumCulled)
       return {
-        recordDate: row.recordDate,
+        recordDate: row.recordDate as string,
         coopId: row.coopId,
         coopName: row.coopName,
         flockId: row.flockId,
@@ -268,12 +273,14 @@ export async function getProductionReportData(
 }
 
 export async function updateDailyRecordAyam(
+  farmSchema: string,
   recordId: string,
   input: { deaths?: number; culled?: number; notes?: string },
   userId: string,
   role: Role,
   now: Date = new Date()
 ): Promise<DailyRecord> {
+  const { dailyRecords } = getFarmSchema(farmSchema)
   const [existing] = await db.select().from(dailyRecords).where(eq(dailyRecords.id, recordId)).limit(1)
   if (!existing) throw new Error('Data harian tidak ditemukan')
 
@@ -289,5 +296,6 @@ export async function updateDailyRecordAyam(
     .set(updateSet)
     .where(eq(dailyRecords.id, recordId))
     .returning()
-  return updated!
+  // any: farm schema date fields (recordDate: Date) differ from public DailyRecord type (recordDate: string)
+  return updated! as unknown as DailyRecord
 }

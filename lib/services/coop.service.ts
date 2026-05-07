@@ -12,26 +12,26 @@ type CreateCoopInput = {
   notes?: string
 }
 
-export async function createCoop(input: CreateCoopInput): Promise<Coop> {
-  return insertCoop({ ...input, status: 'active' })
+export async function createCoop(farmSchema: string, input: CreateCoopInput): Promise<Coop> {
+  return insertCoop(farmSchema, { ...input, status: 'active' })
 }
 
-export async function getAllCoops(): Promise<Coop[]> {
-  return findAllCoops()
+export async function getAllCoops(farmSchema: string): Promise<Coop[]> {
+  return findAllCoops(farmSchema)
 }
 
-export async function getCoopById(id: string): Promise<Coop | null> {
-  return findCoopById(id)
+export async function getCoopById(farmSchema: string, id: string): Promise<Coop | null> {
+  return findCoopById(farmSchema, id)
 }
 
-export async function updateCoop(id: string, input: Partial<CreateCoopInput>): Promise<Coop | null> {
-  return dbUpdateCoop(id, input)
+export async function updateCoop(farmSchema: string, id: string, input: Partial<CreateCoopInput>): Promise<Coop | null> {
+  return dbUpdateCoop(farmSchema, id, input)
 }
 
-export async function deactivateCoop(id: string): Promise<void> {
-  await dbUpdateCoop(id, { status: 'inactive' })
+export async function deactivateCoop(farmSchema: string, id: string): Promise<void> {
+  await dbUpdateCoop(farmSchema, id, { status: 'inactive' })
 }
 
-export async function activateCoop(id: string): Promise<void> {
-  await dbUpdateCoop(id, { status: 'active' })
+export async function activateCoop(farmSchema: string, id: string): Promise<void> {
+  await dbUpdateCoop(farmSchema, id, { status: 'active' })
 }

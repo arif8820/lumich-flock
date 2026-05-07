@@ -28,19 +28,19 @@ type CreateReturnInput = {
   notes?: string
 }
 
-export async function createSalesReturn(input: CreateReturnInput, userId: string, role: string) {
+export async function createSalesReturn(farmSchema: string, input: CreateReturnInput, userId: string, role: string) {
   if (!['supervisor', 'admin'].includes(role)) {
     throw new Error('Akses ditolak')
   }
 
-  const so = await findSalesOrderById(input.orderId)
+  const so = await findSalesOrderById(farmSchema, input.orderId)
   if (!so) throw new Error('SO tidak ditemukan')
 
   if (so.status !== 'fulfilled') {
     throw new Error('Return hanya bisa dibuat untuk SO yang sudah fulfilled')
   }
 
-  const soItems = await findSalesOrderItems(input.orderId)
+  const soItems = await findSalesOrderItems(farmSchema, input.orderId)
 
   // Validate return quantities don't exceed original SO quantities
   for (const returnItem of input.items) {
@@ -54,7 +54,7 @@ export async function createSalesReturn(input: CreateReturnInput, userId: string
   }
 
   // Generate return number
-  const lastSeq = await countSalesReturnsThisMonth('RTN')
+  const lastSeq = await countSalesReturnsThisMonth(farmSchema, 'RTN')
   const returnNumber = generateOrderNumber('RTN', lastSeq)
 
   const salesReturn: NewSalesReturn = {
@@ -75,24 +75,24 @@ export async function createSalesReturn(input: CreateReturnInput, userId: string
     unit: item.unit,
   }))
 
-  return insertSalesReturnWithItems(salesReturn, salesReturnItems)
+  return insertSalesReturnWithItems(farmSchema, salesReturn, salesReturnItems)
 }
 
-export async function approveSalesReturn(returnId: string, userId: string, role: string) {
+export async function approveSalesReturn(farmSchema: string, returnId: string, userId: string, role: string) {
   if (role !== 'admin') {
     throw new Error('Akses ditolak')
   }
 
-  const salesReturn = await findSalesReturnById(returnId)
+  const salesReturn = await findSalesReturnById(farmSchema, returnId)
   if (!salesReturn) throw new Error('Return tidak ditemukan')
 
   if (salesReturn.status !== 'pending') {
     throw new Error('Status return tidak valid untuk operasi ini')
   }
 
-  const returnItems = await findSalesReturnItems(returnId)
-  const soItems = await findSalesOrderItems(salesReturn.orderId)
-  const originalInvoice = await findInvoiceByOrderId(salesReturn.orderId)
+  const returnItems = await findSalesReturnItems(farmSchema, returnId)
+  const soItems = await findSalesOrderItems(farmSchema, salesReturn.orderId)
+  const originalInvoice = await findInvoiceByOrderId(farmSchema, salesReturn.orderId)
 
   // Calculate credit amount: sum returnQty * pricePerUnit * (1 - discount/100) per item
   let creditAmount = 0
@@ -120,7 +120,7 @@ export async function approveSalesReturn(returnId: string, userId: string, role:
     }))
 
   // Generate credit note invoice number
-  const invSeq = await countInvoicesThisMonth('CN')
+  const invSeq = await countInvoicesThisMonth(farmSchema, 'CN')
   const creditNoteNumber = generateOrderNumber('CN', invSeq)
 
   const creditNoteInvoice: NewInvoice = {
@@ -150,24 +150,24 @@ export async function approveSalesReturn(returnId: string, userId: string, role:
     notes: null,
   }
 
-  await approveSalesReturnTx(returnId, userId, movements, creditNoteInvoice, customerCredit)
+  await approveSalesReturnTx(farmSchema, returnId, userId, movements, creditNoteInvoice, customerCredit)
 
   return salesReturn
 }
 
-export async function rejectSalesReturn(returnId: string, userId: string, role: string) {
+export async function rejectSalesReturn(farmSchema: string, returnId: string, userId: string, role: string) {
   if (role !== 'admin') {
     throw new Error('Akses ditolak')
   }
 
-  const salesReturn = await findSalesReturnById(returnId)
+  const salesReturn = await findSalesReturnById(farmSchema, returnId)
   if (!salesReturn) throw new Error('Return tidak ditemukan')
 
   if (salesReturn.status !== 'pending') {
     throw new Error('Status return tidak valid untuk operasi ini')
   }
 
-  await rejectSalesReturnQuery(returnId, userId)
+  await rejectSalesReturnQuery(farmSchema, returnId, userId)
 
   return salesReturn
 }
