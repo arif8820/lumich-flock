@@ -65,6 +65,7 @@ export async function createFlock(farmSchema: string, input: CreateFlockInput): 
   const { flocks, flockDeliveries } = getFarmSchema(farmSchema)
 
   // any: tx typed against public schema; farm schema tables need cast
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return db.transaction(async (tx: any) => {
     const [flock] = await tx
       .insert(flocks)

@@ -39,6 +39,7 @@ export async function findItemById(farmSchema: string, id: string) {
 }
 
 // any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function insertCategory(farmSchema: string, data: any) {
   const { stockCategories } = getFarmSchema(farmSchema)
   const [row] = await db.insert(stockCategories).values(data).returning()
@@ -46,6 +47,7 @@ export async function insertCategory(farmSchema: string, data: any) {
 }
 
 // any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function insertStockItem(farmSchema: string, data: any) {
   const { stockItems } = getFarmSchema(farmSchema)
   const [row] = await db.insert(stockItems).values(data).returning()

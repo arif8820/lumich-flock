@@ -45,6 +45,7 @@ export async function listInvoices(
 ) {
   const { invoices, customers, salesOrders } = getFarmSchema(farmSchema)
   const conditions = and(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     status ? eq(invoices.status, status as any) : undefined,
     customerId ? eq(invoices.customerId, customerId) : undefined
   )
@@ -69,6 +70,7 @@ export async function listInvoices(
     .limit(pageSize)
     .offset((page - 1) * pageSize)
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return { data: rows as any[], total: countRow?.cnt ?? 0 }
 }
 
@@ -130,6 +132,7 @@ export async function updateInvoiceStatus(
 ): Promise<void> {
   const { invoices } = getFarmSchema(farmSchema)
   const executor = tx ?? db
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await executor.update(invoices).set({ status: status as any }).where(eq(invoices.id, id))
 }
 
@@ -163,6 +166,7 @@ export async function getOverdueInvoices(farmSchema: string) {
     )
     .orderBy(asc(invoices.dueDate))
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return rows as any[]
 }
 

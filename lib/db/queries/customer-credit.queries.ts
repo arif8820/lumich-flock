@@ -41,6 +41,7 @@ export async function findCreditById(farmSchema: string, id: string, tx?: Drizzl
 // any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
 export async function createCustomerCredit(
   farmSchema: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   credit: any,
   tx?: DrizzleTx
 ): Promise<void> {

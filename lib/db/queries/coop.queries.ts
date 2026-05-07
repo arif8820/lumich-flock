@@ -14,6 +14,7 @@ export async function findCoopById(farmSchema: string, id: string) {
 }
 
 // any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function insertCoop(farmSchema: string, data: any) {
   const { coops } = getFarmSchema(farmSchema)
   const [coop] = await db.insert(coops).values(data).returning()
@@ -21,6 +22,7 @@ export async function insertCoop(farmSchema: string, data: any) {
 }
 
 // any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateCoop(farmSchema: string, id: string, data: any) {
   const { coops } = getFarmSchema(farmSchema)
   const [coop] = await db.update(coops).set(data).where(eq(coops.id, id)).returning()

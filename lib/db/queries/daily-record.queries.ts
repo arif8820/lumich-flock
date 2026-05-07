@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { getFarmSchema } from '@/lib/db/schema-factory'
-import { eq, and, desc, sum, gte, lte, asc, inArray, sql } from 'drizzle-orm'
+import { eq, and, desc, sum, asc, inArray, sql } from 'drizzle-orm'
 
 export type DailySubRecords = {
   eggRecords: { stockItemId: string; qtyButir: number; qtyKg: number }[]
@@ -99,6 +99,7 @@ export async function findRecentDailyRecordsMultiFlocks(
     .innerJoin(coops, eq(coops.id, flocks.coopId))
     .where(inArray(dailyRecords.flockId, flockIds))
     .orderBy(desc(dailyRecords.recordDate))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .limit(limit) as any
 }
 
@@ -134,6 +135,7 @@ export async function getCumulativeDepletionByFlockUpTo(
 }
 
 // any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function upsertDailyRecordTx(farmSchema: string, input: any) {
   const {
     dailyRecords,
@@ -172,8 +174,11 @@ export async function upsertDailyRecordTx(farmSchema: string, input: any) {
         inArray(inventoryMovements.sourceType, ['daily_egg_records', 'daily_feed_records', 'daily_vaccine_records'])
       ))
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const eggEntriesWithId = input.eggEntries.map((e: any) => ({ ...e, dailyRecordId: recordId }))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const feedEntriesWithId = input.feedEntries.map((e: any) => ({ ...e, dailyRecordId: recordId }))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const vaccineEntriesWithId = input.vaccineEntries.map((e: any) => ({ ...e, dailyRecordId: recordId }))
 
     if (eggEntriesWithId.length > 0) await tx.insert(dailyEggRecords).values(eggEntriesWithId)
@@ -181,8 +186,11 @@ export async function upsertDailyRecordTx(farmSchema: string, input: any) {
     if (vaccineEntriesWithId.length > 0) await tx.insert(dailyVaccineRecords).values(vaccineEntriesWithId)
 
     const allMovements = [
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ...input.eggMovements.map((m: any) => ({ ...m, sourceId: recordId, sourceType: 'daily_egg_records' as const })),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ...input.feedMovements.map((m: any) => ({ ...m, sourceId: recordId, sourceType: 'daily_feed_records' as const })),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ...input.vaccineMovements.map((m: any) => ({ ...m, sourceId: recordId, sourceType: 'daily_vaccine_records' as const })),
     ]
     if (allMovements.length > 0) await tx.insert(inventoryMovements).values(allMovements)

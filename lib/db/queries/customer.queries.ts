@@ -14,6 +14,7 @@ export async function listCustomers(farmSchema: string) {
 }
 
 // any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function insertCustomer(farmSchema: string, data: any) {
   const { customers } = getFarmSchema(farmSchema)
   const [customer] = await db.insert(customers).values(data).returning()
@@ -21,6 +22,7 @@ export async function insertCustomer(farmSchema: string, data: any) {
 }
 
 // any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateCustomer(farmSchema: string, id: string, data: any) {
   const { customers } = getFarmSchema(farmSchema)
   const [customer] = await db.update(customers).set(data).where(eq(customers.id, id)).returning()

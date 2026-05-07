@@ -47,6 +47,7 @@ export async function getAllStockBalances(farmSchema: string): Promise<StockBala
 }
 
 // any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function insertInventoryMovement(farmSchema: string, data: any): Promise<void> {
   const { inventoryMovements } = getFarmSchema(farmSchema)
   await db.insert(inventoryMovements).values(data)
@@ -55,7 +56,9 @@ export async function insertInventoryMovement(farmSchema: string, data: any): Pr
 // any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
 export async function insertStockAdjustmentWithMovement(
   farmSchema: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   adjustment: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   movement: any
 ) {
   const { stockAdjustments, inventoryMovements } = getFarmSchema(farmSchema)
@@ -82,6 +85,7 @@ export async function findRegradeRequestById(farmSchema: string, id: string) {
 }
 
 // any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function insertRegradeRequest(farmSchema: string, data: any) {
   const { regradeRequests } = getFarmSchema(farmSchema)
   const [req] = await db.insert(regradeRequests).values(data).returning()
@@ -104,6 +108,7 @@ export async function updateRegradeRequestStatus(
 export async function approveRegradeRequestTx(farmSchema: string, requestId: string, reviewedBy: string): Promise<void> {
   const { regradeRequests, inventoryMovements } = getFarmSchema(farmSchema)
   // any: tx typed against public schema; farm schema tables need cast to use in transactions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await db.transaction(async (tx: any) => {
     const [request] = await tx
       .select()

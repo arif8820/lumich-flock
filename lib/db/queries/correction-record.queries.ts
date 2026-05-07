@@ -7,6 +7,7 @@ import { eq, desc, and } from 'drizzle-orm'
 // any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
 export async function insertCorrectionRecord(
   farmSchema: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any,
   tx?: DrizzleTx
 ) {
@@ -54,6 +55,7 @@ export async function findCorrectionsByEntity(
     .leftJoin(users, eq(correctionRecords.correctedBy, users.id))
     .where(
       and(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         eq(correctionRecords.entityType, entityType as any),
         eq(correctionRecords.entityId, entityId)
       )

@@ -28,13 +28,16 @@ export async function countSalesReturnsThisMonth(farmSchema: string, prefix: str
 // any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
 export async function insertSalesReturnWithItems(
   farmSchema: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ret: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   items: any[]
 ) {
   const { salesReturns, salesReturnItems } = getFarmSchema(farmSchema)
   return db.transaction(async (tx) => {
     const [sr] = await tx.insert(salesReturns).values(ret).returning()
     if (items.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await tx.insert(salesReturnItems).values(items.map((i: any) => ({ ...i, returnId: sr!.id })))
     }
     return sr!
@@ -46,8 +49,11 @@ export async function approveSalesReturnTx(
   farmSchema: string,
   returnId: string,
   userId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   movements: any[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   creditNoteInvoice: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   customerCredit: any
 ): Promise<void> {
   const { salesReturns, inventoryMovements, invoices, customerCredits } = getFarmSchema(farmSchema)
@@ -130,6 +136,7 @@ export async function listSalesReturnsWithOrder(
     .limit(pageSize)
     .offset((page - 1) * pageSize)
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return { data: rows as any[], total: countRow?.cnt ?? 0 }
 }
 

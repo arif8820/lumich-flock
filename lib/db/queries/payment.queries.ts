@@ -3,6 +3,7 @@ import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq, sql, asc } from 'drizzle-orm'
 
 // any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function createPayment(farmSchema: string, payment: any, tx?: DrizzleTx) {
   const { payments } = getFarmSchema(farmSchema)
   const executor = tx ?? db

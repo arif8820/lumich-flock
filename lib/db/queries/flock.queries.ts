@@ -21,6 +21,7 @@ export async function findFlockById(farmSchema: string, id: string) {
 }
 
 // any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function insertFlock(farmSchema: string, data: any) {
   const { flocks } = getFarmSchema(farmSchema)
   const [flock] = await db.insert(flocks).values(data).returning()
@@ -28,6 +29,7 @@ export async function insertFlock(farmSchema: string, data: any) {
 }
 
 // any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateFlock(farmSchema: string, id: string, data: any) {
   const { flocks } = getFarmSchema(farmSchema)
   const [flock] = await db.update(flocks).set(data).where(eq(flocks.id, id)).returning()

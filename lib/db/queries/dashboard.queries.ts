@@ -28,6 +28,7 @@ export async function getRecentDailyRecordsAcrossFlocks(farmSchema: string, limi
     .innerJoin(flocks, eq(dailyRecords.flockId, flocks.id))
     .where(and(...conditions))
     .orderBy(desc(dailyRecords.recordDate))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .limit(limit) as any
 }
 

@@ -34,13 +34,16 @@ export async function countSalesOrdersThisMonth(farmSchema: string, prefix: stri
 // any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
 export async function insertSalesOrderWithItems(
   farmSchema: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   order: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   items: any[]
 ) {
   const { salesOrders, salesOrderItems } = getFarmSchema(farmSchema)
   return db.transaction(async (tx) => {
     const [so] = await tx.insert(salesOrders).values(order).returning()
     if (items.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await tx.insert(salesOrderItems).values(items.map((i: any) => ({ ...i, orderId: so!.id })))
     }
     return so!
@@ -73,11 +76,13 @@ export async function fulfillSOTx(
   farmSchema: string,
   orderId: string,
   userId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   movements: any[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   invoice: any,
   flockUpdates: { flockId: string; retiredAt: Date }[]
 ): Promise<void> {
-  const { salesOrders, salesOrderItems, inventoryMovements, invoices, flocks } = getFarmSchema(farmSchema)
+  const { salesOrders, salesOrderItems: _salesOrderItems, inventoryMovements, invoices, flocks } = getFarmSchema(farmSchema)
   await db.transaction(async (tx) => {
     const [so] = await tx
       .select()
@@ -170,5 +175,6 @@ export async function listSalesOrders(
     .limit(pageSize)
     .offset((page - 1) * pageSize)
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return { data: rows as any[], total: countRow?.cnt ?? 0 }
 }

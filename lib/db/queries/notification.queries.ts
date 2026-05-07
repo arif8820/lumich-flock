@@ -7,6 +7,7 @@ import { eq, and, not, inArray, sql, desc } from 'drizzle-orm'
 // any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
 export async function createNotification(
   farmSchema: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   notification: any,
   tx?: DrizzleTx
 ) {

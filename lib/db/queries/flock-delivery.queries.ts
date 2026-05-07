@@ -3,6 +3,7 @@ import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq, sum } from 'drizzle-orm'
 
 // any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function insertFlockDelivery(farmSchema: string, data: any) {
   const { flockDeliveries } = getFarmSchema(farmSchema)
   const [delivery] = await db.insert(flockDeliveries).values(data).returning()
