@@ -1,6 +1,6 @@
 'use server'
 
-import { getSession } from '@/lib/auth/get-session'
+import { getRequiredSession } from '@/lib/auth/guards'
 import {
   getNotificationsForRole,
   getUnreadCount,
@@ -14,11 +14,11 @@ type ActionResult<T = void> =
   | { success: false; error: string }
 
 export async function getNotificationsAction(): Promise<ActionResult<Notification[]>> {
-  const session = await getSession()
-  if (!session) return { success: false, error: 'Tidak terautentikasi' }
+  const session = await getRequiredSession()
+  if ('error' in session) return session
 
   try {
-    const data = await getNotificationsForRole(session.role)
+    const data = await getNotificationsForRole(session.farmSchema, session.role)
     return { success: true, data }
   } catch {
     return { success: false, error: 'Gagal memuat notifikasi' }
@@ -26,11 +26,11 @@ export async function getNotificationsAction(): Promise<ActionResult<Notificatio
 }
 
 export async function getUnreadCountAction(): Promise<ActionResult<number>> {
-  const session = await getSession()
-  if (!session) return { success: false, error: 'Tidak terautentikasi' }
+  const session = await getRequiredSession()
+  if ('error' in session) return session
 
   try {
-    const count = await getUnreadCount(session.id, session.role)
+    const count = await getUnreadCount(session.farmSchema, session.id, session.role)
     return { success: true, data: count }
   } catch {
     return { success: false, error: 'Gagal memuat jumlah notifikasi belum dibaca' }
@@ -40,11 +40,11 @@ export async function getUnreadCountAction(): Promise<ActionResult<number>> {
 export async function markNotificationReadAction(
   notificationId: string
 ): Promise<ActionResult> {
-  const session = await getSession()
-  if (!session) return { success: false, error: 'Tidak terautentikasi' }
+  const session = await getRequiredSession()
+  if ('error' in session) return session
 
   try {
-    await readNotification(notificationId, session.id)
+    await readNotification(session.farmSchema, notificationId, session.id)
     return { success: true, data: undefined }
   } catch {
     return { success: false, error: 'Gagal menandai notifikasi sebagai dibaca' }
@@ -52,11 +52,11 @@ export async function markNotificationReadAction(
 }
 
 export async function markAllNotificationsReadAction(): Promise<ActionResult> {
-  const session = await getSession()
-  if (!session) return { success: false, error: 'Tidak terautentikasi' }
+  const session = await getRequiredSession()
+  if ('error' in session) return session
 
   try {
-    await readAllNotifications(session.id, session.role)
+    await readAllNotifications(session.farmSchema, session.id, session.role)
     return { success: true, data: undefined }
   } catch {
     return { success: false, error: 'Gagal menandai semua notifikasi sebagai dibaca' }

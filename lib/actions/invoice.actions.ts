@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-import { getSession } from '@/lib/auth/get-session'
+import { getRequiredSession } from '@/lib/auth/guards'
 import { recordPayment, applyCredit, getInvoiceForPdf, markInvoiceSent } from '@/lib/services/invoice.service'
 import { sendInvoiceEmail } from '@/lib/services/email.service'
 import { InvoicePdfDocument } from '@/components/pdf/invoice-pdf-document'
@@ -10,16 +10,6 @@ import { InvoicePdfDocument } from '@/components/pdf/invoice-pdf-document'
 type ActionResult<T = undefined> =
   | { success: true; data: T }
   | { success: false; error: string }
-
-async function requireAdmin(): Promise<
-  { success: false; error: string; session?: never } | { success: true; session: NonNullable<Awaited<ReturnType<typeof getSession>>> }
-> {
-  const session = await getSession()
-  if (!session || session.role !== 'admin') {
-    return { success: false, error: 'Akses ditolak' }
-  }
-  return { success: true, session }
-}
 
 const recordPaymentSchema = z.object({
   invoiceId: z.string().uuid('ID invoice tidak valid'),
@@ -32,8 +22,9 @@ const recordPaymentSchema = z.object({
 export async function recordPaymentAction(
   formData: FormData
 ): Promise<ActionResult<{ overpayment: boolean; overpaymentAmount?: number }>> {
-  const auth = await requireAdmin()
-  if (!auth.success) return auth
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   const parsed = recordPaymentSchema.safeParse({
     invoiceId: formData.get('invoiceId'),
@@ -49,6 +40,7 @@ export async function recordPaymentAction(
 
   try {
     const result = await recordPayment(
+      session.farmSchema,
       parsed.data.invoiceId,
       {
         amount: parsed.data.amount,
@@ -56,7 +48,7 @@ export async function recordPaymentAction(
         referenceNumber: parsed.data.referenceNumber,
         paymentDate: parsed.data.paymentDate,
       },
-      auth.session.id
+      session.id
     )
     revalidatePath(`/penjualan/invoices/${parsed.data.invoiceId}`)
     revalidatePath('/penjualan/invoices')
@@ -72,8 +64,9 @@ export async function applyCreditAction(
   creditId: string,
   amount: number
 ): Promise<ActionResult> {
-  const auth = await requireAdmin()
-  if (!auth.success) return auth
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   const parsed = z
     .object({
@@ -88,7 +81,7 @@ export async function applyCreditAction(
   }
 
   try {
-    await applyCredit(invoiceId, creditId, amount, auth.session.id)
+    await applyCredit(session.farmSchema, invoiceId, creditId, amount, session.id)
     revalidatePath(`/penjualan/invoices/${invoiceId}`)
     return { success: true, data: undefined }
   } catch (error) {
@@ -97,14 +90,15 @@ export async function applyCreditAction(
 }
 
 export async function sendInvoiceEmailAction(invoiceId: string): Promise<ActionResult> {
-  const auth = await requireAdmin()
-  if (!auth.success) return auth
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   const parsed = z.string().uuid('ID invoice tidak valid').safeParse(invoiceId)
   if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
 
   try {
-    const invoice = await getInvoiceForPdf(invoiceId)
+    const invoice = await getInvoiceForPdf(session.farmSchema, invoiceId)
 
     if (!invoice.customer.email) {
       return { success: false, error: 'Pelanggan tidak memiliki email' }
@@ -121,7 +115,7 @@ export async function sendInvoiceEmailAction(invoiceId: string): Promise<ActionR
     await sendInvoiceEmail(invoice.customer.email, invoice, pdfBuffer as Buffer)
 
     if (invoice.status === 'draft') {
-      await markInvoiceSent(invoiceId)
+      await markInvoiceSent(session.farmSchema, invoiceId)
     }
 
     revalidatePath(`/penjualan/invoices/${invoiceId}`)

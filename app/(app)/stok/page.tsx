@@ -23,8 +23,8 @@ export default async function StokPage({
   const { tab = 'telur' } = await searchParams
 
   const [balances, categories] = await Promise.all([
-    getAllStockBalances(),
-    getCategories(),
+    getAllStockBalances(session.farmSchema),
+    getCategories(session.farmSchema),
   ])
 
   const systemCategoryNames = new Set(SYSTEM_TABS.map((t) => t.categoryName))

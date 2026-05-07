@@ -16,12 +16,12 @@ export default async function RegradeDetailPage({
 
   const { id } = await params
   const { error } = await searchParams
-  const req = await findRegradeRequestById(id)
+  const req = await findRegradeRequestById(session.farmSchema, id)
   if (!req) notFound()
 
   const [fromItem, toItem] = await Promise.all([
-    findItemById(req.fromItemId),
-    findItemById(req.toItemId),
+    findItemById(session.farmSchema, req.fromItemId),
+    findItemById(session.farmSchema, req.toItemId),
   ])
 
   async function approve() {

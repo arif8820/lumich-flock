@@ -1,7 +1,7 @@
 'use server'
 
 import { z } from 'zod'
-import { getSession } from '@/lib/auth/get-session'
+import { getRequiredSession } from '@/lib/auth/guards'
 import {
   createCustomer,
   getAllCustomers,
@@ -24,17 +24,11 @@ type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: false; error: string }
 
-async function requireAdmin(): Promise<{ success: false; error: string } | null> {
-  const session = await getSession()
-  if (!session || session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
-  return null
-}
-
 export async function createCustomerAction(formData: FormData): Promise<ActionResult<{ id: string }>> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
-  const session = await getSession()
   const parsed = customerSchema.safeParse({
     name: formData.get('name'),
     type: formData.get('type') || undefined,
@@ -47,7 +41,7 @@ export async function createCustomerAction(formData: FormData): Promise<ActionRe
   if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
 
   try {
-    const customer = await createCustomer({ ...parsed.data, createdBy: session!.id })
+    const customer = await createCustomer(session.farmSchema, { ...parsed.data, createdBy: session.id })
     return { success: true, data: { id: customer.id } }
   } catch {
     return { success: false, error: 'Gagal membuat pelanggan' }
@@ -55,8 +49,9 @@ export async function createCustomerAction(formData: FormData): Promise<ActionRe
 }
 
 export async function updateCustomerAction(id: string, formData: FormData): Promise<ActionResult> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   const parsed = customerSchema.safeParse({
     name: formData.get('name'),
@@ -70,7 +65,7 @@ export async function updateCustomerAction(id: string, formData: FormData): Prom
   if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
 
   try {
-    await updateCustomerById(id, parsed.data)
+    await updateCustomerById(session.farmSchema, id, parsed.data)
     return { success: true, data: undefined }
   } catch {
     return { success: false, error: 'Gagal mengubah pelanggan' }
@@ -78,10 +73,11 @@ export async function updateCustomerAction(id: string, formData: FormData): Prom
 }
 
 export async function deactivateCustomerAction(id: string): Promise<ActionResult> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
   try {
-    await deactivateCustomer(id)
+    await deactivateCustomer(session.farmSchema, id)
     return { success: true, data: undefined }
   } catch {
     return { success: false, error: 'Gagal menonaktifkan pelanggan' }
@@ -89,10 +85,11 @@ export async function deactivateCustomerAction(id: string): Promise<ActionResult
 }
 
 export async function activateCustomerAction(id: string): Promise<ActionResult> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
   try {
-    await activateCustomer(id)
+    await activateCustomer(session.farmSchema, id)
     return { success: true, data: undefined }
   } catch {
     return { success: false, error: 'Gagal mengaktifkan pelanggan' }
@@ -100,10 +97,11 @@ export async function activateCustomerAction(id: string): Promise<ActionResult> 
 }
 
 export async function getCustomersAction(): Promise<ActionResult<Awaited<ReturnType<typeof getAllCustomers>>>> {
-  const session = await getSession()
-  if (!session || session.role === 'operator') return { success: false, error: 'Akses ditolak' }
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role === 'operator') return { success: false, error: 'Akses ditolak' }
   try {
-    const customers = await getAllCustomers()
+    const customers = await getAllCustomers(session.farmSchema)
     return { success: true, data: customers }
   } catch {
     return { success: false, error: 'Gagal memuat daftar pelanggan' }

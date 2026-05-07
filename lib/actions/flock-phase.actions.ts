@@ -1,7 +1,7 @@
 'use server'
 
 import { z } from 'zod'
-import { getSession } from '@/lib/auth/get-session'
+import { getRequiredSession } from '@/lib/auth/guards'
 import {
   createFlockPhase,
   updateFlockPhaseById,
@@ -20,15 +20,10 @@ type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: false; error: string }
 
-async function requireAdmin(): Promise<{ success: false; error: string } | null> {
-  const session = await getSession()
-  if (!session || session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
-  return null
-}
-
 export async function createFlockPhaseAction(formData: FormData): Promise<ActionResult> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   const parsed = flockPhaseSchema.safeParse({
     name: formData.get('name'),
@@ -39,7 +34,7 @@ export async function createFlockPhaseAction(formData: FormData): Promise<Action
   if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
 
   try {
-    await createFlockPhase(parsed.data)
+    await createFlockPhase(session.farmSchema, parsed.data)
     revalidateTag('flock-phases')
     return { success: true, data: undefined }
   } catch {
@@ -48,8 +43,9 @@ export async function createFlockPhaseAction(formData: FormData): Promise<Action
 }
 
 export async function updateFlockPhaseAction(id: string, formData: FormData): Promise<ActionResult> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   const parsed = flockPhaseSchema.safeParse({
     name: formData.get('name'),
@@ -60,7 +56,7 @@ export async function updateFlockPhaseAction(id: string, formData: FormData): Pr
   if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
 
   try {
-    await updateFlockPhaseById(id, parsed.data)
+    await updateFlockPhaseById(session.farmSchema, id, parsed.data)
     revalidateTag('flock-phases')
     return { success: true, data: undefined }
   } catch {
@@ -69,11 +65,12 @@ export async function updateFlockPhaseAction(id: string, formData: FormData): Pr
 }
 
 export async function deleteFlockPhaseAction(id: string): Promise<ActionResult> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   try {
-    await deleteFlockPhaseById(id)
+    await deleteFlockPhaseById(session.farmSchema, id)
     revalidateTag('flock-phases')
     return { success: true, data: undefined }
   } catch {

@@ -1,8 +1,7 @@
 'use server'
 
 import { z } from 'zod'
-import { getSession } from '@/lib/auth/get-session'
-import { requireAdmin } from '@/lib/auth/guards'
+import { getRequiredSession } from '@/lib/auth/guards'
 import {
   createUser,
   getAllUsers,
@@ -32,10 +31,10 @@ type ActionResult<T = void> =
 export async function createUserAction(
   formData: FormData
 ): Promise<ActionResult<{ id: string }>> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
-  const session = await getSession()
   const parsed = createUserSchema.safeParse({
     email: formData.get('email'),
     password: formData.get('password'),
@@ -48,7 +47,7 @@ export async function createUserAction(
   }
 
   try {
-    const user = await createUser({ ...parsed.data, createdBy: session!.id })
+    const user = await createUser(session.farmSchema, { ...parsed.data, createdBy: session.id })
     return { success: true, data: { id: user.id } }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal membuat user' }
@@ -59,11 +58,12 @@ export async function updateUserRoleAction(
   userId: string,
   role: 'operator' | 'supervisor' | 'admin'
 ): Promise<ActionResult> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   try {
-    await updateUserRole(userId, role)
+    await updateUserRole(session.farmSchema, userId, role)
     return { success: true, data: undefined }
   } catch {
     return { success: false, error: 'Gagal mengubah role' }
@@ -71,11 +71,12 @@ export async function updateUserRoleAction(
 }
 
 export async function deactivateUserAction(userId: string): Promise<ActionResult> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   try {
-    await deactivateUser(userId)
+    await deactivateUser(session.farmSchema, userId)
     return { success: true, data: undefined }
   } catch {
     return { success: false, error: 'Gagal menonaktifkan user' }
@@ -83,11 +84,12 @@ export async function deactivateUserAction(userId: string): Promise<ActionResult
 }
 
 export async function activateUserAction(userId: string): Promise<ActionResult> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   try {
-    await activateUser(userId)
+    await activateUser(session.farmSchema, userId)
     return { success: true, data: undefined }
   } catch {
     return { success: false, error: 'Gagal mengaktifkan user' }
@@ -98,8 +100,9 @@ export async function changeUserPasswordAction(
   userId: string,
   newPassword: string
 ): Promise<ActionResult> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   const parsed = passwordSchema.safeParse(newPassword)
   if (!parsed.success) {
@@ -115,11 +118,12 @@ export async function changeUserPasswordAction(
 }
 
 export async function getUsersAction(): Promise<ActionResult<Awaited<ReturnType<typeof getAllUsers>>>> {
-  const guard = await requireAdmin()
-  if (guard) return guard
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   try {
-    const users = await getAllUsers()
+    const users = await getAllUsers(session.farmSchema)
     return { success: true, data: users }
   } catch {
     return { success: false, error: 'Gagal memuat daftar user' }

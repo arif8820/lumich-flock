@@ -11,8 +11,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!user) redirect('/login')
 
   const [notifications, readNotificationIds] = await Promise.all([
-    getNotificationsForRole(user.role, 50),
-    getReadNotificationIds(user.id),
+    getNotificationsForRole(user.farmSchema, user.role, 50),
+    getReadNotificationIds(user.farmSchema, user.id),
   ])
 
   return (

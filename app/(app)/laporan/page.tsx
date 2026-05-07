@@ -32,7 +32,7 @@ export default async function LaporanPage() {
 
   let agingData: Awaited<ReturnType<typeof getAgingData>> = []
   try {
-    agingData = await getAgingData()
+    agingData = await getAgingData(session.farmSchema)
   } catch {
     // DB error — render empty state
   }

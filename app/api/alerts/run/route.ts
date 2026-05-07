@@ -5,6 +5,8 @@
  */
 
 import { runDailyAlerts } from '@/lib/services/alert.service'
+import { db } from '@/lib/db'
+import { farms } from '@/lib/db/schema'
 
 export async function POST(request: Request): Promise<Response> {
   const secret = process.env.ALERT_WEBHOOK_SECRET
@@ -17,8 +19,9 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   try {
-    await runDailyAlerts()
-    return Response.json({ ok: true })
+    const allFarms = await db.select({ schemaName: farms.schemaName }).from(farms)
+    await Promise.all(allFarms.map((farm) => runDailyAlerts(farm.schemaName)))
+    return Response.json({ ok: true, farms: allFarms.length })
   } catch (e) {
     console.error('[alerts/run] error:', e)
     return Response.json({ ok: false, error: String(e) }, { status: 500 })

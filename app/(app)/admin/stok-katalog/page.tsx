@@ -12,11 +12,11 @@ export default async function StokKatalogPage({
   const session = await getSession()
   if (!session || session.role !== 'admin') redirect('/dashboard')
 
-  const categories = await getCategories()
+  const categories = await getCategories(session.farmSchema)
   const categoriesWithAllItems = await Promise.all(
     categories.map(async (cat) => ({
       ...cat,
-      items: await findItemsByCategory(cat.id),
+      items: await findItemsByCategory(session.farmSchema, cat.id),
     }))
   )
 

@@ -6,7 +6,7 @@ import { UserManagementClient } from '@/components/forms/user-management-client'
 export default async function UsersPage() {
   const session = await getSession()
   if (!session || session.role !== 'admin') redirect('/dashboard')
-  const users = await getAllUsers()
+  const users = await getAllUsers(session.farmSchema)
 
   return (
     <div className="p-6 space-y-5">

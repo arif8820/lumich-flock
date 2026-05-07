@@ -12,7 +12,7 @@ export default async function SesuaikanPage({
   const session = await getSession()
   if (!session || session.role === 'operator') redirect('/stok')
 
-  const categories = await getCategoriesWithActiveItems()
+  const categories = await getCategoriesWithActiveItems(session.farmSchema)
   const { error } = await searchParams
 
   async function handleSubmit(formData: FormData) {

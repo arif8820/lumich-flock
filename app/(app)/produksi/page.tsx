@@ -20,7 +20,7 @@ export default async function ProduksiPage({
   if (!session) redirect('/login')
 
   const { flockId, coopId } = await searchParams
-  const flocks = await findAllActiveFlocks()
+  const flocks = await findAllActiveFlocks(session.farmSchema)
 
   let targetFlockIds: string[]
   if (flockId) {
@@ -31,7 +31,7 @@ export default async function ProduksiPage({
     targetFlockIds = flocks.map(f => f.id)
   }
 
-  const records = await findRecentDailyRecordsMultiFlocks(targetFlockIds, 50)
+  const records = await findRecentDailyRecordsMultiFlocks(session.farmSchema, targetFlockIds, 50)
   const now = new Date()
 
   return (

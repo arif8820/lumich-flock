@@ -2,8 +2,7 @@
 
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-import { getSession } from '@/lib/auth/get-session'
-import { requireSupervisorOrAdmin } from '@/lib/auth/guards'
+import { getRequiredSession } from '@/lib/auth/guards'
 import {
   createDraftSO,
   confirmSO,
@@ -37,10 +36,9 @@ type ActionResult<T> =
   | { success: false; error: string }
 
 export async function createDraftSOAction(formData: FormData): Promise<ActionResult<{ id: string }>> {
-  const guard = await requireSupervisorOrAdmin()
-  if (guard) return guard
-
-  const session = await getSession()
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (!['supervisor', 'admin'].includes(session.role)) return { success: false, error: 'Akses ditolak' }
 
   // Parse items array from FormData
   const itemsJson = formData.get('items')
@@ -71,7 +69,7 @@ export async function createDraftSOAction(formData: FormData): Promise<ActionRes
   }
 
   try {
-    const so = await createDraftSO(parsed.data, session!.id, session!.role)
+    const so = await createDraftSO(session.farmSchema, parsed.data, session.id, session.role)
     return { success: true, data: { id: so.id } }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Gagal membuat SO' }
@@ -79,13 +77,12 @@ export async function createDraftSOAction(formData: FormData): Promise<ActionRes
 }
 
 export async function confirmSOAction(orderId: string): Promise<ActionResult<undefined>> {
-  const guard = await requireSupervisorOrAdmin()
-  if (guard) return guard
-
-  const session = await getSession()
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (!['supervisor', 'admin'].includes(session.role)) return { success: false, error: 'Akses ditolak' }
 
   try {
-    await confirmSO(orderId, session!.id, session!.role)
+    await confirmSO(session.farmSchema, orderId, session.id, session.role)
     revalidatePath(`/penjualan/${orderId}`)
     revalidatePath('/penjualan')
     return { success: true, data: undefined }
@@ -95,13 +92,12 @@ export async function confirmSOAction(orderId: string): Promise<ActionResult<und
 }
 
 export async function cancelSOAction(orderId: string): Promise<ActionResult<undefined>> {
-  const guard = await requireSupervisorOrAdmin()
-  if (guard) return guard
-
-  const session = await getSession()
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (!['supervisor', 'admin'].includes(session.role)) return { success: false, error: 'Akses ditolak' }
 
   try {
-    await cancelSO(orderId, session!.id, session!.role)
+    await cancelSO(session.farmSchema, orderId, session.id, session.role)
     revalidatePath(`/penjualan/${orderId}`)
     revalidatePath('/penjualan')
     return { success: true, data: undefined }
@@ -111,13 +107,12 @@ export async function cancelSOAction(orderId: string): Promise<ActionResult<unde
 }
 
 export async function deleteDraftSOAction(orderId: string): Promise<ActionResult<undefined>> {
-  const guard = await requireSupervisorOrAdmin()
-  if (guard) return guard
-
-  const session = await getSession()
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (!['supervisor', 'admin'].includes(session.role)) return { success: false, error: 'Akses ditolak' }
 
   try {
-    await deleteDraftSO(orderId, session!.id, session!.role)
+    await deleteDraftSO(session.farmSchema, orderId, session.id, session.role)
     revalidatePath('/penjualan')
     return { success: true, data: undefined }
   } catch (error) {
@@ -126,13 +121,12 @@ export async function deleteDraftSOAction(orderId: string): Promise<ActionResult
 }
 
 export async function fulfillSOAction(orderId: string): Promise<ActionResult<undefined>> {
-  const guard = await requireSupervisorOrAdmin()
-  if (guard) return guard
-
-  const session = await getSession()
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (!['supervisor', 'admin'].includes(session.role)) return { success: false, error: 'Akses ditolak' }
 
   try {
-    await fulfillSO(orderId, session!.id, session!.role)
+    await fulfillSO(session.farmSchema, orderId, session.id, session.role)
     revalidatePath(`/penjualan/${orderId}`)
     revalidatePath('/penjualan')
     return { success: true, data: undefined }

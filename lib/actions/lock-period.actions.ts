@@ -1,7 +1,7 @@
 'use server'
 
 import { z } from 'zod'
-import { getSession } from '@/lib/auth/get-session'
+import { getRequiredSession } from '@/lib/auth/guards'
 import { correctDailyRecord } from '@/lib/services/lock-period.service'
 import { findCorrectionsByEntity } from '@/lib/db/queries/correction-record.queries'
 import type { CorrectionRecordWithUser } from '@/lib/db/queries/correction-record.queries'
@@ -22,8 +22,8 @@ const correctionSchema = z.object({
 export async function correctDailyRecordAction(
   formData: FormData
 ): Promise<ActionResult<{ count: number }>> {
-  const session = await getSession()
-  if (!session) return { success: false, error: 'Tidak terautentikasi' }
+  const session = await getRequiredSession()
+  if ('error' in session) return session
   if (session.role !== 'admin') return { success: false, error: 'Hanya admin yang dapat melakukan koreksi' }
 
   const parsed = correctionSchema.safeParse({
@@ -42,7 +42,7 @@ export async function correctDailyRecordAction(
   const { recordId, reason, ...patch } = parsed.data
 
   try {
-    const corrections = await correctDailyRecord(recordId, patch, reason, session.id)
+    const corrections = await correctDailyRecord(session.farmSchema, recordId, patch, reason, session.id)
     return { success: true, data: { count: corrections.length } }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal menyimpan koreksi' }
@@ -52,11 +52,11 @@ export async function correctDailyRecordAction(
 export async function getCorrectionHistoryAction(
   entityId: string
 ): Promise<ActionResult<CorrectionRecordWithUser[]>> {
-  const session = await getSession()
-  if (!session) return { success: false, error: 'Tidak terautentikasi' }
+  const session = await getRequiredSession()
+  if ('error' in session) return session
 
   try {
-    const data = await findCorrectionsByEntity('daily_records', entityId)
+    const data = await findCorrectionsByEntity(session.farmSchema, 'daily_records', entityId)
     return { success: true, data }
   } catch {
     return { success: false, error: 'Gagal memuat riwayat koreksi' }

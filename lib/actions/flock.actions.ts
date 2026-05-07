@@ -1,7 +1,7 @@
 'use server'
 
 import { z } from 'zod'
-import { getSession } from '@/lib/auth/get-session'
+import { getRequiredSession } from '@/lib/auth/guards'
 import {
   getAllActiveFlocks,
   createFlock,
@@ -25,8 +25,9 @@ type ActionResult<T = void> =
 
 
 export async function createFlockAction(formData: FormData): Promise<ActionResult<{ id: string }>> {
-  const session = await getSession()
-  if (!session || session.role === 'operator') return { success: false, error: 'Akses ditolak' }
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role === 'operator') return { success: false, error: 'Akses ditolak' }
 
   const parsed = flockSchema.safeParse({
     coopId: formData.get('coopId'),
@@ -41,7 +42,7 @@ export async function createFlockAction(formData: FormData): Promise<ActionResul
   if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
 
   try {
-    const flock = await createFlock({ ...parsed.data, createdBy: session.id })
+    const flock = await createFlock(session.farmSchema, { ...parsed.data, createdBy: session.id })
     return { success: true, data: { id: flock.id } }
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Gagal membuat flock'
@@ -50,11 +51,12 @@ export async function createFlockAction(formData: FormData): Promise<ActionResul
 }
 
 export async function retireFlockAction(flockId: string): Promise<ActionResult> {
-  const session = await getSession()
-  if (!session || session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
 
   try {
-    await retireFlock(flockId, session.id)
+    await retireFlock(session.farmSchema, flockId, session.id)
     return { success: true, data: undefined }
   } catch {
     return { success: false, error: 'Gagal menutup flock' }
@@ -62,11 +64,11 @@ export async function retireFlockAction(flockId: string): Promise<ActionResult> 
 }
 
 export async function getActiveFlocksAction(): Promise<ActionResult<Awaited<ReturnType<typeof getAllActiveFlocks>>>> {
-  const session = await getSession()
-  if (!session) return { success: false, error: 'Tidak terautentikasi' }
+  const session = await getRequiredSession()
+  if ('error' in session) return session
 
   try {
-    const flocks = await getAllActiveFlocks()
+    const flocks = await getAllActiveFlocks(session.farmSchema)
     return { success: true, data: flocks }
   } catch {
     return { success: false, error: 'Gagal memuat daftar flock' }

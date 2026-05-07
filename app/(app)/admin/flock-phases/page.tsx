@@ -6,7 +6,7 @@ export default async function FlockPhasesPage() {
   const session = await getSession()
   if (!session || session.role !== 'admin') redirect('/dashboard')
 
-  const phases = await getAllFlockPhases()
+  const phases = await getAllFlockPhases(session.farmSchema)
 
   return (
     <div className="p-6 space-y-5">

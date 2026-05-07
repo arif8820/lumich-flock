@@ -54,7 +54,7 @@ export default async function AlertSettingsPage({
   const values = await Promise.all(
     SETTINGS.map(async (s) => ({
       key: s.key,
-      value: await getAppSetting(s.key) ?? s.placeholder,
+      value: await getAppSetting(session.farmSchema, s.key) ?? s.placeholder,
     }))
   )
   const settingMap = Object.fromEntries(values.map((v) => [v.key, v.value]))

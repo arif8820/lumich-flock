@@ -7,7 +7,7 @@ export default async function CreateSOPage() {
   const session = await getSession()
   if (!session || session.role === 'operator') redirect('/dashboard')
 
-  const customers = await getAllCustomers()
+  const customers = await getAllCustomers(session.farmSchema)
 
   return <CreateSOClient customers={customers} role={session.role} />
 }

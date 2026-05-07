@@ -13,9 +13,9 @@ export default async function UserKandangPage({ params }: { params: Promise<{ id
   if (!session || session.role !== 'admin') redirect('/dashboard')
 
   const [user, assignments, allCoops] = await Promise.all([
-    getUserById(id),
-    findAssignmentsByUser(id),
-    getAllCoops(),
+    getUserById(session.farmSchema, id),
+    findAssignmentsByUser(session.farmSchema, id),
+    getAllCoops(session.farmSchema),
   ])
 
   if (!user || user.role !== 'operator') redirect('/admin/users')

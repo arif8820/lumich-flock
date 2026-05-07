@@ -24,7 +24,7 @@ export async function GET(
   // 3. Fetch invoice (throws 'Invoice tidak ditemukan' if not found)
   let invoice: Awaited<ReturnType<typeof getInvoiceForPdf>>
   try {
-    invoice = await getInvoiceForPdf(id)
+    invoice = await getInvoiceForPdf(session.farmSchema, id)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Invoice tidak ditemukan'
     if (message === 'Invoice tidak ditemukan') {
@@ -68,7 +68,7 @@ export async function GET(
 
     // 8. Persist PDF metadata on invoice record
     const now = new Date()
-    await savePdfMetadata(id, signedData.signedUrl, now)
+    await savePdfMetadata(session.farmSchema, id, signedData.signedUrl, now)
 
     // 9. Return PDF bytes — convert Buffer to Uint8Array for Web Response compatibility
     return new Response(new Uint8Array(pdfBuffer), {
