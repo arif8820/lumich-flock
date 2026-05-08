@@ -124,14 +124,7 @@ export default async function AccountLedgerPage({
               href={`/kas/transaksi/baru?accountId=${accountId}&type=in`}
               className="press-feedback flex items-center gap-1 text-[12px] px-3 py-1.5 bg-gradient-to-r from-[#7aadd4] to-[#5090be] text-white rounded-lg"
             >
-              <Plus size={13} /> Masuk
-            </Link>
-            <Link
-              href={`/kas/transaksi/baru?accountId=${accountId}&type=out`}
-              className="press-feedback flex items-center gap-1 text-[12px] px-3 py-1.5 border rounded-lg"
-              style={{ borderColor: '#e0e8df', color: '#5a6b5b' }}
-            >
-              <Plus size={13} /> Keluar
+              <Plus size={13} /> Transaksi
             </Link>
           </div>
         )}
