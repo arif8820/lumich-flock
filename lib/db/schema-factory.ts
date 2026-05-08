@@ -41,6 +41,9 @@ export function getFarmSchema(schema: string) {
   const correctionEntityTypeEnum = s.enum('correction_entity_type', ['daily_records', 'inventory_movements', 'sales_orders'])
   const notificationTypeEnum = s.enum('notification_type', ['production_alert', 'overdue_invoice', 'stock_warning', 'phase_change', 'other'])
   const notificationTargetRoleEnum = s.enum('notification_target_role', ['operator', 'supervisor', 'admin', 'all'])
+  const cashAccountTypeEnum = s.enum('cash_account_type', ['cash', 'bank', 'ewallet'])
+  const cashTransactionTypeEnum = s.enum('cash_transaction_type', ['in', 'out', 'transfer_in', 'transfer_out'])
+  const cashCategoryTypeEnum = s.enum('cash_category_type', ['in', 'out', 'both'])
 
   // --- Tables (dependency order) ---
 
@@ -396,6 +399,39 @@ export function getFarmSchema(schema: string) {
     updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdateFn(() => new Date()).notNull(),
   })
 
+  const cashCategories = s.table('cash_categories', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: text('name').notNull(),
+    type: cashCategoryTypeEnum('type').notNull(),
+    isActive: boolean('is_active').notNull().default(true),
+  })
+
+  const cashAccounts = s.table('cash_accounts', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: text('name').notNull(),
+    type: cashAccountTypeEnum('type').notNull(),
+    beginningBalance: numeric('beginning_balance', { precision: 15, scale: 2 }).notNull().default('0'),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdateFn(() => new Date()),
+  })
+
+  const cashTransactions = s.table('cash_transactions', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    accountId: uuid('account_id').notNull().references(() => cashAccounts.id),
+    type: cashTransactionTypeEnum('type').notNull(),
+    amount: numeric('amount', { precision: 15, scale: 2 }).notNull(),
+    transactionDate: date('transaction_date', { mode: 'date' }).notNull(),
+    categoryId: uuid('category_id').references(() => cashCategories.id),
+    referenceNumber: text('reference_number'),
+    description: text('description'),
+    transferRefId: uuid('transfer_ref_id'),
+    sourceType: text('source_type'),
+    sourceId: uuid('source_id'),
+    createdBy: uuid('created_by').notNull().references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  })
+
   return {
     users,
     coops,
@@ -425,6 +461,9 @@ export function getFarmSchema(schema: string) {
     notificationReads,
     alertCooldowns,
     appSettings,
+    cashCategories,
+    cashAccounts,
+    cashTransactions,
   }
 }
 
