@@ -10,6 +10,7 @@ import {
   updateAccountSettings,
 } from '@/lib/services/cash.service'
 import * as categoryQueries from '@/lib/db/queries/cash-category.queries'
+import { countTransactionsByAccount } from '@/lib/db/queries/cash-account.queries'
 
 type ActionResult<T = undefined> =
   | { success: true; data: T }
@@ -17,11 +18,18 @@ type ActionResult<T = undefined> =
 
 // ── Schemas ──────────────────────────────────────────────────
 
+function maxDate() {
+  const d = new Date()
+  d.setDate(d.getDate() + 1)
+  d.setHours(23, 59, 59, 999)
+  return d
+}
+
 const createTransactionSchema = z.object({
   accountId: z.string().uuid('ID akun tidak valid'),
   type: z.enum(['in', 'out']),
   amount: z.coerce.number().positive('Jumlah harus lebih dari 0'),
-  transactionDate: z.coerce.date(),
+  transactionDate: z.coerce.date().max(maxDate(), 'Tanggal tidak boleh lebih dari H+1'),
   categoryId: z.string().uuid().optional(),
   referenceNumber: z.string().max(200).trim().optional(),
   description: z.string().max(500).trim().optional(),
@@ -31,9 +39,12 @@ const createTransferSchema = z.object({
   fromAccountId: z.string().uuid('ID akun asal tidak valid'),
   toAccountId: z.string().uuid('ID akun tujuan tidak valid'),
   amount: z.coerce.number().positive('Jumlah harus lebih dari 0'),
-  transactionDate: z.coerce.date(),
+  transactionDate: z.coerce.date().max(maxDate(), 'Tanggal tidak boleh lebih dari H+1'),
   referenceNumber: z.string().max(200).trim().optional(),
   description: z.string().max(500).trim().optional(),
+}).refine(d => d.fromAccountId !== d.toAccountId, {
+  message: 'Akun asal dan tujuan tidak boleh sama',
+  path: ['toAccountId'],
 })
 
 const createAccountSchema = z.object({
@@ -42,12 +53,14 @@ const createAccountSchema = z.object({
   beginningBalance: z.coerce.number().min(0).optional(),
 })
 
+const booleanFromString = z.string().transform(v => v === 'true').optional()
+
 const updateAccountSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1).max(100).trim().optional(),
   type: z.enum(['cash', 'bank', 'ewallet']).optional(),
   beginningBalance: z.coerce.number().min(0).optional(),
-  isActive: z.coerce.boolean().optional(),
+  isActive: booleanFromString,
 })
 
 const createCategorySchema = z.object({
@@ -59,7 +72,7 @@ const updateCategorySchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1).max(100).trim().optional(),
   type: z.enum(['in', 'out', 'both']).optional(),
-  isActive: z.coerce.boolean().optional(),
+  isActive: booleanFromString,
 })
 
 // ── Actions ───────────────────────────────────────────────────
@@ -161,6 +174,14 @@ export async function updateAccountAction(
   if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
 
   const { id, ...rest } = parsed.data
+
+  if (rest.beginningBalance !== undefined) {
+    const txCount = await countTransactionsByAccount(session.farmSchema, id)
+    if (txCount > 0) {
+      return { success: false, error: 'Saldo awal tidak dapat diubah karena sudah ada transaksi' }
+    }
+  }
+
   const input = {
     ...rest,
     beginningBalance: rest.beginningBalance !== undefined ? rest.beginningBalance.toFixed(2) : undefined,

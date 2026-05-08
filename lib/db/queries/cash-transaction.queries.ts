@@ -1,6 +1,6 @@
 import { db, DrizzleTx } from '@/lib/db'
 import { getFarmSchema } from '@/lib/db/schema-factory'
-import { eq, and, desc, gte, lte, sql, getTableColumns } from 'drizzle-orm'
+import { eq, and, desc, gte, lte, lt, sql, getTableColumns } from 'drizzle-orm'
 
 export type TransactionFilter = {
   accountId?: string
@@ -17,7 +17,7 @@ export async function listTransactions(farmSchema: string, filter: TransactionFi
 
   const conditions = [
     filter.accountId ? eq(cashTransactions.accountId, filter.accountId) : undefined,
-    // any: Drizzle enum type inference
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Drizzle enum type inference
     filter.type ? eq(cashTransactions.type, filter.type as any) : undefined,
     filter.categoryId ? eq(cashTransactions.categoryId, filter.categoryId) : undefined,
     filter.dateFrom ? gte(cashTransactions.transactionDate, filter.dateFrom) : undefined,
@@ -105,8 +105,8 @@ export async function getDailyReport(
   const rows = await db
     .select({
       transactionDate: cashTransactions.transactionDate,
-      totalIn: sql<number>`COALESCE(SUM(CAST(${cashTransactions.amount} AS NUMERIC)) FILTER (WHERE ${cashTransactions.type} IN ('in', 'transfer_in')), 0)`,
-      totalOut: sql<number>`COALESCE(SUM(CAST(${cashTransactions.amount} AS NUMERIC)) FILTER (WHERE ${cashTransactions.type} IN ('out', 'transfer_out')), 0)`,
+      totalIn: sql<number>`COALESCE(SUM(CAST("amount" AS NUMERIC)) FILTER (WHERE "type" IN ('in', 'transfer_in')), 0)`,
+      totalOut: sql<number>`COALESCE(SUM(CAST("amount" AS NUMERIC)) FILTER (WHERE "type" IN ('out', 'transfer_out')), 0)`,
     })
     .from(cashTransactions)
     .where(
@@ -122,15 +122,15 @@ export async function getDailyReport(
   const [priorRow] = await db
     .select({
       priorBalance: sql<number>`
-        COALESCE(SUM(CAST(${cashTransactions.amount} AS NUMERIC)) FILTER (WHERE ${cashTransactions.type} IN ('in', 'transfer_in')), 0)
-        - COALESCE(SUM(CAST(${cashTransactions.amount} AS NUMERIC)) FILTER (WHERE ${cashTransactions.type} IN ('out', 'transfer_out')), 0)
+        COALESCE(SUM(CAST("amount" AS NUMERIC)) FILTER (WHERE "type" IN ('in', 'transfer_in')), 0)
+        - COALESCE(SUM(CAST("amount" AS NUMERIC)) FILTER (WHERE "type" IN ('out', 'transfer_out')), 0)
       `,
     })
     .from(cashTransactions)
     .where(
       and(
         eq(cashTransactions.accountId, accountId),
-        sql`${cashTransactions.transactionDate} < ${dateFrom}`
+        lt(cashTransactions.transactionDate, dateFrom)
       )
     )
 

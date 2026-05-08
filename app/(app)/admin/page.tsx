@@ -1,7 +1,13 @@
 import Link from 'next/link'
-import { Users, Settings, MessageSquare, Bell, Upload, Package } from 'lucide-react'
+import { Users, Settings, MessageSquare, Bell, Upload, Package, Wallet } from 'lucide-react'
 
 const MENU = [
+  {
+    href: '/admin/kas',
+    icon: Wallet,
+    label: 'Pengaturan Kas',
+    desc: 'Kelola akun kas dan kategori transaksi',
+  },
   {
     href: '/admin/stok-katalog',
     icon: Package,

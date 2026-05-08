@@ -1,4 +1,4 @@
-import { db, DrizzleTx } from '@/lib/db'
+import { db } from '@/lib/db'
 import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq, sql } from 'drizzle-orm'
 
@@ -27,12 +27,15 @@ export async function updateAccount(farmSchema: string, id: string, input: { nam
 
 export async function getAccountBalance(farmSchema: string, id: string): Promise<number> {
   const { cashAccounts, cashTransactions } = getFarmSchema(farmSchema)
+  // Use raw schema-qualified column refs inside FILTER — Drizzle interpolates column refs
+  // as parameter bindings in sql`` templates, which breaks FILTER (WHERE col IN (...)) syntax.
+  const ct = `"${farmSchema}"."cash_transactions"`
   const [row] = await db
     .select({
       balance: sql<number>`
         CAST(${cashAccounts.beginningBalance} AS NUMERIC)
-        + COALESCE(SUM(CAST(${cashTransactions.amount} AS NUMERIC)) FILTER (WHERE ${cashTransactions.type} IN ('in', 'transfer_in')), 0)
-        - COALESCE(SUM(CAST(${cashTransactions.amount} AS NUMERIC)) FILTER (WHERE ${cashTransactions.type} IN ('out', 'transfer_out')), 0)
+        + COALESCE(SUM(CAST(${cashTransactions.amount} AS NUMERIC)) FILTER (WHERE ${sql.raw(ct)}."type" IN ('in', 'transfer_in')), 0)
+        - COALESCE(SUM(CAST(${cashTransactions.amount} AS NUMERIC)) FILTER (WHERE ${sql.raw(ct)}."type" IN ('out', 'transfer_out')), 0)
       `,
     })
     .from(cashAccounts)
