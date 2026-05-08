@@ -347,6 +347,47 @@ CREATE TABLE "customer_credits" (
 );
 
 -- ============================================
+-- KAS (CASH LEDGER) TABLES
+-- ============================================
+
+CREATE TYPE "cash_account_type" AS ENUM('cash', 'bank', 'ewallet');
+CREATE TYPE "cash_transaction_type" AS ENUM('in', 'out', 'transfer_in', 'transfer_out');
+CREATE TYPE "cash_category_type" AS ENUM('in', 'out', 'both');
+
+CREATE TABLE "cash_categories" (
+    "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+    "name" text NOT NULL,
+    "type" "cash_category_type" NOT NULL,
+    "is_active" boolean DEFAULT true NOT NULL
+);
+
+CREATE TABLE "cash_accounts" (
+    "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+    "name" text NOT NULL,
+    "type" "cash_account_type" NOT NULL,
+    "beginning_balance" numeric(15, 2) DEFAULT '0' NOT NULL,
+    "is_active" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp with time zone
+);
+
+CREATE TABLE "cash_transactions" (
+    "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+    "account_id" uuid NOT NULL,
+    "type" "cash_transaction_type" NOT NULL,
+    "amount" numeric(15, 2) NOT NULL,
+    "transaction_date" date NOT NULL,
+    "category_id" uuid,
+    "reference_number" text,
+    "description" text,
+    "transfer_ref_id" uuid,
+    "source_type" text,
+    "source_id" uuid,
+    "created_by" uuid NOT NULL,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- ============================================
 -- AUDIT / OPERATIONS TABLES
 -- ============================================
 
@@ -474,6 +515,10 @@ ALTER TABLE "notification_reads" ADD CONSTRAINT "notification_reads_notification
 ALTER TABLE "notification_reads" ADD CONSTRAINT "notification_reads_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE no action ON UPDATE no action;
 
 ALTER TABLE "app_settings" ADD CONSTRAINT "app_settings_updated_by_users_id_fk" FOREIGN KEY ("updated_by") REFERENCES "users"("id") ON DELETE no action ON UPDATE no action;
+
+ALTER TABLE "cash_transactions" ADD CONSTRAINT "cash_transactions_account_id_fk" FOREIGN KEY ("account_id") REFERENCES "cash_accounts"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "cash_transactions" ADD CONSTRAINT "cash_transactions_category_id_fk" FOREIGN KEY ("category_id") REFERENCES "cash_categories"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "cash_transactions" ADD CONSTRAINT "cash_transactions_created_by_fk" FOREIGN KEY ("created_by") REFERENCES "users"("id") ON DELETE no action ON UPDATE no action;
 
 -- ============================================
 -- INDEXES
