@@ -3,7 +3,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { LayoutDashboard, Egg, Package, DollarSign, Bird, Settings, LogOut, BarChart2, ChevronDown } from 'lucide-react'
+import { LayoutDashboard, Egg, Package, DollarSign, Bird, Settings, LogOut, BarChart2, ChevronDown, Wallet } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { SessionUser } from '@/lib/auth/get-session'
 import type { Notification } from '@/lib/services/notification.service'
@@ -58,6 +58,18 @@ const NAV_SECTIONS: { section?: string; items: NavItem[] }[] = [
           { href: '/penjualan/invoices', label: 'Invoice', roles: ['admin', 'supervisor'] },
           { href: '/admin/pelanggan', label: 'Pelanggan', roles: ['admin', 'supervisor'] },
         ],
+      },
+    ],
+  },
+  {
+    section: 'Keuangan',
+    items: [
+      {
+        kind: 'flat',
+        href: '/kas',
+        icon: Wallet,
+        label: 'Kas',
+        roles: ['admin', 'supervisor'],
       },
     ],
   },
