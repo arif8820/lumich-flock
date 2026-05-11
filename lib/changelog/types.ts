@@ -9,6 +9,5 @@ export type VersionEntry = {
   version: string
   date: string        // ISO "YYYY-MM-DD"
   title: string
-  highlights: string[]
-  changes: ChangeEntry[]
+changes: ChangeEntry[]
 }

@@ -53,11 +53,17 @@ export default function ChangelogPage() {
                     {entry.version}
                   </span>
                   <span className="text-xs" style={{ color: '#94a3b8' }}>
-                    {new Date(entry.date).toLocaleDateString('id-ID', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                    })}
+                    {(() => {
+                      const parts = entry.date.split('-').map(Number)
+                      const year = parts[0] ?? 0
+                      const month = parts[1] ?? 1
+                      const day = parts[2] ?? 1
+                      return new Date(year, month - 1, day).toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })
+                    })()}
                   </span>
                   {isLatest && (
                     <span

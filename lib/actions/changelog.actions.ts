@@ -10,7 +10,8 @@ export async function markChangelogSeen(): Promise<{ success: boolean; error?: s
       path: '/',
       maxAge: 60 * 60 * 24 * 365,
       sameSite: 'lax',
-      httpOnly: false,
+      httpOnly: false, // intentional: UI-state only, not sensitive
+      secure: process.env.NODE_ENV === 'production',
     })
     return { success: true }
   } catch (err) {
