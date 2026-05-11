@@ -5,6 +5,7 @@ import type { NextRequest } from 'next/server'
 export async function GET(request: NextRequest) {
   const supabase = await createSupabaseServerClient()
   await supabase.auth.signOut()
-  // Use request origin so redirect works regardless of port (dev vs prod)
-  return NextResponse.redirect(new URL('/login', request.url))
+  // Use NEXT_PUBLIC_APP_URL in prod to avoid redirecting to internal reverse-proxy origin
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? request.url
+  return NextResponse.redirect(new URL('/login', base))
 }
