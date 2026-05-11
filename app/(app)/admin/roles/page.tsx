@@ -8,7 +8,7 @@ import { RoleManagementClient } from './RoleManagementClient'
 export default async function RolesPage() {
   const session = await getSession()
   if (!session) redirect('/login')
-  if (!hasPermission(session, PERMISSIONS.ROLE.MANAGE)) redirect('/dashboard')
+  if (!hasPermission(session, PERMISSIONS.ROLE.MANAGE)) redirect('/forbidden')
 
   const roles = await listRoles(session.farmSchema)
 
