@@ -37,7 +37,9 @@ export default function ChangelogPage() {
 
         {/* Entries */}
         <div className="flex flex-col gap-8">
-          {changelog.map((entry, index) => {
+          {changelog.length === 0 ? (
+            <p style={{ color: '#8fa08f' }}>Belum ada catatan pembaruan.</p>
+          ) : changelog.map((entry, index) => {
             const isLatest = index === 0
             return (
               <div
