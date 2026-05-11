@@ -10,6 +10,7 @@ import type { PermissionKey } from '@/lib/auth/permissions'
 import type { Notification } from '@/lib/services/notification.service'
 import { PERMISSIONS } from '@/lib/auth/permissions'
 import { NotificationBell } from '@/components/ui/notification-bell'
+import { VersionBadge } from '@/components/layout/version-badge'
 
 type NavSubItem = {
   href: string
@@ -145,11 +146,13 @@ export function Sidebar({
   currentPath,
   notifications,
   readNotificationIds,
+  hasNewVersion,
 }: {
   user: ClientUser
   currentPath: string
   notifications: Notification[]
   readNotificationIds: string[]
+  hasNewVersion: boolean
 }) {
   const { permissionKeys } = user
 
@@ -268,6 +271,8 @@ export function Sidebar({
           )
         })}
       </div>
+
+      <VersionBadge hasNewVersion={hasNewVersion} />
 
       {/* User card */}
       <div className="mx-[10px] mb-4 px-[10px] py-2 rounded-[9px] flex items-center gap-2.5" style={{ background: '#f7f5f1' }}>
