@@ -17,11 +17,13 @@ export function AppShell({
   children,
   notifications,
   readNotificationIds,
+  hasNewVersion,
 }: {
   user: ClientUser
   children: React.ReactNode
   notifications: Notification[]
   readNotificationIds: string[]
+  hasNewVersion: boolean
 }) {
   const pathname = usePathname()
 
@@ -32,6 +34,7 @@ export function AppShell({
         currentPath={pathname}
         notifications={notifications}
         readNotificationIds={readNotificationIds}
+        hasNewVersion={hasNewVersion}
       />
       <main className="flex-1 overflow-auto pb-16 md:pb-0">
         {children}
