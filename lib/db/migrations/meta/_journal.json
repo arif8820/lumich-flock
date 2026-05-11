@@ -78,6 +78,13 @@
       "when": 1778057871471,
       "tag": "0010_redundant_edwin_jarvis",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1747008000000,
+      "tag": "0011_rbac_roles_and_permissions",
+      "breakpoints": true
     }
   ]
 }
