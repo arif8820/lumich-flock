@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 import { getRequiredSession } from '@/lib/auth/guards'
-import { saveDailyRecord, getFlockOptionsForInput } from '@/lib/services/daily-record.service'
+import { saveDailyRecord, getFlockOptionsForInput, type Role } from '@/lib/services/daily-record.service'
 import { findAssignedCoopIds } from '@/lib/db/queries/user-coop-assignment.queries'
 import { findFlockById } from '@/lib/db/queries/flock.queries'
 
@@ -56,11 +56,11 @@ export async function saveDailyRecordAction(
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
   }
 
-  const coopGuard = await assertCoopAccess(session.farmSchema, session.id, session.role, parsed.data.flockId)
+  const coopGuard = await assertCoopAccess(session.farmSchema, session.id, session.roleSlug as Role, parsed.data.flockId)
   if (coopGuard) return coopGuard
 
   try {
-    const record = await saveDailyRecord(session.farmSchema, parsed.data, session.id, session.role)
+    const record = await saveDailyRecord(session.farmSchema, parsed.data, session.id, session.roleSlug as Role)
     return { success: true, data: { id: record.id } }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal menyimpan data produksi' }
@@ -74,7 +74,7 @@ export async function getFlockOptionsForInputAction(): Promise<ActionResult<impo
   if ('error' in session) return session
 
   try {
-    const data = await getFlockOptionsForInput(session.farmSchema, session.id, session.role)
+    const data = await getFlockOptionsForInput(session.farmSchema, session.id, session.roleSlug as Role)
     return { success: true, data }
   } catch {
     return { success: false, error: 'Gagal memuat daftar flock' }

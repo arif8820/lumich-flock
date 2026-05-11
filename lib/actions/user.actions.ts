@@ -1,7 +1,8 @@
 'use server'
 
 import { z } from 'zod'
-import { getRequiredSession } from '@/lib/auth/guards'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import {
   createUser,
   getAllUsers,
@@ -33,7 +34,8 @@ export async function createUserAction(
 ): Promise<ActionResult<{ id: string }>> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.USER.MANAGE)
+  if (denied) return denied
 
   const parsed = createUserSchema.safeParse({
     email: formData.get('email'),
@@ -60,7 +62,8 @@ export async function updateUserRoleAction(
 ): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.USER.MANAGE)
+  if (denied) return denied
 
   try {
     await updateUserRole(session.farmSchema, userId, role)
@@ -73,7 +76,8 @@ export async function updateUserRoleAction(
 export async function deactivateUserAction(userId: string): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.USER.MANAGE)
+  if (denied) return denied
 
   try {
     await deactivateUser(session.farmSchema, userId)
@@ -86,7 +90,8 @@ export async function deactivateUserAction(userId: string): Promise<ActionResult
 export async function activateUserAction(userId: string): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.USER.MANAGE)
+  if (denied) return denied
 
   try {
     await activateUser(session.farmSchema, userId)
@@ -102,7 +107,8 @@ export async function changeUserPasswordAction(
 ): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.USER.MANAGE)
+  if (denied) return denied
 
   const parsed = passwordSchema.safeParse(newPassword)
   if (!parsed.success) {
@@ -120,7 +126,8 @@ export async function changeUserPasswordAction(
 export async function getUsersAction(): Promise<ActionResult<Awaited<ReturnType<typeof getAllUsers>>>> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.USER.MANAGE)
+  if (denied) return denied
 
   try {
     const users = await getAllUsers(session.farmSchema)

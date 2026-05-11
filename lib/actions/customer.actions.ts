@@ -1,7 +1,8 @@
 'use server'
 
 import { z } from 'zod'
-import { getRequiredSession } from '@/lib/auth/guards'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import {
   createCustomer,
   getAllCustomers,
@@ -27,7 +28,8 @@ type ActionResult<T = void> =
 export async function createCustomerAction(formData: FormData): Promise<ActionResult<{ id: string }>> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const deniedCreate = requirePermission(session, PERMISSIONS.SALES.CREATE)
+  if (deniedCreate) return deniedCreate
 
   const parsed = customerSchema.safeParse({
     name: formData.get('name'),
@@ -51,7 +53,8 @@ export async function createCustomerAction(formData: FormData): Promise<ActionRe
 export async function updateCustomerAction(id: string, formData: FormData): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const deniedUpdate = requirePermission(session, PERMISSIONS.SALES.CREATE)
+  if (deniedUpdate) return deniedUpdate
 
   const parsed = customerSchema.safeParse({
     name: formData.get('name'),
@@ -75,7 +78,8 @@ export async function updateCustomerAction(id: string, formData: FormData): Prom
 export async function deactivateCustomerAction(id: string): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const deniedDeactivate = requirePermission(session, PERMISSIONS.SALES.CREATE)
+  if (deniedDeactivate) return deniedDeactivate
   try {
     await deactivateCustomer(session.farmSchema, id)
     return { success: true, data: undefined }
@@ -87,7 +91,8 @@ export async function deactivateCustomerAction(id: string): Promise<ActionResult
 export async function activateCustomerAction(id: string): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const deniedActivate = requirePermission(session, PERMISSIONS.SALES.CREATE)
+  if (deniedActivate) return deniedActivate
   try {
     await activateCustomer(session.farmSchema, id)
     return { success: true, data: undefined }
@@ -99,7 +104,8 @@ export async function activateCustomerAction(id: string): Promise<ActionResult> 
 export async function getCustomersAction(): Promise<ActionResult<Awaited<ReturnType<typeof getAllCustomers>>>> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role === 'operator') return { success: false, error: 'Akses ditolak' }
+  const deniedView = requirePermission(session, PERMISSIONS.SALES.VIEW)
+  if (deniedView) return deniedView
   try {
     const customers = await getAllCustomers(session.farmSchema)
     return { success: true, data: customers }

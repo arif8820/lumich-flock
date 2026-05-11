@@ -9,6 +9,8 @@ import {
 } from '@/lib/services/notification.service'
 import type { Notification } from '@/lib/services/notification.service'
 
+type NotificationRole = 'operator' | 'supervisor' | 'admin'
+
 type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: false; error: string }
@@ -18,7 +20,7 @@ export async function getNotificationsAction(): Promise<ActionResult<Notificatio
   if ('error' in session) return session
 
   try {
-    const data = await getNotificationsForRole(session.farmSchema, session.role)
+    const data = await getNotificationsForRole(session.farmSchema, session.roleSlug as NotificationRole)
     return { success: true, data }
   } catch {
     return { success: false, error: 'Gagal memuat notifikasi' }
@@ -30,7 +32,7 @@ export async function getUnreadCountAction(): Promise<ActionResult<number>> {
   if ('error' in session) return session
 
   try {
-    const count = await getUnreadCount(session.farmSchema, session.id, session.role)
+    const count = await getUnreadCount(session.farmSchema, session.id, session.roleSlug as NotificationRole)
     return { success: true, data: count }
   } catch {
     return { success: false, error: 'Gagal memuat jumlah notifikasi belum dibaca' }
@@ -56,7 +58,7 @@ export async function markAllNotificationsReadAction(): Promise<ActionResult> {
   if ('error' in session) return session
 
   try {
-    await readAllNotifications(session.farmSchema, session.id, session.role)
+    await readAllNotifications(session.farmSchema, session.id, session.roleSlug as NotificationRole)
     return { success: true, data: undefined }
   } catch {
     return { success: false, error: 'Gagal menandai semua notifikasi sebagai dibaca' }

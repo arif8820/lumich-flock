@@ -11,7 +11,8 @@ export type SessionUser = {
   email: string
   fullName: string
   roleId: string
-  roleName: string
+  roleSlug: string       // roles.name — slug like 'admin', 'operator', 'kasir'
+  roleName: string       // roles.display_name — human-readable
   isAdmin: boolean
   isActive: boolean
   createdBy: string | null
@@ -65,6 +66,7 @@ function getCachedSession(userId: string, email: string) {
         email: dbUser.email,
         fullName: dbUser.fullName,
         roleId: dbUser.roleId,
+        roleSlug: roleRow.name,
         roleName: roleRow.displayName,
         isAdmin: roleRow.isSystem,
         isActive: dbUser.isActive,

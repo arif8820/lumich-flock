@@ -1,7 +1,8 @@
 'use server'
 
 import { z } from 'zod'
-import { getRequiredSession } from '@/lib/auth/guards'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { createCoop, getAllCoops, updateCoop, deactivateCoop, activateCoop } from '@/lib/services/coop.service'
 
 const coopSchema = z.object({
@@ -17,7 +18,8 @@ type ActionResult<T = void> =
 export async function createCoopAction(formData: FormData): Promise<ActionResult<{ id: string }>> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.COOP.MANAGE)
+  if (denied) return denied
 
   const parsed = coopSchema.safeParse({
     name: formData.get('name'),
@@ -37,7 +39,8 @@ export async function createCoopAction(formData: FormData): Promise<ActionResult
 export async function updateCoopAction(id: string, formData: FormData): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.COOP.MANAGE)
+  if (denied) return denied
 
   const parsed = coopSchema.safeParse({
     name: formData.get('name'),
@@ -57,7 +60,8 @@ export async function updateCoopAction(id: string, formData: FormData): Promise<
 export async function deactivateCoopAction(id: string): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.COOP.MANAGE)
+  if (denied) return denied
   try {
     await deactivateCoop(session.farmSchema, id)
     return { success: true, data: undefined }
@@ -69,7 +73,8 @@ export async function deactivateCoopAction(id: string): Promise<ActionResult> {
 export async function activateCoopAction(id: string): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.COOP.MANAGE)
+  if (denied) return denied
   try {
     await activateCoop(session.farmSchema, id)
     return { success: true, data: undefined }

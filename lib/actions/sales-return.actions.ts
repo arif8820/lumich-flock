@@ -2,7 +2,8 @@
 
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-import { getRequiredSession } from '@/lib/auth/guards'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import {
   createSalesReturn,
   approveSalesReturn,
@@ -31,7 +32,8 @@ type ActionResult<T> =
 export async function createSalesReturnAction(formData: FormData): Promise<ActionResult<{ id: string }>> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (!['supervisor', 'admin'].includes(session.role)) return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.SALES.CREATE)
+  if (denied) return denied
 
   // Parse items array from FormData
   const itemsJson = formData.get('items')
@@ -60,7 +62,7 @@ export async function createSalesReturnAction(formData: FormData): Promise<Actio
   }
 
   try {
-    const salesReturn = await createSalesReturn(session.farmSchema, parsed.data, session.id, session.role)
+    const salesReturn = await createSalesReturn(session.farmSchema, parsed.data, session.id, session.roleSlug)
     revalidatePath('/penjualan/return')
     return { success: true, data: { id: salesReturn.id } }
   } catch (error) {
@@ -71,10 +73,11 @@ export async function createSalesReturnAction(formData: FormData): Promise<Actio
 export async function approveSalesReturnAction(returnId: string): Promise<ActionResult<undefined>> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const deniedApprove = requirePermission(session, PERMISSIONS.SALES.APPROVE)
+  if (deniedApprove) return deniedApprove
 
   try {
-    await approveSalesReturn(session.farmSchema, returnId, session.id, session.role)
+    await approveSalesReturn(session.farmSchema, returnId, session.id, session.roleSlug)
     revalidatePath(`/penjualan/return/${returnId}`)
     revalidatePath('/penjualan/return')
     return { success: true, data: undefined }
@@ -86,10 +89,11 @@ export async function approveSalesReturnAction(returnId: string): Promise<Action
 export async function rejectSalesReturnAction(returnId: string): Promise<ActionResult<undefined>> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const deniedReject = requirePermission(session, PERMISSIONS.SALES.APPROVE)
+  if (deniedReject) return deniedReject
 
   try {
-    await rejectSalesReturn(session.farmSchema, returnId, session.id, session.role)
+    await rejectSalesReturn(session.farmSchema, returnId, session.id, session.roleSlug)
     revalidatePath(`/penjualan/return/${returnId}`)
     revalidatePath('/penjualan/return')
     return { success: true, data: undefined }

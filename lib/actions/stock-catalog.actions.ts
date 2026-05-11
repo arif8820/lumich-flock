@@ -1,7 +1,8 @@
 'use server'
 
 import { z } from 'zod'
-import { getRequiredSession } from '@/lib/auth/guards'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import {
   createCategory,
   createStockItem,
@@ -27,7 +28,8 @@ export async function createCategoryAction(
 ): Promise<ActionResult<{ id: string }>> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.STOK.CREATE)
+  if (denied) return denied
 
   const parsed = createCategorySchema.safeParse({
     name: formData.get('name'),
@@ -50,7 +52,8 @@ export async function createStockItemAction(
 ): Promise<ActionResult<{ id: string }>> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.STOK.CREATE)
+  if (denied) return denied
 
   const parsed = createStockItemSchema.safeParse({
     categoryId: formData.get('categoryId'),
@@ -73,7 +76,8 @@ export async function toggleStockItemActiveAction(
 ): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.STOK.CREATE)
+  if (denied) return denied
 
   const parsed = z.string().uuid().safeParse(itemId)
   if (!parsed.success) return { success: false, error: 'ID tidak valid' }

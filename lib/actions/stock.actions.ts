@@ -1,7 +1,8 @@
 'use server'
 
 import { z } from 'zod'
-import { getRequiredSession } from '@/lib/auth/guards'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import {
   getStockBalance,
   getAllStockBalances,
@@ -12,6 +13,8 @@ import {
   createStockPurchase,
   type StockBalance,
 } from '@/lib/services/stock.service'
+
+type StockRole = 'operator' | 'supervisor' | 'admin'
 
 type ActionResult<T = void> =
   | { success: true; data: T }
@@ -74,7 +77,8 @@ export async function createStockAdjustmentAction(
 ): Promise<ActionResult<{ id: string }>> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (!['supervisor', 'admin'].includes(session.role)) return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.STOK.ADJUST)
+  if (denied) return denied
 
   const parsed = stockAdjustmentSchema.safeParse({
     stockItemId: formData.get('stockItemId'),
@@ -88,7 +92,7 @@ export async function createStockAdjustmentAction(
   }
 
   try {
-    const result = await createStockAdjustment(session.farmSchema, parsed.data, session.id, session.role)
+    const result = await createStockAdjustment(session.farmSchema, parsed.data, session.id, session.roleSlug as StockRole)
     return { success: true, data: { id: result.id } }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal menyimpan penyesuaian stok' }
@@ -100,7 +104,8 @@ export async function submitRegradeRequestAction(
 ): Promise<ActionResult<{ id: string }>> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (!['supervisor', 'admin'].includes(session.role)) return { success: false, error: 'Akses ditolak' }
+  const deniedRegrade = requirePermission(session, PERMISSIONS.STOK.ADJUST)
+  if (deniedRegrade) return deniedRegrade
 
   const parsed = regradeRequestSchema.safeParse({
     fromItemId: formData.get('fromItemId'),
@@ -126,7 +131,8 @@ export async function approveRegradeRequestAction(
 ): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const deniedApprove = requirePermission(session, PERMISSIONS.STOK.ADJUST)
+  if (deniedApprove) return deniedApprove
 
   try {
     await approveRegradeRequest(session.farmSchema, requestId, session.id)
@@ -141,7 +147,8 @@ export async function rejectRegradeRequestAction(
 ): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const deniedReject = requirePermission(session, PERMISSIONS.STOK.ADJUST)
+  if (deniedReject) return deniedReject
 
   try {
     await rejectRegradeRequest(session.farmSchema, requestId, session.id)
@@ -156,7 +163,8 @@ export async function createStockPurchaseAction(
 ): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (!['supervisor', 'admin'].includes(session.role)) return { success: false, error: 'Akses ditolak' }
+  const deniedPurchase = requirePermission(session, PERMISSIONS.STOK.CREATE)
+  if (deniedPurchase) return deniedPurchase
 
   const parsed = stockPurchaseSchema.safeParse({
     stockItemId: formData.get('stockItemId'),

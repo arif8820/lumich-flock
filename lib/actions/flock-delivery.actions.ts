@@ -1,7 +1,8 @@
 'use server'
 
 import { z } from 'zod'
-import { getRequiredSession } from '@/lib/auth/guards'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { createFlockDelivery } from '@/lib/services/flock-delivery.service'
 
 const flockDeliverySchema = z.object({
@@ -19,7 +20,8 @@ type ActionResult<T = void> =
 export async function createFlockDeliveryAction(formData: FormData): Promise<ActionResult<{ id: string }>> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role === 'operator') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.FLOCK.UPDATE)
+  if (denied) return denied
 
   const parsed = flockDeliverySchema.safeParse({
     flockId: formData.get('flockId'),

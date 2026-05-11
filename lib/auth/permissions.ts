@@ -10,7 +10,9 @@ export const PERMISSIONS = {
   COOP: { MANAGE: 'coop.manage' },
 } as const
 
-export type PermissionKey = typeof PERMISSIONS[keyof typeof PERMISSIONS][keyof typeof PERMISSIONS[keyof typeof PERMISSIONS]]
+export type PermissionKey = {
+  [K in keyof typeof PERMISSIONS]: typeof PERMISSIONS[K][keyof typeof PERMISSIONS[K]]
+}[keyof typeof PERMISSIONS]
 
 export const ALL_PERMISSIONS: PermissionKey[] = Object.values(PERMISSIONS)
   .flatMap((module) => Object.values(module)) as PermissionKey[]
