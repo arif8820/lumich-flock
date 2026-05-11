@@ -37,11 +37,12 @@ export async function provisionFarm(schemaName: string, farmName: string): Promi
     await directClient.unsafe(`
       SET search_path = "${schemaName}";
 
-      -- Insert default roles
+      -- Insert default roles (idempotent)
       INSERT INTO roles (name, display_name, is_system) VALUES
         ('admin', 'Admin', true),
         ('supervisor', 'Supervisor', false),
-        ('operator', 'Operator', false);
+        ('operator', 'Operator', false)
+      ON CONFLICT (name) DO NOTHING;
 
       -- Seed admin permissions (all)
       INSERT INTO role_permissions (role_id, permission_key)
@@ -57,7 +58,8 @@ export async function provisionFarm(schemaName: string, farmName: string): Promi
         ('role.manage'),
         ('coop.manage')
       ) AS p(key)
-      WHERE r.name = 'admin';
+      WHERE r.name = 'admin'
+      ON CONFLICT DO NOTHING;
 
       -- Seed supervisor permissions
       INSERT INTO role_permissions (role_id, permission_key)
@@ -71,7 +73,8 @@ export async function provisionFarm(schemaName: string, farmName: string): Promi
         ('laporan.view'),('laporan.export'),
         ('user.view')
       ) AS p(key)
-      WHERE r.name = 'supervisor';
+      WHERE r.name = 'supervisor'
+      ON CONFLICT DO NOTHING;
 
       -- Seed operator permissions
       INSERT INTO role_permissions (role_id, permission_key)
@@ -82,7 +85,8 @@ export async function provisionFarm(schemaName: string, farmName: string): Promi
         ('flock.view'),
         ('kas.view')
       ) AS p(key)
-      WHERE r.name = 'operator';
+      WHERE r.name = 'operator'
+      ON CONFLICT DO NOTHING;
     `)
     console.log(`✓ Default roles and permissions seeded for "${schemaName}"`)
 
