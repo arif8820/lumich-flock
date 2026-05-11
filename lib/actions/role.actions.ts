@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { getRequiredSession } from '@/lib/auth/guards'
 import { requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import {
   listRoles,
   getRoleWithPermissions,
@@ -49,8 +50,7 @@ export async function getRolesAction(): Promise<
   const session = await getRequiredSession()
   if ('error' in session) return session
 
-  // any: PermissionKey type definition is broken (resolves to never), using type assertion
-  const denied = requirePermission(session, 'role.manage' as unknown as never)
+  const denied = requirePermission(session, PERMISSIONS.ROLE.MANAGE)
   if (denied) return denied
 
   try {
@@ -72,8 +72,7 @@ export async function getRoleWithPermissionsAction(
   const session = await getRequiredSession()
   if ('error' in session) return session
 
-  // any: PermissionKey type definition is broken (resolves to never), using type assertion
-  const denied = requirePermission(session, 'role.manage' as unknown as never)
+  const denied = requirePermission(session, PERMISSIONS.ROLE.MANAGE)
   if (denied) return denied
 
   try {
@@ -96,8 +95,7 @@ export async function createRoleAction(
   const session = await getRequiredSession()
   if ('error' in session) return session
 
-  // any: PermissionKey type definition is broken (resolves to never), using type assertion
-  const denied = requirePermission(session, 'role.manage' as unknown as never)
+  const denied = requirePermission(session, PERMISSIONS.ROLE.MANAGE)
   if (denied) return denied
 
   const parsed = createRoleSchema.safeParse(formData)
@@ -126,8 +124,7 @@ export async function updateRoleAction(
   const session = await getRequiredSession()
   if ('error' in session) return session
 
-  // any: PermissionKey type definition is broken (resolves to never), using type assertion
-  const denied = requirePermission(session, 'role.manage' as unknown as never)
+  const denied = requirePermission(session, PERMISSIONS.ROLE.MANAGE)
   if (denied) return denied
 
   const parsed = updateRoleSchema.safeParse(formData)
@@ -153,8 +150,7 @@ export async function deleteRoleAction(roleId: string): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
 
-  // any: PermissionKey type definition is broken (resolves to never), using type assertion
-  const denied = requirePermission(session, 'role.manage' as unknown as never)
+  const denied = requirePermission(session, PERMISSIONS.ROLE.MANAGE)
   if (denied) return denied
 
   try {
@@ -179,8 +175,7 @@ export async function updatePermissionAction(
   const session = await getRequiredSession()
   if ('error' in session) return session
 
-  // any: PermissionKey type definition is broken (resolves to never), using type assertion
-  const denied = requirePermission(session, 'role.manage' as unknown as never)
+  const denied = requirePermission(session, PERMISSIONS.ROLE.MANAGE)
   if (denied) return denied
 
   const parsed = updatePermissionSchema.safeParse({
@@ -222,8 +217,7 @@ export async function setAllPermissionsAction(
   const session = await getRequiredSession()
   if ('error' in session) return session
 
-  // any: PermissionKey type definition is broken (resolves to never), using type assertion
-  const denied = requirePermission(session, 'role.manage' as unknown as never)
+  const denied = requirePermission(session, PERMISSIONS.ROLE.MANAGE)
   if (denied) return denied
 
   const parsed = setAllPermissionsSchema.safeParse({
