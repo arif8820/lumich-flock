@@ -184,7 +184,7 @@ export function Sidebar({
         <p className="text-[10px] uppercase font-medium mb-1" style={{ letterSpacing: '0.8px', color: '#8fa08f' }}>
           Kandang Aktif
         </p>
-        <p className="text-[12px] font-semibold" style={{ color: '#2d3a2e' }}>LumichFarm</p>
+        <p className="text-[12px] font-semibold" style={{ color: '#2d3a2e' }}>{user.farmName}</p>
         <div className="flex items-center gap-1.5 mt-0.5">
           <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#7ab8b0' }} />
           <span className="text-[11px]" style={{ color: '#5a6b5b' }}>Aktif</span>
