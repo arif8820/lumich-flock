@@ -8,13 +8,13 @@ import {
   timestamp,
   numeric,
   uniqueIndex,
+  primaryKey,
 } from 'drizzle-orm/pg-core'
 
 export function getFarmSchema(schema: string) {
   const s = pgSchema(schema)
 
   // --- Enums ---
-  const roleEnum = s.enum('role', ['operator', 'supervisor', 'admin'])
   const coopStatusEnum = s.enum('coop_status', ['active', 'inactive'])
   const movementTypeEnum = s.enum('movement_type', ['in', 'out'])
   const movementSourceEnum = s.enum('movement_source', [
@@ -47,11 +47,30 @@ export function getFarmSchema(schema: string) {
 
   // --- Tables (dependency order) ---
 
+  const roles = s.table('roles', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: text('name').unique().notNull(),
+    displayName: text('display_name').notNull(),
+    isSystem: boolean('is_system').notNull().default(false),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    createdBy: uuid('created_by'),
+  })
+
+  const rolePermissions = s.table('role_permissions', {
+    roleId: uuid('role_id').notNull().references(() => roles.id, { onDelete: 'cascade' }),
+    permissionKey: text('permission_key').notNull(),
+    grantedAt: timestamp('granted_at', { withTimezone: true }).defaultNow().notNull(),
+    grantedBy: uuid('granted_by'),
+  }, (t) => [
+    primaryKey({ columns: [t.roleId, t.permissionKey] }),
+  ])
+
   const users = s.table('users', {
     id: uuid('id').primaryKey(), // no defaultRandom — sync'd from Supabase Auth
     email: text('email').unique().notNull(),
     fullName: text('full_name').notNull(),
-    role: roleEnum('role').notNull(),
+    roleId: uuid('role_id').references(() => roles.id).notNull(),
     isActive: boolean('is_active').default(true).notNull(),
     createdBy: uuid('created_by'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -433,6 +452,8 @@ export function getFarmSchema(schema: string) {
   })
 
   return {
+    roles,
+    rolePermissions,
     users,
     coops,
     flocks,

@@ -1,4 +1,6 @@
 import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { getAgingData } from '@/lib/services/invoice.service'
 
 export async function GET(): Promise<Response> {
@@ -8,7 +10,7 @@ export async function GET(): Promise<Response> {
     return new Response('Unauthorized', { status: 401 })
   }
 
-  if (session.role !== 'admin' && session.role !== 'supervisor') {
+  if (!hasPermission(session, PERMISSIONS.LAPORAN.EXPORT)) {
     return new Response('Forbidden', { status: 403 })
   }
 

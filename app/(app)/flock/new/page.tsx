@@ -1,13 +1,15 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { getAllCoops } from '@/lib/services/coop.service'
 import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
 import { CreateFlockForm } from '@/components/forms/create-flock-form'
 
 export default async function NewFlockPage() {
   const session = await getSession()
-  if (!session || session.role === 'operator') redirect('/flock')
+  if (!session || !hasPermission(session, PERMISSIONS.FLOCK.CREATE)) redirect('/flock')
 
   const allCoops = await getAllCoops(session.farmSchema)
   const activeFlocks = await findAllActiveFlocks(session.farmSchema)

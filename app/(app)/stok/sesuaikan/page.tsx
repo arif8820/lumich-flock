@@ -1,4 +1,6 @@
 import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { redirect } from 'next/navigation'
 import { getCategoriesWithActiveItems } from '@/lib/services/stock-catalog.service'
 import { createStockAdjustmentAction } from '@/lib/actions/stock.actions'
@@ -10,7 +12,7 @@ export default async function SesuaikanPage({
   searchParams: Promise<{ error?: string }>
 }) {
   const session = await getSession()
-  if (!session || session.role === 'operator') redirect('/stok')
+  if (!session || !hasPermission(session, PERMISSIONS.STOK.ADJUST)) redirect('/stok')
 
   const categories = await getCategoriesWithActiveItems(session.farmSchema)
   const { error } = await searchParams

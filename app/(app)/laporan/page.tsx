@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { getAgingData } from '@/lib/services/invoice.service'
 import { KpiCard } from '@/components/ui/kpi-card'
 
@@ -28,7 +30,7 @@ function getDaysOverdueStyle(bucket: string): React.CSSProperties {
 
 export default async function LaporanPage() {
   const session = await getSession()
-  if (!session || session.role === 'operator') redirect('/dashboard')
+  if (!session || !hasPermission(session, PERMISSIONS.LAPORAN.VIEW)) redirect('/dashboard')
 
   let agingData: Awaited<ReturnType<typeof getAgingData>> = []
   try {
@@ -57,7 +59,7 @@ export default async function LaporanPage() {
             Aging piutang pelanggan berdasarkan hari keterlambatan
           </p>
         </div>
-        {(session.role === 'admin' || session.role === 'supervisor') && (
+        {hasPermission(session, PERMISSIONS.LAPORAN.EXPORT) && (
           <a
             href="/api/laporan/aging-csv"
             className="inline-flex items-center px-4 py-2 rounded-[10px] text-sm font-medium transition-colors"

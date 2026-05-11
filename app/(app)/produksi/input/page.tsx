@@ -10,7 +10,7 @@ export default async function ProduksiInputPage() {
   if (!session) redirect('/login')
 
   const [flocks, eggItems, feedItems, vaccineItems, balances] = await Promise.all([
-    getFlockOptionsForInput(session.farmSchema, session.id, session.role),
+    getFlockOptionsForInput(session.farmSchema, session.id, session.roleSlug as 'operator' | 'supervisor' | 'admin'),
     getActiveEggItems(session.farmSchema),
     getActiveFeedItems(session.farmSchema),
     getActiveVaccineItems(session.farmSchema),
@@ -24,7 +24,7 @@ export default async function ProduksiInputPage() {
       <h1 className="text-xl font-semibold text-[var(--lf-text-dark)] mb-6">Input Produksi Harian</h1>
       <DailyInputForm
         flocks={flocks}
-        userRole={session.role}
+        userRole={session.roleSlug as 'operator' | 'supervisor' | 'admin'}
         eggItems={eggItems}
         feedItems={feedItems.map((i) => ({ ...i, balance: balanceMap.get(i.id) ?? 0 }))}
         vaccineItems={vaccineItems.map((i) => ({ ...i, balance: balanceMap.get(i.id) ?? 0 }))}

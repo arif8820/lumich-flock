@@ -1,7 +1,8 @@
 'use server'
 
 import { z } from 'zod'
-import { getRequiredSession } from '@/lib/auth/guards'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import {
   createFlockPhase,
   updateFlockPhaseById,
@@ -23,7 +24,8 @@ type ActionResult<T = void> =
 export async function createFlockPhaseAction(formData: FormData): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.FLOCK.UPDATE)
+  if (denied) return denied
 
   const parsed = flockPhaseSchema.safeParse({
     name: formData.get('name'),
@@ -45,7 +47,8 @@ export async function createFlockPhaseAction(formData: FormData): Promise<Action
 export async function updateFlockPhaseAction(id: string, formData: FormData): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.FLOCK.UPDATE)
+  if (denied) return denied
 
   const parsed = flockPhaseSchema.safeParse({
     name: formData.get('name'),
@@ -67,7 +70,8 @@ export async function updateFlockPhaseAction(id: string, formData: FormData): Pr
 export async function deleteFlockPhaseAction(id: string): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.FLOCK.UPDATE)
+  if (denied) return denied
 
   try {
     await deleteFlockPhaseById(session.farmSchema, id)

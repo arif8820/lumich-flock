@@ -4,7 +4,7 @@ import { getAllFlockPhases } from '@/lib/services/flock-phase.service'
 
 export default async function FlockPhasesPage() {
   const session = await getSession()
-  if (!session || session.role !== 'admin') redirect('/dashboard')
+  if (!session || !session.isAdmin) redirect('/dashboard')
 
   const phases = await getAllFlockPhases(session.farmSchema)
 

@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { listInvoices } from '@/lib/db/queries/invoice.queries'
 import { InvoiceStatusBadge } from '@/components/ui/invoice-status-badge'
 import { Button } from '@/components/ui/button'
@@ -24,7 +26,7 @@ export default async function InvoicesPage({
   searchParams: Promise<{ status?: string; page?: string }>
 }) {
   const session = await getSession()
-  if (!session || session.role === 'operator') redirect('/dashboard')
+  if (!session || !hasPermission(session, PERMISSIONS.SALES.VIEW)) redirect('/dashboard')
 
   const { status, page } = await searchParams
   const currentPage = parseInt(page || '1', 10)

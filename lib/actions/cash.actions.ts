@@ -2,7 +2,8 @@
 
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-import { getRequiredSession } from '@/lib/auth/guards'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import {
   createTransaction,
   createTransfer,
@@ -82,7 +83,8 @@ export async function createTransactionAction(
 ): Promise<ActionResult<{ id: string }>> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.KAS.CREATE)
+  if (denied) return denied
 
   const parsed = createTransactionSchema.safeParse({
     accountId: formData.get('accountId'),
@@ -110,7 +112,8 @@ export async function createTransferAction(
 ): Promise<ActionResult<{ outId: string; inId: string }>> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.KAS.CREATE)
+  if (denied) return denied
 
   const parsed = createTransferSchema.safeParse({
     fromAccountId: formData.get('fromAccountId'),
@@ -138,7 +141,8 @@ export async function createAccountAction(
 ): Promise<ActionResult<{ id: string }>> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.KAS.CREATE)
+  if (denied) return denied
 
   const parsed = createAccountSchema.safeParse({
     name: formData.get('name'),
@@ -162,7 +166,8 @@ export async function updateAccountAction(
 ): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.KAS.UPDATE)
+  if (denied) return denied
 
   const parsed = updateAccountSchema.safeParse({
     id: formData.get('id'),
@@ -202,7 +207,8 @@ export async function createCategoryAction(
 ): Promise<ActionResult<{ id: string }>> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.KAS.CREATE)
+  if (denied) return denied
 
   const parsed = createCategorySchema.safeParse({
     name: formData.get('name'),
@@ -224,7 +230,8 @@ export async function updateCategoryAction(
 ): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.KAS.UPDATE)
+  if (denied) return denied
 
   const parsed = updateCategorySchema.safeParse({
     id: formData.get('id'),

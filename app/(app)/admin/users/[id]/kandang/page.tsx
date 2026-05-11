@@ -10,7 +10,7 @@ export default async function UserKandangPage({ params }: { params: Promise<{ id
   const { id } = await params
 
   const session = await getSession()
-  if (!session || session.role !== 'admin') redirect('/dashboard')
+  if (!session || !session.isAdmin) redirect('/dashboard')
 
   const [user, assignments, allCoops] = await Promise.all([
     getUserById(session.farmSchema, id),
@@ -18,7 +18,7 @@ export default async function UserKandangPage({ params }: { params: Promise<{ id
     getAllCoops(session.farmSchema),
   ])
 
-  if (!user || user.role !== 'operator') redirect('/admin/users')
+  if (!user) redirect('/admin/users')
 
   const activeCoops = allCoops
     .filter((c) => c.status === 'active')

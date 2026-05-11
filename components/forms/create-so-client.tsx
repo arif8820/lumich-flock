@@ -31,10 +31,10 @@ type DraftSO = {
 
 interface Props {
   customers: Customer[]
-  role: string
+  isAdmin: boolean
 }
 
-export function CreateSOClient({ customers, role }: Props) {
+export function CreateSOClient({ customers, isAdmin }: Props) {
   const router = useRouter()
   const defaultDraft: DraftSO = {
     orderDate: new Date().toISOString().split('T')[0] ?? '',
@@ -277,7 +277,7 @@ export function CreateSOClient({ customers, role }: Props) {
           />
         </div>
 
-        {customer?.status === 'blocked' && role === 'admin' && (
+        {customer?.status === 'blocked' && isAdmin && (
           <div>
             <label className="block text-sm font-medium mb-1">Alasan Override (Admin Only)</label>
             <textarea

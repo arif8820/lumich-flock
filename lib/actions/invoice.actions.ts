@@ -2,7 +2,8 @@
 
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-import { getRequiredSession } from '@/lib/auth/guards'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { recordPayment, applyCredit, getInvoiceForPdf, markInvoiceSent } from '@/lib/services/invoice.service'
 import { sendInvoiceEmail } from '@/lib/services/email.service'
 import { InvoicePdfDocument } from '@/components/pdf/invoice-pdf-document'
@@ -24,7 +25,8 @@ export async function recordPaymentAction(
 ): Promise<ActionResult<{ overpayment: boolean; overpaymentAmount?: number }>> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.SALES.APPROVE)
+  if (denied) return denied
 
   const parsed = recordPaymentSchema.safeParse({
     invoiceId: formData.get('invoiceId'),
@@ -66,7 +68,8 @@ export async function applyCreditAction(
 ): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.SALES.APPROVE)
+  if (denied) return denied
 
   const parsed = z
     .object({
@@ -92,7 +95,8 @@ export async function applyCreditAction(
 export async function sendInvoiceEmailAction(invoiceId: string): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.SALES.APPROVE)
+  if (denied) return denied
 
   const parsed = z.string().uuid('ID invoice tidak valid').safeParse(invoiceId)
   if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }

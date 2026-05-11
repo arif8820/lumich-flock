@@ -2,6 +2,7 @@
 
 import { z } from 'zod'
 import { getRequiredSession } from '@/lib/auth/guards'
+// no requirePermission needed — uses session.isAdmin directly
 import { correctDailyRecord } from '@/lib/services/lock-period.service'
 import { findCorrectionsByEntity } from '@/lib/db/queries/correction-record.queries'
 import type { CorrectionRecordWithUser } from '@/lib/db/queries/correction-record.queries'
@@ -24,7 +25,7 @@ export async function correctDailyRecordAction(
 ): Promise<ActionResult<{ count: number }>> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Hanya admin yang dapat melakukan koreksi' }
+  if (!session.isAdmin) return { success: false, error: 'Hanya admin yang dapat melakukan koreksi' }
 
   const parsed = correctionSchema.safeParse({
     recordId: formData.get('recordId'),

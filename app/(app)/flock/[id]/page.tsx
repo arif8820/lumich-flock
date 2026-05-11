@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { findFlockById } from '@/lib/db/queries/flock.queries'
 import { findDeliveriesByFlockId } from '@/lib/db/queries/flock-delivery.queries'
 import { getCoopById } from '@/lib/services/coop.service'
@@ -43,7 +45,8 @@ export default async function FlockDetailPage({ params }: { params: Promise<{ id
         flock={flock}
         deliveries={deliveries}
         coopName={coopName}
-        userRole={session.role}
+        canAddDelivery={hasPermission(session, PERMISSIONS.FLOCK.UPDATE)}
+        canRetire={session.isAdmin}
       />
     </div>
   )

@@ -1,4 +1,6 @@
 import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { listAccounts, getAccountBalance } from '@/lib/db/queries/cash-account.queries'
@@ -26,7 +28,7 @@ const TX_TYPE_CONFIG = {
 export default async function KasPage() {
   const session = await getSession()
   if (!session) redirect('/login')
-  if (session.role === 'operator') redirect('/dashboard')
+  if (!hasPermission(session, PERMISSIONS.KAS.VIEW)) redirect('/dashboard')
 
   const accounts = await listAccounts(session.farmSchema)
 
@@ -49,7 +51,7 @@ export default async function KasPage() {
           <h1 className="text-xl font-semibold" style={{ color: '#2d3a2e' }}>Kas & Bank</h1>
           <p className="text-[13px] mt-0.5" style={{ color: '#8fa08f' }}>Kelola akun kas, pemasukan, dan pengeluaran</p>
         </div>
-        {session.role === 'admin' && (
+        {hasPermission(session, PERMISSIONS.KAS.CREATE) && (
           <div className="flex gap-2">
             <Link
               href="/kas/transaksi/baru"
@@ -82,9 +84,14 @@ export default async function KasPage() {
         <div className="rounded-xl border border-dashed p-8 text-center mb-5" style={{ borderColor: '#e0e8df' }}>
           <Wallet size={32} className="mx-auto mb-2" style={{ color: '#b0bab0' }} />
           <p className="text-[13px]" style={{ color: '#8fa08f' }}>Belum ada akun kas.</p>
-          {session.role === 'admin' && (
+          {session.isAdmin && (
             <Link href="/admin/kas" className="text-[13px] font-medium mt-1 inline-block" style={{ color: '#7aadd4' }}>
               Tambah akun →
+            </Link>
+          )}
+          {!session.isAdmin && hasPermission(session, PERMISSIONS.KAS.CREATE) && (
+            <Link href="/kas/transaksi/baru" className="text-[13px] font-medium mt-1 inline-block" style={{ color: '#7aadd4' }}>
+              Tambah transaksi →
             </Link>
           )}
         </div>

@@ -2,9 +2,38 @@ import { db } from '@/lib/db'
 import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq } from 'drizzle-orm'
 
-export async function findAllUsers(farmSchema: string) {
-  const { users } = getFarmSchema(farmSchema)
-  return db.select().from(users).orderBy(users.fullName)
+export type UserWithRoleSlug = {
+  id: string
+  email: string
+  fullName: string
+  roleId: string
+  roleSlug: string
+  roleName: string
+  isActive: boolean
+  createdAt: Date
+  createdBy: string | null
+  updatedAt: Date | null
+}
+
+export async function findAllUsers(farmSchema: string): Promise<UserWithRoleSlug[]> {
+  const { users, roles } = getFarmSchema(farmSchema)
+  const rows = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      fullName: users.fullName,
+      roleId: users.roleId,
+      roleSlug: roles.name,
+      roleName: roles.displayName,
+      isActive: users.isActive,
+      createdAt: users.createdAt,
+      createdBy: users.createdBy,
+      updatedAt: users.updatedAt,
+    })
+    .from(users)
+    .innerJoin(roles, eq(users.roleId, roles.id))
+    .orderBy(users.fullName)
+  return rows
 }
 
 export async function findUserById(farmSchema: string, id: string) {

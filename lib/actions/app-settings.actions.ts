@@ -3,7 +3,8 @@
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { getRequiredSession } from '@/lib/auth/guards'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { saveAppSetting } from '@/lib/services/app-settings.service'
 
 const ALERT_SETTING_KEYS = [
@@ -17,7 +18,7 @@ const ALERT_SETTING_KEYS = [
 export async function updateAlertSettings(formData: FormData): Promise<void> {
   const session = await getRequiredSession()
   if ('error' in session) redirect('/dashboard')
-  if (session.role !== 'admin') redirect('/dashboard')
+  if (!session.isAdmin) redirect('/dashboard')
 
   try {
     for (const key of ALERT_SETTING_KEYS) {
@@ -39,7 +40,8 @@ const waTemplateSchema = z.object({
 export async function saveWaTemplateAction(formData: FormData): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.ROLE.MANAGE)
+  if (denied) return denied
 
   const parsed = waTemplateSchema.safeParse({ template: formData.get('template') })
   if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }

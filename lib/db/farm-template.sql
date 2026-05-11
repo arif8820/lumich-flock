@@ -7,7 +7,6 @@
 -- ENUMS
 -- ============================================
 
-CREATE TYPE "role" AS ENUM('operator', 'supervisor', 'admin');
 CREATE TYPE "coop_status" AS ENUM('active', 'inactive');
 CREATE TYPE "customer_status" AS ENUM('active', 'inactive', 'blocked');
 CREATE TYPE "customer_type" AS ENUM('retail', 'wholesale', 'distributor');
@@ -33,11 +32,30 @@ CREATE TYPE "notification_target_role" AS ENUM('operator', 'supervisor', 'admin'
 -- CORE TABLES
 -- ============================================
 
+CREATE TABLE "roles" (
+    "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+    "name" text NOT NULL,
+    "display_name" text NOT NULL,
+    "is_system" boolean DEFAULT false NOT NULL,
+    "is_active" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "created_by" uuid,
+    CONSTRAINT "roles_name_unique" UNIQUE("name")
+);
+
+CREATE TABLE "role_permissions" (
+    "role_id" uuid NOT NULL REFERENCES "roles"("id") ON DELETE CASCADE,
+    "permission_key" text NOT NULL,
+    "granted_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "granted_by" uuid,
+    PRIMARY KEY ("role_id", "permission_key")
+);
+
 CREATE TABLE "users" (
     "id" uuid PRIMARY KEY NOT NULL,
     "email" text NOT NULL,
     "full_name" text NOT NULL,
-    "role" "role" NOT NULL,
+    "role_id" uuid NOT NULL REFERENCES "roles"("id"),
     "is_active" boolean DEFAULT true NOT NULL,
     "created_by" uuid,
     "created_at" timestamp with time zone DEFAULT now() NOT NULL,

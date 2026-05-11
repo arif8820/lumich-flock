@@ -10,7 +10,7 @@ import { CategoryList } from './category-list'
 export default async function AdminKasPage() {
   const session = await getSession()
   if (!session) redirect('/login')
-  if (session.role !== 'admin') redirect('/kas')
+  if (!session.isAdmin) redirect('/kas')
 
   const [accounts, categories] = await Promise.all([
     listAccounts(session.farmSchema),

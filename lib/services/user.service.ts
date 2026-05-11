@@ -1,17 +1,25 @@
 import { supabaseAdmin } from '@/lib/auth/admin'
+import { db } from '@/lib/db'
+import { farmUsers } from '@/lib/db/schema'
 import {
   findAllUsers,
   findUserById,
   insertUser,
   updateUser,
 } from '@/lib/db/queries/user.queries'
+import { getRoles } from '@/lib/db/queries/roles.queries'
+import type { UserWithRoleSlug } from '@/lib/db/queries/user.queries'
 import type { User } from '@/lib/db/schema'
+
+export async function getAllRoles(farmSchema: string) {
+  return getRoles(farmSchema)
+}
 
 type CreateUserInput = {
   email: string
   password: string
   fullName: string
-  role: 'operator' | 'supervisor' | 'admin'
+  roleId: string
   createdBy: string
 }
 
@@ -27,17 +35,21 @@ export async function createUser(farmSchema: string, input: CreateUserInput): Pr
     throw new Error('Gagal membuat user')
   }
 
-  return insertUser(farmSchema, {
+  const user = await insertUser(farmSchema, {
     id: data.user.id,
     email: input.email,
     fullName: input.fullName,
-    role: input.role,
+    roleId: input.roleId,
     isActive: true,
     createdBy: input.createdBy,
   })
+
+  await db.insert(farmUsers).values({ email: input.email, farmSchema }).onConflictDoNothing()
+
+  return user
 }
 
-export async function getAllUsers(farmSchema: string): Promise<User[]> {
+export async function getAllUsers(farmSchema: string): Promise<UserWithRoleSlug[]> {
   return findAllUsers(farmSchema)
 }
 
@@ -48,9 +60,9 @@ export async function getUserById(farmSchema: string, id: string): Promise<User 
 export async function updateUserRole(
   farmSchema: string,
   id: string,
-  role: 'operator' | 'supervisor' | 'admin'
+  roleId: string
 ): Promise<User | null> {
-  return updateUser(farmSchema, id, { role })
+  return updateUser(farmSchema, id, { roleId })
 }
 
 export async function deactivateUser(farmSchema: string, id: string): Promise<void> {

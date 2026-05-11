@@ -1,12 +1,11 @@
-import { pgTable, uuid, text, boolean, timestamp, pgEnum } from 'drizzle-orm/pg-core'
-
-export const roleEnum = pgEnum('role', ['operator', 'supervisor', 'admin'])
+import { pgTable, uuid, text, boolean, timestamp } from 'drizzle-orm/pg-core'
+import { roles } from './roles'
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey(),
   email: text('email').unique().notNull(),
   fullName: text('full_name').notNull(),
-  role: roleEnum('role').notNull(),
+  roleId: uuid('role_id').references(() => roles.id).notNull(),
   isActive: boolean('is_active').default(true).notNull(),
   createdBy: uuid('created_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

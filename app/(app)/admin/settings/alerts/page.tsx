@@ -47,7 +47,7 @@ export default async function AlertSettingsPage({
   searchParams: Promise<{ success?: string; error?: string }>
 }) {
   const session = await getSession()
-  if (!session || session.role !== 'admin') redirect('/dashboard')
+  if (!session || !session.isAdmin) redirect('/dashboard')
 
   const { success, error } = await searchParams
 

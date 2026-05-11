@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { findSalesOrderById, findSalesOrderItems } from '@/lib/db/queries/sales-order.queries'
 import { CreateReturnClient } from '@/components/forms/create-return-client'
 
@@ -9,7 +11,7 @@ export default async function CreateReturnPage({
   params: Promise<{ id: string }>
 }) {
   const session = await getSession()
-  if (!session || session.role === 'operator') redirect('/dashboard')
+  if (!session || !hasPermission(session, PERMISSIONS.SALES.APPROVE)) redirect('/dashboard')
 
   const { id } = await params
   const so = await findSalesOrderById(session.farmSchema, id)

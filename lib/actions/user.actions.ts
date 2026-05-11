@@ -1,10 +1,12 @@
 'use server'
 
 import { z } from 'zod'
-import { getRequiredSession } from '@/lib/auth/guards'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import {
   createUser,
   getAllUsers,
+  getAllRoles,
   updateUserRole,
   deactivateUser,
   activateUser,
@@ -21,7 +23,7 @@ const createUserSchema = z.object({
   email: z.string().email('Email tidak valid'),
   password: passwordSchema,
   fullName: z.string().min(2, 'Nama minimal 2 karakter').max(500).trim(),
-  role: z.enum(['operator', 'supervisor', 'admin']),
+  roleId: z.string().uuid('Role tidak valid'),
 })
 
 type ActionResult<T = void> =
@@ -33,13 +35,14 @@ export async function createUserAction(
 ): Promise<ActionResult<{ id: string }>> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.USER.MANAGE)
+  if (denied) return denied
 
   const parsed = createUserSchema.safeParse({
     email: formData.get('email'),
     password: formData.get('password'),
     fullName: formData.get('fullName'),
-    role: formData.get('role'),
+    roleId: formData.get('roleId'),
   })
 
   if (!parsed.success) {
@@ -56,24 +59,40 @@ export async function createUserAction(
 
 export async function updateUserRoleAction(
   userId: string,
-  role: 'operator' | 'supervisor' | 'admin'
+  roleId: string
 ): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.USER.MANAGE)
+  if (denied) return denied
 
   try {
-    await updateUserRole(session.farmSchema, userId, role)
+    await updateUserRole(session.farmSchema, userId, roleId)
     return { success: true, data: undefined }
   } catch {
     return { success: false, error: 'Gagal mengubah role' }
   }
 }
 
+export async function getAllRolesAction(): Promise<ActionResult<Awaited<ReturnType<typeof getAllRoles>>>> {
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  const denied = requirePermission(session, PERMISSIONS.USER.MANAGE)
+  if (denied) return denied
+
+  try {
+    const roles = await getAllRoles(session.farmSchema)
+    return { success: true, data: roles }
+  } catch {
+    return { success: false, error: 'Gagal memuat daftar role' }
+  }
+}
+
 export async function deactivateUserAction(userId: string): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.USER.MANAGE)
+  if (denied) return denied
 
   try {
     await deactivateUser(session.farmSchema, userId)
@@ -86,7 +105,8 @@ export async function deactivateUserAction(userId: string): Promise<ActionResult
 export async function activateUserAction(userId: string): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.USER.MANAGE)
+  if (denied) return denied
 
   try {
     await activateUser(session.farmSchema, userId)
@@ -102,7 +122,8 @@ export async function changeUserPasswordAction(
 ): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.USER.MANAGE)
+  if (denied) return denied
 
   const parsed = passwordSchema.safeParse(newPassword)
   if (!parsed.success) {
@@ -120,7 +141,8 @@ export async function changeUserPasswordAction(
 export async function getUsersAction(): Promise<ActionResult<Awaited<ReturnType<typeof getAllUsers>>>> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.USER.MANAGE)
+  if (denied) return denied
 
   try {
     const users = await getAllUsers(session.farmSchema)

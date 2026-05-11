@@ -1,7 +1,8 @@
 'use server'
 
 import { z } from 'zod'
-import { getRequiredSession } from '@/lib/auth/guards'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import {
   getAllActiveFlocks,
   createFlock,
@@ -27,7 +28,8 @@ type ActionResult<T = void> =
 export async function createFlockAction(formData: FormData): Promise<ActionResult<{ id: string }>> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role === 'operator') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.FLOCK.CREATE)
+  if (denied) return denied
 
   const parsed = flockSchema.safeParse({
     coopId: formData.get('coopId'),
@@ -53,7 +55,8 @@ export async function createFlockAction(formData: FormData): Promise<ActionResul
 export async function retireFlockAction(flockId: string): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
-  if (session.role !== 'admin') return { success: false, error: 'Akses ditolak' }
+  const denied = requirePermission(session, PERMISSIONS.FLOCK.DELETE)
+  if (denied) return denied
 
   try {
     await retireFlock(session.farmSchema, flockId, session.id)

@@ -1,4 +1,6 @@
 import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { redirect } from 'next/navigation'
 import { getCategoriesWithActiveItems } from '@/lib/services/stock-catalog.service'
 import { createStockPurchaseAction } from '@/lib/actions/stock.actions'
@@ -10,7 +12,7 @@ export default async function BeliPage({
   searchParams: Promise<{ error?: string }>
 }) {
   const session = await getSession()
-  if (!session || session.role === 'operator') redirect('/stok')
+  if (!session || !hasPermission(session, PERMISSIONS.STOK.CREATE)) redirect('/stok')
 
   // Exclude Telur — eggs enter via production input, not purchase
   const allCategories = await getCategoriesWithActiveItems(session.farmSchema)

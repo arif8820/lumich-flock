@@ -11,7 +11,8 @@ interface Props {
   flock: Flock
   deliveries: FlockDelivery[]
   coopName: string
-  userRole: 'operator' | 'supervisor' | 'admin'
+  canAddDelivery: boolean
+  canRetire: boolean
 }
 
 function formatDate(date: Date | string | null): string {
@@ -20,7 +21,7 @@ function formatDate(date: Date | string | null): string {
   return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-export function FlockDetailClient({ flock, deliveries, coopName, userRole }: Props) {
+export function FlockDetailClient({ flock, deliveries, coopName, canAddDelivery, canRetire }: Props) {
   const router = useRouter()
   const [showAddForm, setShowAddForm] = useState(false)
   const [retireLoading, setRetireLoading] = useState(false)
@@ -159,7 +160,7 @@ export function FlockDetailClient({ flock, deliveries, coopName, userRole }: Pro
         )}
 
         <div className="flex gap-2 flex-wrap">
-          {(userRole === 'supervisor' || userRole === 'admin') && !showAddForm && (
+          {canAddDelivery && !showAddForm && (
             <button
               type="button"
               onClick={() => setShowAddForm(true)}
@@ -171,7 +172,7 @@ export function FlockDetailClient({ flock, deliveries, coopName, userRole }: Pro
             </button>
           )}
 
-          {userRole === 'admin' && (
+          {canRetire && (
             <button
               type="button"
               onClick={handleRetire}
