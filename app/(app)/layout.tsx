@@ -10,8 +10,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await getSession()
   if (!user) redirect('/login')
 
+  const NOTIFICATION_ROLES = ['operator', 'supervisor', 'admin'] as const
+  type NotificationRole = typeof NOTIFICATION_ROLES[number]
+  const notificationRole: NotificationRole = (NOTIFICATION_ROLES as readonly string[]).includes(user.roleSlug)
+    ? user.roleSlug as NotificationRole
+    : 'operator'
+
   const [notifications, readNotificationIds] = await Promise.all([
-    getNotificationsForRole(user.farmSchema, user.roleSlug as 'operator' | 'supervisor' | 'admin', 50),
+    getNotificationsForRole(user.farmSchema, notificationRole, 50),
     getReadNotificationIds(user.farmSchema, user.id),
   ])
 

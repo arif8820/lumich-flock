@@ -93,6 +93,11 @@ const PERMISSION_MATRIX = [
   },
 ]
 
+const PROTECTED_SLUGS = ['admin', 'supervisor', 'operator']
+function isProtectedRole(role: Role) {
+  return role.isSystem || PROTECTED_SLUGS.includes(role.name)
+}
+
 export function RoleManagementClient({ roles }: Props) {
   const router = useRouter()
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(
@@ -131,7 +136,7 @@ export function RoleManagementClient({ roles }: Props) {
   }, [selectedRoleId])
 
   async function handleTogglePermission(key: string, currentlyGranted: boolean) {
-    if (!selectedRole || selectedRole.isSystem) return
+    if (!selectedRole || isProtectedRole(selectedRole)) return
     setError(null)
     setPendingKey(key)
 
@@ -152,7 +157,7 @@ export function RoleManagementClient({ roles }: Props) {
   }
 
   async function handleDeleteRole(role: Role) {
-    if (role.isSystem) return
+    if (isProtectedRole(role)) return
     if (!confirm(`Hapus role "${role.displayName}"? Aksi ini tidak dapat dibatalkan.`)) return
     setError(null)
     const result = await deleteRoleAction(role.id)
@@ -196,7 +201,7 @@ export function RoleManagementClient({ roles }: Props) {
                     }}
                   >
                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                      {role.isSystem && (
+                      {isProtectedRole(role) && (
                         <Lock size={12} style={{ color: '#8fa08f' }} strokeWidth={2} />
                       )}
                       <span
@@ -207,12 +212,12 @@ export function RoleManagementClient({ roles }: Props) {
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
-                      {role.isSystem ? (
+                      {isProtectedRole(role) ? (
                         <span
                           className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
                           style={{ background: '#f0f0f0', color: '#8fa08f' }}
                         >
-                          SISTEM
+                          {role.isSystem ? 'SISTEM' : 'BAWAAN'}
                         </span>
                       ) : (
                         <>
@@ -272,12 +277,12 @@ export function RoleManagementClient({ roles }: Props) {
                   </p>
                   <h2 className="text-base font-bold mt-0.5" style={{ color: '#2d3a2e' }}>
                     {selectedRole.displayName}
-                    {selectedRole.isSystem && (
+                    {isProtectedRole(selectedRole) && (
                       <span
                         className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded align-middle"
                         style={{ background: '#f0f0f0', color: '#8fa08f' }}
                       >
-                        SISTEM (READ-ONLY)
+                        {selectedRole.isSystem ? 'SISTEM (READ-ONLY)' : 'BAWAAN'}
                       </span>
                     )}
                   </h2>
@@ -319,11 +324,12 @@ export function RoleManagementClient({ roles }: Props) {
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-x-5 gap-y-2">
                             {mod.actions.map((action) => {
+                              const protected_ = isProtectedRole(selectedRole)
                               const granted = selectedRole.isSystem
                                 ? true
                                 : rolePermissions.has(action.key)
                               const disabled =
-                                selectedRole.isSystem ||
+                                protected_ ||
                                 loadingPerms ||
                                 pendingKey === action.key
                               return (
@@ -331,7 +337,7 @@ export function RoleManagementClient({ roles }: Props) {
                                   key={action.key}
                                   className="inline-flex items-center gap-2 cursor-pointer select-none"
                                   style={{
-                                    opacity: disabled && !selectedRole.isSystem ? 0.6 : 1,
+                                    opacity: disabled && !protected_ ? 0.6 : 1,
                                     cursor: disabled ? 'not-allowed' : 'pointer',
                                   }}
                                 >

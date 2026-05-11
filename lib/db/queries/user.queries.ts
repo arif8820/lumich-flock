@@ -1,6 +1,5 @@
 import { db } from '@/lib/db'
 import { getFarmSchema } from '@/lib/db/schema-factory'
-import { roles } from '@/lib/db/schema/roles'
 import { eq } from 'drizzle-orm'
 
 export type UserWithRoleSlug = {
@@ -17,7 +16,7 @@ export type UserWithRoleSlug = {
 }
 
 export async function findAllUsers(farmSchema: string): Promise<UserWithRoleSlug[]> {
-  const { users } = getFarmSchema(farmSchema)
+  const { users, roles } = getFarmSchema(farmSchema)
   const rows = await db
     .select({
       id: users.id,

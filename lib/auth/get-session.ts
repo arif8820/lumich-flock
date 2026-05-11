@@ -11,8 +11,8 @@ export type SessionUser = {
   email: string
   fullName: string
   roleId: string
-  roleSlug: string       // roles.name — slug like 'admin', 'operator', 'kasir'
-  roleName: string       // roles.display_name — human-readable
+  roleSlug: string
+  roleName: string
   isAdmin: boolean
   isActive: boolean
   createdBy: string | null
@@ -23,9 +23,16 @@ export type SessionUser = {
   permissions: Set<PermissionKey>
 }
 
+// JSON-serializable version for unstable_cache (Set and Date are not serializable)
+type CachedSessionData = Omit<SessionUser, 'permissions' | 'createdAt' | 'updatedAt'> & {
+  permissions: PermissionKey[]
+  createdAt: string
+  updatedAt: string | null
+}
+
 function getCachedSession(userId: string, email: string) {
-  return unstable_cache(
-    async (): Promise<SessionUser | null> => {
+  const fetchData = unstable_cache(
+    async (): Promise<CachedSessionData | null> => {
       // 1. Lookup farm schema from public.farm_users
       const [farmUserRow] = await db
         .select()
@@ -50,15 +57,15 @@ function getCachedSession(userId: string, email: string) {
       const [roleRow] = await db.select().from(roles).where(eq(roles.id, dbUser.roleId)).limit(1)
       if (!roleRow) return null
 
-      let permSet: Set<PermissionKey>
+      let permArray: PermissionKey[]
       if (roleRow.isSystem) {
-        permSet = new Set(ALL_PERMISSIONS)
+        permArray = ALL_PERMISSIONS
       } else {
         const permRows = await db
           .select({ key: rolePermissions.permissionKey })
           .from(rolePermissions)
           .where(eq(rolePermissions.roleId, dbUser.roleId))
-        permSet = new Set(permRows.map((r) => r.key as PermissionKey))
+        permArray = permRows.map((r) => r.key as PermissionKey)
       }
 
       return {
@@ -71,16 +78,26 @@ function getCachedSession(userId: string, email: string) {
         isAdmin: roleRow.isSystem,
         isActive: dbUser.isActive,
         createdBy: dbUser.createdBy,
-        createdAt: dbUser.createdAt,
-        updatedAt: dbUser.updatedAt,
+        createdAt: dbUser.createdAt.toISOString(),
+        updatedAt: dbUser.updatedAt ? dbUser.updatedAt.toISOString() : null,
         farmSchema,
         farmName: farmRow?.name ?? farmSchema,
-        permissions: permSet,
+        permissions: permArray,
       }
     },
     [`user-session-${userId}`],
     { revalidate: 60, tags: [`user-${userId}`, 'role-permissions'] }
-  )()
+  )
+
+  return fetchData().then((data): SessionUser | null => {
+    if (!data) return null
+    return {
+      ...data,
+      createdAt: new Date(data.createdAt),
+      updatedAt: data.updatedAt ? new Date(data.updatedAt) : null,
+      permissions: new Set(data.permissions),
+    }
+  })
 }
 
 export async function getSession(): Promise<SessionUser | null> {

@@ -9,18 +9,21 @@ import { createUserAction } from '@/lib/actions/user.actions'
 const inputClass = 'mt-1 w-full border border-[var(--lf-border)] rounded-lg px-3 py-2 text-sm bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--lf-blue)]'
 const labelClass = 'block text-xs font-medium text-[var(--lf-text-mid)]'
 
+type RoleOption = { id: string; displayName: string }
+
 interface Props {
+  roles: RoleOption[]
   onSuccess: () => void
   onCancel: () => void
 }
 
-export function CreateUserForm({ onSuccess, onCancel }: Props) {
+export function CreateUserForm({ roles, onSuccess, onCancel }: Props) {
   const router = useRouter()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [role, setRole] = useState<'operator' | 'supervisor' | 'admin'>('operator')
+  const [roleId, setRoleId] = useState<string>(roles[0]?.id ?? '')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -33,7 +36,7 @@ export function CreateUserForm({ onSuccess, onCancel }: Props) {
       fd.set('fullName', fullName)
       fd.set('email', email)
       fd.set('password', password)
-      fd.set('role', role)
+      fd.set('roleId', roleId)
       const result = await createUserAction(fd)
       if (!result.success) {
         setError(result.error)
@@ -102,13 +105,13 @@ export function CreateUserForm({ onSuccess, onCancel }: Props) {
           <label className={labelClass}>Role</label>
           <select
             className={inputClass}
-            value={role}
-            onChange={(e) => setRole(e.target.value as typeof role)}
+            value={roleId}
+            onChange={(e) => setRoleId(e.target.value)}
             required
           >
-            <option value="operator">Operator</option>
-            <option value="supervisor">Supervisor</option>
-            <option value="admin">Admin</option>
+            {roles.map((r) => (
+              <option key={r.id} value={r.id}>{r.displayName}</option>
+            ))}
           </select>
         </div>
       </div>

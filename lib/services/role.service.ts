@@ -71,7 +71,10 @@ export async function updateRole(
   try {
     const role = await getRoleById(farmSchema, roleId)
     if (!role) return { success: false, error: 'Role tidak ditemukan' }
-    if (role.isSystem) return { success: false, error: 'Role sistem tidak dapat diubah' }
+    const PROTECTED_SLUGS = ['admin', 'supervisor', 'operator']
+    if (role.isSystem || PROTECTED_SLUGS.includes(role.name)) {
+      return { success: false, error: 'Tidak dapat mengubah peran bawaan' }
+    }
     if (!data.displayName.trim()) {
       return { success: false, error: 'Display name tidak boleh kosong' }
     }
@@ -91,7 +94,10 @@ export async function deleteRole(
   try {
     const role = await getRoleById(farmSchema, roleId)
     if (!role) return { success: false, error: 'Role tidak ditemukan' }
-    if (role.isSystem) return { success: false, error: 'Role sistem tidak dapat diubah' }
+    const PROTECTED_SLUGS = ['admin', 'supervisor', 'operator']
+    if (role.isSystem || PROTECTED_SLUGS.includes(role.name)) {
+      return { success: false, error: 'Tidak dapat menghapus peran bawaan' }
+    }
     const userCount = await getRoleUserCount(farmSchema, roleId)
     if (userCount > 0) {
       return {

@@ -8,21 +8,24 @@ import { CreateUserForm } from './create-user-form'
 import { updateUserRoleAction, activateUserAction, deactivateUserAction } from '@/lib/actions/user.actions'
 import type { UserWithRoleSlug } from '@/lib/db/queries/user.queries'
 
+type RoleOption = { id: string; name: string; displayName: string; isSystem: boolean }
+
 interface Props {
   users: UserWithRoleSlug[]
+  roles: RoleOption[]
 }
 
-export function UserManagementClient({ users }: Props) {
+export function UserManagementClient({ users, roles }: Props) {
   const router = useRouter()
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  async function handleRoleChange(userId: string, newRole: 'operator' | 'supervisor' | 'admin') {
+  async function handleRoleChange(userId: string, newRoleId: string) {
     setError(null)
     setLoadingId(userId)
     try {
-      const result = await updateUserRoleAction(userId, newRole)
+      const result = await updateUserRoleAction(userId, newRoleId)
       if (!result.success) setError(result.error)
       else router.refresh()
     } finally {
@@ -59,6 +62,7 @@ export function UserManagementClient({ users }: Props) {
 
       {showCreateForm && (
         <CreateUserForm
+          roles={roles}
           onSuccess={() => setShowCreateForm(false)}
           onCancel={() => setShowCreateForm(false)}
         />
@@ -88,14 +92,14 @@ export function UserManagementClient({ users }: Props) {
                 <td className="px-4 py-3 text-[var(--lf-text-mid)]">{user.email}</td>
                 <td className="px-4 py-3">
                   <select
-                    value={user.roleSlug}
-                    onChange={(e) => handleRoleChange(user.id, e.target.value as 'operator' | 'supervisor' | 'admin')}
+                    value={user.roleId}
+                    onChange={(e) => handleRoleChange(user.id, e.target.value)}
                     disabled={loadingId === user.id}
                     className="border border-[var(--lf-border)] rounded-lg px-2 py-1 text-xs bg-[var(--lf-input-bg)] text-[var(--lf-text-dark)]"
                   >
-                    <option value="operator">Operator</option>
-                    <option value="supervisor">Supervisor</option>
-                    <option value="admin">Admin</option>
+                    {roles.map((r) => (
+                      <option key={r.id} value={r.id}>{r.displayName}</option>
+                    ))}
                   </select>
                 </td>
                 <td className="px-4 py-3">

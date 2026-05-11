@@ -6,6 +6,7 @@ import { PERMISSIONS } from '@/lib/auth/permissions'
 import {
   createUser,
   getAllUsers,
+  getAllRoles,
   updateUserRole,
   deactivateUser,
   activateUser,
@@ -22,7 +23,7 @@ const createUserSchema = z.object({
   email: z.string().email('Email tidak valid'),
   password: passwordSchema,
   fullName: z.string().min(2, 'Nama minimal 2 karakter').max(500).trim(),
-  role: z.enum(['operator', 'supervisor', 'admin']),
+  roleId: z.string().uuid('Role tidak valid'),
 })
 
 type ActionResult<T = void> =
@@ -41,7 +42,7 @@ export async function createUserAction(
     email: formData.get('email'),
     password: formData.get('password'),
     fullName: formData.get('fullName'),
-    role: formData.get('role'),
+    roleId: formData.get('roleId'),
   })
 
   if (!parsed.success) {
@@ -58,7 +59,7 @@ export async function createUserAction(
 
 export async function updateUserRoleAction(
   userId: string,
-  role: 'operator' | 'supervisor' | 'admin'
+  roleId: string
 ): Promise<ActionResult> {
   const session = await getRequiredSession()
   if ('error' in session) return session
@@ -66,10 +67,24 @@ export async function updateUserRoleAction(
   if (denied) return denied
 
   try {
-    await updateUserRole(session.farmSchema, userId, role)
+    await updateUserRole(session.farmSchema, userId, roleId)
     return { success: true, data: undefined }
   } catch {
     return { success: false, error: 'Gagal mengubah role' }
+  }
+}
+
+export async function getAllRolesAction(): Promise<ActionResult<Awaited<ReturnType<typeof getAllRoles>>>> {
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  const denied = requirePermission(session, PERMISSIONS.USER.MANAGE)
+  if (denied) return denied
+
+  try {
+    const roles = await getAllRoles(session.farmSchema)
+    return { success: true, data: roles }
+  } catch {
+    return { success: false, error: 'Gagal memuat daftar role' }
   }
 }
 

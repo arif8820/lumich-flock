@@ -51,7 +51,7 @@ export default async function KasPage() {
           <h1 className="text-xl font-semibold" style={{ color: '#2d3a2e' }}>Kas & Bank</h1>
           <p className="text-[13px] mt-0.5" style={{ color: '#8fa08f' }}>Kelola akun kas, pemasukan, dan pengeluaran</p>
         </div>
-        {session.isAdmin && (
+        {hasPermission(session, PERMISSIONS.KAS.CREATE) && (
           <div className="flex gap-2">
             <Link
               href="/kas/transaksi/baru"
@@ -87,6 +87,11 @@ export default async function KasPage() {
           {session.isAdmin && (
             <Link href="/admin/kas" className="text-[13px] font-medium mt-1 inline-block" style={{ color: '#7aadd4' }}>
               Tambah akun →
+            </Link>
+          )}
+          {!session.isAdmin && hasPermission(session, PERMISSIONS.KAS.CREATE) && (
+            <Link href="/kas/transaksi/baru" className="text-[13px] font-medium mt-1 inline-block" style={{ color: '#7aadd4' }}>
+              Tambah transaksi →
             </Link>
           )}
         </div>
