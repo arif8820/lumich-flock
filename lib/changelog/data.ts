@@ -1,6 +1,6 @@
 import type { VersionEntry } from './types'
 
-export const CURRENT_VERSION = 'v0.2.0'
+export const CURRENT_VERSION = 'v0.2.0' as const
 
 export const changelog: VersionEntry[] = [
   {
