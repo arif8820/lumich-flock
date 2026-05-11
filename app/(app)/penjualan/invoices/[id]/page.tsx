@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { getInvoiceDetails } from '@/lib/services/invoice.service'
 import { recordPaymentAction, applyCreditAction, sendInvoiceEmailAction } from '@/lib/actions/invoice.actions'
 import { getAppSetting } from '@/lib/services/app-settings.service'
@@ -28,7 +30,7 @@ export default async function InvoiceDetailPage({
   searchParams: Promise<{ error?: string; success?: string }>
 }) {
   const session = await getSession()
-  if (!session || session.role === 'operator') redirect('/dashboard')
+  if (!session || !hasPermission(session, PERMISSIONS.SALES.VIEW)) redirect('/dashboard')
 
   const { id } = await params
   const { error, success } = await searchParams
@@ -36,7 +38,7 @@ export default async function InvoiceDetailPage({
   const invoice = await getInvoiceDetails(session.farmSchema, id).catch(() => null)
   if (!invoice) redirect('/penjualan/invoices')
 
-  const isAdmin = session.role === 'admin'
+  const isAdmin = session.isAdmin
   const canReceivePayment = !['paid', 'cancelled'].includes(invoice.status)
   const outstanding = Number(invoice.totalAmount) - Number(invoice.paidAmount)
 

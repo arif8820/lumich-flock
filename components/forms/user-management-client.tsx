@@ -6,10 +6,10 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { CreateUserForm } from './create-user-form'
 import { updateUserRoleAction, activateUserAction, deactivateUserAction } from '@/lib/actions/user.actions'
-import type { User } from '@/lib/db/schema'
+import type { UserWithRoleSlug } from '@/lib/db/queries/user.queries'
 
 interface Props {
-  users: User[]
+  users: UserWithRoleSlug[]
 }
 
 export function UserManagementClient({ users }: Props) {
@@ -30,7 +30,7 @@ export function UserManagementClient({ users }: Props) {
     }
   }
 
-  async function handleToggleActive(user: User) {
+  async function handleToggleActive(user: UserWithRoleSlug) {
     setError(null)
     setLoadingId(user.id)
     try {
@@ -88,7 +88,7 @@ export function UserManagementClient({ users }: Props) {
                 <td className="px-4 py-3 text-[var(--lf-text-mid)]">{user.email}</td>
                 <td className="px-4 py-3">
                   <select
-                    value={user.role}
+                    value={user.roleSlug}
                     onChange={(e) => handleRoleChange(user.id, e.target.value as 'operator' | 'supervisor' | 'admin')}
                     disabled={loadingId === user.id}
                     className="border border-[var(--lf-border)] rounded-lg px-2 py-1 text-xs bg-[var(--lf-input-bg)] text-[var(--lf-text-dark)]"
@@ -118,7 +118,7 @@ export function UserManagementClient({ users }: Props) {
                     >
                       {loadingId === user.id ? '...' : user.isActive ? 'Nonaktifkan' : 'Aktifkan'}
                     </button>
-                    {user.role === 'operator' && (
+                    {user.roleSlug === 'operator' && (
                       <Link
                         href={`/admin/users/${user.id}/kandang`}
                         className="text-xs px-3 py-1 rounded-lg border border-[var(--lf-border)] text-[var(--lf-text-mid)] hover:bg-[var(--lf-bg-warm)]"

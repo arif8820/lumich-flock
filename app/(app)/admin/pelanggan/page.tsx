@@ -1,11 +1,13 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { getAllCustomers } from '@/lib/services/customer.service'
 import { CustomerManagementClient } from '@/components/forms/customer-management-client'
 
 export default async function PelangganPage() {
   const session = await getSession()
-  if (!session || session.role === 'operator') redirect('/dashboard')
+  if (!session || !hasPermission(session, PERMISSIONS.SALES.VIEW)) redirect('/dashboard')
   const customers = await getAllCustomers(session.farmSchema)
 
   return (

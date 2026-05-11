@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import {
   findSalesReturnById,
   findSalesReturnItems,
@@ -39,7 +41,7 @@ export default async function ReturnDetailPage({
   searchParams: Promise<{ error?: string }>
 }) {
   const session = await getSession()
-  if (!session || session.role === 'operator') redirect('/dashboard')
+  if (!session || !hasPermission(session, PERMISSIONS.SALES.VIEW)) redirect('/dashboard')
 
   const { id } = await params
   const { error } = await searchParams
@@ -161,7 +163,7 @@ export default async function ReturnDetailPage({
       </div>
 
       {/* Admin Actions - only for pending returns */}
-      {session.role === 'admin' && salesReturn.status === 'pending' && (
+      {session.isAdmin && salesReturn.status === 'pending' && (
         <div className="flex gap-2">
           <form action={approveAction}>
             <Button type="submit">Setujui</Button>

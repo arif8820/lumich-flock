@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { redirect } from 'next/navigation'
 import { KpiCard } from '@/components/ui/kpi-card'
 import { DashboardCharts } from '@/components/ui/charts/dashboard-charts'
@@ -66,7 +68,7 @@ export default async function DashboardPage({
   const skuKeys = Array.from(skuKeySet).sort()
 
   let top5: AgingRow[] = []
-  if (user.role !== 'operator') {
+  if (hasPermission(user, PERMISSIONS.LAPORAN.VIEW)) {
     try {
       const agingData = await getAgingData(user.farmSchema)
       top5 = agingData.slice(0, 5)
@@ -197,7 +199,7 @@ export default async function DashboardPage({
       </div>
 
       {/* Aging widget — admin + supervisor only */}
-      {user.role !== 'operator' && (
+      {hasPermission(user, PERMISSIONS.LAPORAN.VIEW) && (
         <div className="bg-white rounded-[16px] p-6 shadow-lf-sm border border-[var(--lf-border)]">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-medium text-[var(--lf-text-soft)] uppercase tracking-wide">5 Invoice Jatuh Tempo</p>

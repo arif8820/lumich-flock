@@ -1,4 +1,6 @@
 import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { redirect } from 'next/navigation'
 import { getActiveEggItems } from '@/lib/services/stock-catalog.service'
 import { findPendingRegradeRequests } from '@/lib/db/queries/inventory.queries'
@@ -11,7 +13,7 @@ export default async function RegradePage({
   searchParams: Promise<{ error?: string }>
 }) {
   const session = await getSession()
-  if (!session || session.role === 'operator') redirect('/stok')
+  if (!session || !hasPermission(session, PERMISSIONS.STOK.ADJUST)) redirect('/stok')
 
   const [eggItems, pending] = await Promise.all([
     getActiveEggItems(session.farmSchema),
@@ -80,7 +82,7 @@ export default async function RegradePage({
                   <span className="font-medium text-[var(--lf-text-dark)]">{r.quantity.toLocaleString('id')} butir</span>
                   <span className="ml-2 text-xs text-[var(--lf-text-soft)]">{r.requestDate instanceof Date ? r.requestDate.toLocaleDateString('id-ID') : String(r.requestDate)}</span>
                 </div>
-                {session.role === 'admin' && (
+                {session.isAdmin && (
                   <Link href={`/stok/regrade/${r.id}`} className="text-xs text-[var(--lf-blue-active)] hover:underline">
                     Tinjau →
                   </Link>

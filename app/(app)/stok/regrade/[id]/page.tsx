@@ -12,7 +12,7 @@ export default async function RegradeDetailPage({
   searchParams: Promise<{ error?: string }>
 }) {
   const session = await getSession()
-  if (!session || session.role !== 'admin') redirect('/stok/regrade')
+  if (!session || !session.isAdmin) redirect('/stok/regrade')
 
   const { id } = await params
   const { error } = await searchParams

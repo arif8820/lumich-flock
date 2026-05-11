@@ -5,6 +5,7 @@ import {
   insertUser,
   updateUser,
 } from '@/lib/db/queries/user.queries'
+import type { UserWithRoleSlug } from '@/lib/db/queries/user.queries'
 import type { User } from '@/lib/db/schema'
 
 type CreateUserInput = {
@@ -37,7 +38,7 @@ export async function createUser(farmSchema: string, input: CreateUserInput): Pr
   })
 }
 
-export async function getAllUsers(farmSchema: string): Promise<User[]> {
+export async function getAllUsers(farmSchema: string): Promise<UserWithRoleSlug[]> {
   return findAllUsers(farmSchema)
 }
 

@@ -38,7 +38,7 @@ describe('user.service', () => {
         id: 'uuid-123',
         email: 'test@test.com',
         fullName: 'Test User',
-        role: 'operator',
+        roleId: 'role-uuid-operator',
         isActive: true,
         createdBy: 'admin-id',
         createdAt: new Date(),

@@ -69,8 +69,8 @@ export default async function ProduksiPage({
             <tbody>
               {records.map((r) => {
                 const recordDate = new Date(r.recordDate)
-                const isAdmin = session.role === 'admin'
-                const lockDays = session.role === 'operator' ? 1 : 7
+                const isAdmin = session.isAdmin
+                const lockDays = session.roleSlug === 'operator' ? 1 : 7
                 const withinLockWindow = isWithinLockWindow(recordDate, now, lockDays)
                 const editable = isAdmin || withinLockWindow
                 const showCorrection = isAdmin && !withinLockWindow

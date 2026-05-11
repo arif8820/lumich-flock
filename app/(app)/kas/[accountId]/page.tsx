@@ -1,4 +1,6 @@
 import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { findAccountById, getAccountBalance } from '@/lib/db/queries/cash-account.queries'
@@ -34,7 +36,7 @@ export default async function AccountLedgerPage({
 }) {
   const session = await getSession()
   if (!session) redirect('/login')
-  if (session.role === 'operator') redirect('/dashboard')
+  if (!hasPermission(session, PERMISSIONS.KAS.VIEW)) redirect('/dashboard')
 
   const { accountId } = await params
   const { tab = 'riwayat', type, dateFrom, dateTo, page: pageStr } = await searchParams
@@ -118,7 +120,7 @@ export default async function AccountLedgerPage({
             {ACCOUNT_TYPE_LABEL[account.type] ?? account.type}
           </span>
         </div>
-        {session.role === 'admin' && (
+        {session.isAdmin && (
           <div className="flex gap-2">
             <Link
               href={`/kas/transaksi/baru?accountId=${accountId}&type=in`}

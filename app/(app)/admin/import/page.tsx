@@ -4,7 +4,7 @@ import { ImportPanel } from './import-panel'
 
 export default async function ImportPage() {
   const session = await getSession()
-  if (!session || session.role !== 'admin') redirect('/dashboard')
+  if (!session || !session.isAdmin) redirect('/dashboard')
 
   return (
     <div className="p-6 space-y-6" style={{ maxWidth: 800 }}>

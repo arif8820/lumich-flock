@@ -1,4 +1,6 @@
 import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { redirect } from 'next/navigation'
 import { getAllStockBalances } from '@/lib/db/queries/inventory.queries'
 import { getCategories } from '@/lib/services/stock-catalog.service'
@@ -52,7 +54,7 @@ export default async function StokPage({
     <div className="p-6">
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-xl font-semibold text-[var(--lf-text-dark)]">Stok</h1>
-        {session.role !== 'operator' && (
+        {hasPermission(session, PERMISSIONS.STOK.ADJUST) && (
           <div className="flex gap-2">
             <Link href="/stok/sesuaikan" className="press-feedback text-sm px-3 py-2 bg-gradient-to-r from-[#7aadd4] to-[#5090be] text-white rounded-lg shadow-lf-btn">
               Penyesuaian

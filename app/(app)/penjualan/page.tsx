@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { listSalesOrders } from '@/lib/db/queries/sales-order.queries'
 import { listSalesReturnsWithOrder } from '@/lib/db/queries/sales-return.queries'
 import { SOStatusBadge } from '@/components/ui/so-status-badge'
@@ -61,7 +63,7 @@ export default async function PenjualanPage({
   }>
 }) {
   const session = await getSession()
-  if (!session || session.role === 'operator') redirect('/dashboard')
+  if (!session || !hasPermission(session, PERMISSIONS.SALES.VIEW)) redirect('/dashboard')
 
   const { tab, status, page, returnStatus, returnPage } = await searchParams
 

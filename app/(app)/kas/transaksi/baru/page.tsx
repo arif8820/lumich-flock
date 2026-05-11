@@ -13,7 +13,7 @@ export default async function NewTransactionPage({
 }) {
   const session = await getSession()
   if (!session) redirect('/login')
-  if (session.role !== 'admin') redirect('/kas')
+  if (!session.isAdmin) redirect('/kas')
 
   const { accountId, type } = await searchParams
 

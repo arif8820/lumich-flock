@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import {
   findSalesOrderById,
   findSalesOrderItems,
@@ -35,7 +37,7 @@ export default async function SODetailPage({
   searchParams: Promise<{ error?: string }>
 }) {
   const session = await getSession()
-  if (!session || session.role === 'operator') redirect('/dashboard')
+  if (!session || !hasPermission(session, PERMISSIONS.SALES.VIEW)) redirect('/dashboard')
 
   const { id } = await params
   const { error } = await searchParams
@@ -229,7 +231,7 @@ export default async function SODetailPage({
             <form action={confirmAction}>
               <Button type="submit">Konfirmasi</Button>
             </form>
-            {['supervisor', 'admin'].includes(session.role) && (
+            {hasPermission(session, PERMISSIONS.SALES.APPROVE) && (
               <form action={deleteAction}>
                 <Button type="submit" variant="destructive">
                   Hapus Draft
@@ -252,7 +254,7 @@ export default async function SODetailPage({
           </>
         )}
 
-        {so.status === 'fulfilled' && ['supervisor', 'admin'].includes(session.role) && (
+        {so.status === 'fulfilled' && hasPermission(session, PERMISSIONS.SALES.APPROVE) && (
           <Button href={`/penjualan/${id}/return/new`}>Buat Return</Button>
         )}
 

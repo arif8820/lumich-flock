@@ -10,7 +10,7 @@ export default async function StokKatalogPage({
   searchParams: Promise<{ error?: string; success?: string }>
 }) {
   const session = await getSession()
-  if (!session || session.role !== 'admin') redirect('/dashboard')
+  if (!session || !session.isAdmin) redirect('/dashboard')
 
   const categories = await getCategories(session.farmSchema)
   const categoriesWithAllItems = await Promise.all(

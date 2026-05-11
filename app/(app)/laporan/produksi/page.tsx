@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { getProductionReportData } from '@/lib/services/daily-record.service'
 import type { Role } from '@/lib/services/daily-record.service'
 import { KpiCard } from '@/components/ui/kpi-card'
@@ -29,7 +31,7 @@ export default async function LaporanProduksiPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const session = await getSession()
-  if (!session || session.role === 'operator') redirect('/dashboard')
+  if (!session || !hasPermission(session, PERMISSIONS.LAPORAN.VIEW)) redirect('/dashboard')
 
   const params = await searchParams
   const today = new Date()
@@ -47,7 +49,7 @@ export default async function LaporanProduksiPage({
     kpi: { totalDeaths: 0, totalCulled: 0 },
   }
   try {
-    result = await getProductionReportData(session.farmSchema, safeFrom, safeTo, session.role as Role)
+    result = await getProductionReportData(session.farmSchema, safeFrom, safeTo, session.roleSlug as Role)
   } catch {
     // DB error — render empty state
   }
@@ -73,7 +75,7 @@ export default async function LaporanProduksiPage({
           <Suspense fallback={null}>
             <ProductionReportFilter defaultFrom={safeFrom} defaultTo={safeTo} />
           </Suspense>
-          {(session.role === 'admin' || session.role === 'supervisor') && (
+          {hasPermission(session, PERMISSIONS.LAPORAN.EXPORT) && (
             <a
               href={`/api/laporan/produksi-csv?from=${safeFrom}&to=${safeTo}`}
               className="inline-flex items-center px-4 py-2 rounded-[10px] text-sm font-medium transition-colors"

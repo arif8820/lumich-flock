@@ -9,10 +9,11 @@ import type { FlockWithMeta } from '@/lib/services/flock.service'
 
 interface Props {
   flocks: FlockWithMeta[]
-  userRole: 'operator' | 'supervisor' | 'admin'
+  canCreate: boolean
+  canDelete: boolean
 }
 
-export function FlockListClient({ flocks, userRole }: Props) {
+export function FlockListClient({ flocks, canCreate, canDelete }: Props) {
   const router = useRouter()
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -33,7 +34,7 @@ export function FlockListClient({ flocks, userRole }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <span className="text-sm text-[var(--lf-text-mid)]">{flocks.length} flock aktif</span>
-        {(userRole === 'supervisor' || userRole === 'admin') && (
+        {canCreate && (
           <Link
             href="/flock/new"
             className="px-4 py-1.5 text-sm rounded-lg text-white font-medium"
@@ -59,7 +60,7 @@ export function FlockListClient({ flocks, userRole }: Props) {
               <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Umur</th>
               <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Fase</th>
               <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Total DOC</th>
-              {userRole === 'admin' && (
+              {canDelete && (
                 <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Aksi</th>
               )}
             </tr>
@@ -67,7 +68,7 @@ export function FlockListClient({ flocks, userRole }: Props) {
           <tbody className="divide-y divide-[var(--lf-border)]">
             {flocks.length === 0 && (
               <tr>
-                <td colSpan={userRole === 'admin' ? 6 : 5} className="px-4 py-8 text-center text-[var(--lf-text-soft)]">
+                <td colSpan={canDelete ? 6 : 5} className="px-4 py-8 text-center text-[var(--lf-text-soft)]">
                   Belum ada flock aktif
                 </td>
               </tr>
@@ -85,7 +86,7 @@ export function FlockListClient({ flocks, userRole }: Props) {
                 <td className="px-4 py-3 text-[var(--lf-text-mid)]">
                   {flock.totalCount.toLocaleString('id-ID')} ekor
                 </td>
-                {userRole === 'admin' && (
+                {canDelete && (
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     {flock.retiredAt == null && (
                       <button

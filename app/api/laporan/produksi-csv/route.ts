@@ -1,4 +1,6 @@
 import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { getProductionReportData } from '@/lib/services/daily-record.service'
 import type { Role, ProductionReportResult } from '@/lib/services/daily-record.service'
 
@@ -24,7 +26,7 @@ export async function GET(request: Request): Promise<Response> {
     return new Response('Unauthorized', { status: 401 })
   }
 
-  if (session.role !== 'admin' && session.role !== 'supervisor') {
+  if (!hasPermission(session, PERMISSIONS.LAPORAN.EXPORT)) {
     return new Response('Forbidden', { status: 403 })
   }
 
@@ -41,7 +43,7 @@ export async function GET(request: Request): Promise<Response> {
 
   let result: ProductionReportResult
   try {
-    result = await getProductionReportData(session.farmSchema, from, to, session.role as Role)
+    result = await getProductionReportData(session.farmSchema, from, to, session.roleSlug as Role)
   } catch {
     return new Response('Gagal mengambil data laporan', { status: 500 })
   }

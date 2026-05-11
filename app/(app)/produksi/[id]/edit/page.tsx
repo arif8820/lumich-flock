@@ -18,14 +18,14 @@ export default async function ProduksiEditPage({ params }: Props) {
 
   const now = new Date()
   const recordDate = new Date(record.recordDate)
-  const isAdmin = session.role === 'admin'
+  const isAdmin = session.isAdmin
 
   const recDay = Date.UTC(recordDate.getUTCFullYear(), recordDate.getUTCMonth(), recordDate.getUTCDate())
   const nowDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
   const diffDays = Math.round((nowDay - recDay) / 86_400_000)
   const isPastH7 = diffDays > 7
 
-  const editable = canEdit(recordDate, session.role, now)
+  const editable = canEdit(recordDate, session.roleSlug as 'admin' | 'supervisor' | 'operator', now)
   if (!editable && !isAdmin) redirect('/produksi')
 
   const [subRecords, eggItems, feedItems, vaccineItems, balances] = await Promise.all([
