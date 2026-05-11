@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Users, Settings, MessageSquare, Bell, Upload, Package, Wallet } from 'lucide-react'
+import { Users, Settings, MessageSquare, Bell, Upload, Package, Wallet, Shield } from 'lucide-react'
 
 const MENU = [
   {
@@ -19,6 +19,12 @@ const MENU = [
     icon: Users,
     label: 'Manajemen User',
     desc: 'Tambah, ubah role, dan kelola akses pengguna',
+  },
+  {
+    href: '/admin/roles',
+    icon: Shield,
+    label: 'Role & Permission',
+    desc: 'Kelola role dan permission akses pengguna',
   },
   {
     href: '/admin/flock-phases',
