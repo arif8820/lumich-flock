@@ -5,6 +5,12 @@ import { Sidebar } from './sidebar'
 import { BottomNav } from './bottom-nav'
 import type { SessionUser } from '@/lib/auth/get-session'
 import type { Notification } from '@/lib/services/notification.service'
+import type { PermissionKey } from '@/lib/auth/permissions'
+
+/** Serializable version of SessionUser safe to pass across server→client boundary */
+export type ClientUser = Omit<SessionUser, 'permissions'> & {
+  permissionKeys: PermissionKey[]
+}
 
 export function AppShell({
   user,
@@ -12,7 +18,7 @@ export function AppShell({
   notifications,
   readNotificationIds,
 }: {
-  user: SessionUser
+  user: ClientUser
   children: React.ReactNode
   notifications: Notification[]
   readNotificationIds: string[]

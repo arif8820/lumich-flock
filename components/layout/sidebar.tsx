@@ -5,20 +5,22 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { LayoutDashboard, Egg, Package, DollarSign, Bird, Settings, LogOut, BarChart2, ChevronDown, Wallet } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import type { SessionUser } from '@/lib/auth/get-session'
+import type { ClientUser } from './app-shell'
+import type { PermissionKey } from '@/lib/auth/permissions'
 import type { Notification } from '@/lib/services/notification.service'
+import { PERMISSIONS } from '@/lib/auth/permissions'
 import { NotificationBell } from '@/components/ui/notification-bell'
 
 type NavSubItem = {
   href: string
   label: string
-  /** roles that can see this sub-item. undefined = all roles */
-  roles?: Array<'admin' | 'supervisor' | 'operator'>
+  /** permission required to see this sub-item. undefined = always visible */
+  requiredPermission?: PermissionKey
 }
 
 type NavItem =
-  | { kind: 'flat'; href: string; icon: LucideIcon; label: string; roles?: Array<'admin' | 'supervisor' | 'operator'> }
-  | { kind: 'accordion'; id: string; icon: LucideIcon; label: string; roles?: Array<'admin' | 'supervisor' | 'operator'>; children: NavSubItem[] }
+  | { kind: 'flat'; href: string; icon: LucideIcon; label: string; requiredPermission?: PermissionKey }
+  | { kind: 'accordion'; id: string; icon: LucideIcon; label: string; requiredPermission?: PermissionKey; children: NavSubItem[] }
 
 const NAV_SECTIONS: { section?: string; items: NavItem[] }[] = [
   {
@@ -29,16 +31,18 @@ const NAV_SECTIONS: { section?: string; items: NavItem[] }[] = [
         href: '/dashboard',
         icon: LayoutDashboard,
         label: 'Dashboard',
+        // no permission required — always visible
       },
       {
         kind: 'accordion',
         id: 'produksi',
         icon: Egg,
         label: 'Produksi',
+        requiredPermission: PERMISSIONS.PRODUKSI.VIEW,
         children: [
-          { href: '/produksi', label: 'Input Harian' },
-          { href: '/admin/kandang', label: 'Kandang', roles: ['admin'] },
-          { href: '/flock', label: 'Flock' },
+          { href: '/produksi', label: 'Input Harian', requiredPermission: PERMISSIONS.PRODUKSI.VIEW },
+          { href: '/admin/kandang', label: 'Kandang', requiredPermission: PERMISSIONS.COOP.MANAGE },
+          { href: '/flock', label: 'Flock', requiredPermission: PERMISSIONS.FLOCK.VIEW },
         ],
       },
       {
@@ -46,17 +50,18 @@ const NAV_SECTIONS: { section?: string; items: NavItem[] }[] = [
         href: '/stok',
         icon: Package,
         label: 'Stok',
+        requiredPermission: PERMISSIONS.STOK.VIEW,
       },
       {
         kind: 'accordion',
         id: 'penjualan',
         icon: DollarSign,
         label: 'Penjualan',
-        roles: ['admin', 'supervisor'],
+        requiredPermission: PERMISSIONS.SALES.VIEW,
         children: [
-          { href: '/penjualan', label: 'Sales Order' },
-          { href: '/penjualan/invoices', label: 'Invoice', roles: ['admin', 'supervisor'] },
-          { href: '/admin/pelanggan', label: 'Pelanggan', roles: ['admin', 'supervisor'] },
+          { href: '/penjualan', label: 'Sales Order', requiredPermission: PERMISSIONS.SALES.VIEW },
+          { href: '/penjualan/invoices', label: 'Invoice', requiredPermission: PERMISSIONS.SALES.VIEW },
+          { href: '/admin/pelanggan', label: 'Pelanggan', requiredPermission: PERMISSIONS.SALES.VIEW },
         ],
       },
     ],
@@ -69,7 +74,7 @@ const NAV_SECTIONS: { section?: string; items: NavItem[] }[] = [
         href: '/kas',
         icon: Wallet,
         label: 'Kas',
-        roles: ['admin', 'supervisor'],
+        requiredPermission: PERMISSIONS.KAS.VIEW,
       },
     ],
   },
@@ -81,10 +86,10 @@ const NAV_SECTIONS: { section?: string; items: NavItem[] }[] = [
         id: 'laporan',
         icon: BarChart2,
         label: 'Laporan',
-        roles: ['admin', 'supervisor'],
+        requiredPermission: PERMISSIONS.LAPORAN.VIEW,
         children: [
-          { href: '/laporan', label: 'Piutang' },
-          { href: '/laporan/produksi', label: 'Produksi' },
+          { href: '/laporan', label: 'Piutang', requiredPermission: PERMISSIONS.LAPORAN.VIEW },
+          { href: '/laporan/produksi', label: 'Produksi', requiredPermission: PERMISSIONS.LAPORAN.VIEW },
         ],
       },
     ],
@@ -97,7 +102,7 @@ const NAV_SECTIONS: { section?: string; items: NavItem[] }[] = [
         href: '/admin',
         icon: Settings,
         label: 'Admin',
-        roles: ['admin'],
+        requiredPermission: PERMISSIONS.USER.MANAGE,
       },
     ],
   },
@@ -107,14 +112,9 @@ function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 }
 
-function getRoleLabel(role: string) {
-  const map: Record<string, string> = { admin: 'Administrator', supervisor: 'Supervisor', operator: 'Operator' }
-  return map[role] ?? role
-}
-
-function canSee(roles: Array<'admin' | 'supervisor' | 'operator'> | undefined, userRole: string): boolean {
-  if (!roles) return true
-  return roles.includes(userRole as 'admin' | 'supervisor' | 'operator')
+function canSee(requiredPermission: PermissionKey | undefined, permissionKeys: string[]): boolean {
+  if (!requiredPermission) return true
+  return permissionKeys.includes(requiredPermission)
 }
 
 // Prevents /admin matching /admin/kandang — requires trailing slash or exact match
@@ -125,14 +125,14 @@ function isActive(currentPath: string, href: string): boolean {
 function getDefaultOpenId(
   sections: typeof NAV_SECTIONS,
   currentPath: string,
-  userRole: string,
+  permissionKeys: string[],
 ): string | null {
   for (const { items } of sections) {
     for (const item of items) {
       if (item.kind !== 'accordion') continue
-      if (!canSee(item.roles, userRole)) continue
+      if (!canSee(item.requiredPermission, permissionKeys)) continue
       const hasActiveChild = item.children.some(
-        child => canSee(child.roles, userRole) && isActive(currentPath, child.href),
+        child => canSee(child.requiredPermission, permissionKeys) && isActive(currentPath, child.href),
       )
       if (hasActiveChild) return item.id
     }
@@ -146,13 +146,15 @@ export function Sidebar({
   notifications,
   readNotificationIds,
 }: {
-  user: SessionUser
+  user: ClientUser
   currentPath: string
   notifications: Notification[]
   readNotificationIds: string[]
 }) {
+  const { permissionKeys } = user
+
   const [openId, setOpenId] = useState<string | null>(
-    () => getDefaultOpenId(NAV_SECTIONS, currentPath, user.role),
+    () => getDefaultOpenId(NAV_SECTIONS, currentPath, permissionKeys),
   )
 
   function toggleAccordion(id: string) {
@@ -194,7 +196,7 @@ export function Sidebar({
       {/* Nav */}
       <div className="px-[10px] flex-1 overflow-y-auto">
         {NAV_SECTIONS.map(({ section, items }) => {
-          const visibleItems = items.filter(item => canSee(item.roles, user.role))
+          const visibleItems = items.filter(item => canSee(item.requiredPermission, permissionKeys))
           if (visibleItems.length === 0) return null
           return (
             <div key={section ?? 'default'}>
@@ -223,7 +225,7 @@ export function Sidebar({
                 // accordion item
                 const Icon = item.icon
                 const isOpen = openId === item.id
-                const visibleChildren = item.children.filter(c => canSee(c.roles, user.role))
+                const visibleChildren = item.children.filter(c => canSee(c.requiredPermission, permissionKeys))
                 const parentActive = visibleChildren.some(c => isActive(currentPath, c.href))
                 return (
                   <div key={item.id}>
@@ -277,7 +279,7 @@ export function Sidebar({
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[12px] font-semibold truncate" style={{ color: '#2d3a2e' }}>{user.fullName}</p>
-          <p className="text-[10px]" style={{ color: '#8fa08f' }}>{getRoleLabel(user.role)}</p>
+          <p className="text-[10px]" style={{ color: '#8fa08f' }}>{user.roleName}</p>
         </div>
         {/* Logout via GET route that calls supabase.auth.signOut() and redirects to /login */}
         <a href="/logout" style={{ color: '#8fa08f' }}>

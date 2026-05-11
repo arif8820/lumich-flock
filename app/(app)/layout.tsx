@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/get-session'
-import { AppShell } from '@/components/layout/app-shell'
+import { AppShell, type ClientUser } from '@/components/layout/app-shell'
 import {
   getNotificationsForRole,
   getReadNotificationIds,
@@ -11,13 +11,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!user) redirect('/login')
 
   const [notifications, readNotificationIds] = await Promise.all([
-    getNotificationsForRole(user.farmSchema, user.role, 50),
+    getNotificationsForRole(user.farmSchema, user.roleSlug as 'operator' | 'supervisor' | 'admin', 50),
     getReadNotificationIds(user.farmSchema, user.id),
   ])
 
+  const clientUser: ClientUser = {
+    ...user,
+    permissionKeys: [...user.permissions],
+  }
+
   return (
     <AppShell
-      user={user}
+      user={clientUser}
       notifications={notifications}
       readNotificationIds={readNotificationIds}
     >
