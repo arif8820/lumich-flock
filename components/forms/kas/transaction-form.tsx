@@ -36,6 +36,7 @@ export function TransactionForm({ accounts, categories, defaultAccountId, defaul
   }, [state, router])
 
   const [clientError, setClientError] = useState<string | null>(null)
+  const [txType, setTxType] = useState<'in' | 'out'>(defaultType)
 
   const todayStr = new Date().toISOString().split('T')[0]!
   const tomorrowStr = (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]! })()
@@ -80,18 +81,22 @@ export function TransactionForm({ accounts, categories, defaultAccountId, defaul
       {/* Type */}
       <div>
         <label className="block text-[12px] font-medium mb-1.5" style={{ color: '#5a6b5b' }}>Jenis Transaksi</label>
+        <input type="hidden" name="type" value={txType} />
         <div className="flex gap-2">
           {(['in', 'out'] as const).map((t) => (
-            <label key={t} className="flex-1 cursor-pointer">
-              <input type="radio" name="type" value={t} defaultChecked={defaultType === t} className="sr-only" />
-              <span
-                className="block text-center text-[13px] py-2 rounded-lg border transition-colors"
-                style={{ borderColor: '#e0e8df', color: '#5a6b5b' }}
-                data-value={t}
-              >
-                {t === 'in' ? '⬆ Pemasukan' : '⬇ Pengeluaran'}
-              </span>
-            </label>
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTxType(t)}
+              className="flex-1 text-center text-[13px] py-2 rounded-lg border transition-colors"
+              style={
+                txType === t
+                  ? { borderColor: '#5090be', background: '#eaf2fb', color: '#5090be', fontWeight: 600 }
+                  : { borderColor: '#e0e8df', background: 'white', color: '#5a6b5b' }
+              }
+            >
+              {t === 'in' ? '⬆ Pemasukan' : '⬇ Pengeluaran'}
+            </button>
           ))}
         </div>
       </div>
@@ -158,9 +163,11 @@ export function TransactionForm({ accounts, categories, defaultAccountId, defaul
             style={{ borderColor: '#e0e8df', color: '#2d3a2e' }}
           >
             <option value="">Tanpa kategori</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
-            ))}
+            {categories
+              .filter((cat) => cat.type === txType || cat.type === 'both')
+              .map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
           </select>
         </div>
       )}
