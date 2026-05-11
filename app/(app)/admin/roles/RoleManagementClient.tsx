@@ -113,12 +113,15 @@ export function RoleManagementClient({ roles }: Props) {
 
   const selectedRole = roles.find((r) => r.id === selectedRoleId) ?? null
 
+  // Derived: clear permissions when no role selected
+  const rolePermissionsToShow = selectedRoleId ? rolePermissions : new Set<string>()
+
   useEffect(() => {
     if (!selectedRoleId) {
-      setRolePermissions(new Set())
       return
     }
     let cancelled = false
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingPerms(true)
     setError(null)
     getRoleWithPermissionsAction(selectedRoleId).then((result) => {
@@ -327,7 +330,7 @@ export function RoleManagementClient({ roles }: Props) {
                               const protected_ = isProtectedRole(selectedRole)
                               const granted = selectedRole.isSystem
                                 ? true
-                                : rolePermissions.has(action.key)
+                                : rolePermissionsToShow.has(action.key)
                               const disabled =
                                 protected_ ||
                                 loadingPerms ||
