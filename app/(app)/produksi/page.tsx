@@ -40,7 +40,7 @@ export default async function ProduksiPage({
         <h1 className="text-xl font-semibold text-[var(--lf-text-dark)]">Produksi</h1>
         <Link
           href="/produksi/input"
-          className="text-sm px-4 py-2 bg-gradient-to-r from-[#7aadd4] to-[#5090be] text-white rounded-lg shadow-lf-btn"
+          className="text-sm px-4 py-2 min-h-[44px] flex items-center bg-gradient-to-r from-[#7aadd4] to-[#5090be] text-white rounded-lg shadow-lf-btn"
         >
           + Input Harian
         </Link>
@@ -87,7 +87,7 @@ export default async function ProduksiPage({
                     {editable && (
                       <Link
                         href={`/produksi/${r.id}/edit`}
-                        className="text-xs px-3 py-2 rounded-lg min-h-[40px] flex items-center flex-shrink-0 ml-2"
+                        className="text-xs px-3 py-2 rounded-lg min-h-[44px] flex items-center flex-shrink-0 ml-2"
                         style={{
                           background: showCorrection ? '#fff3cd' : 'var(--lf-blue-pale)',
                           color: showCorrection ? '#856404' : 'var(--lf-blue-active)',
@@ -105,7 +105,7 @@ export default async function ProduksiPage({
                       </span>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <div className="bg-[var(--lf-bg-warm)] rounded-lg p-2 text-center">
                       <p className="text-lg font-bold" style={{ color: 'var(--lf-text-dark)' }}>{r.deaths}</p>
                       <p className="text-[10px] uppercase font-medium" style={{ color: 'var(--lf-text-soft)' }}>Mati</p>
@@ -113,6 +113,10 @@ export default async function ProduksiPage({
                     <div className="bg-[var(--lf-bg-warm)] rounded-lg p-2 text-center">
                       <p className="text-lg font-bold" style={{ color: 'var(--lf-text-dark)' }}>{r.culled}</p>
                       <p className="text-[10px] uppercase font-medium" style={{ color: 'var(--lf-text-soft)' }}>Afkir</p>
+                    </div>
+                    <div className="rounded-lg p-2 text-center" style={{ background: 'var(--lf-teal-light, #e8f7f3)' }}>
+                      <p className="text-lg font-bold" style={{ color: '#3da88a' }}>{r.totalEggsButir.toLocaleString('id-ID')}</p>
+                      <p className="text-[10px] uppercase font-medium" style={{ color: '#3da88a' }}>Butir</p>
                     </div>
                   </div>
                 </div>

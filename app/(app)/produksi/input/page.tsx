@@ -20,7 +20,7 @@ export default async function ProduksiInputPage() {
   const balanceMap = new Map(balances.map((b) => [b.stockItemId, b.balance]))
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
+    <div className="p-3 md:p-6 max-w-2xl mx-auto">
       <h1 className="text-xl font-semibold text-[var(--lf-text-dark)] mb-6">Input Produksi Harian</h1>
       <DailyInputForm
         flocks={flocks}

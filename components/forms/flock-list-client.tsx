@@ -86,10 +86,16 @@ export function FlockListClient({ flocks, canCreate, canDelete }: Props) {
                 </Link>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <div className="bg-[var(--lf-bg-warm)] rounded-lg p-2 text-center">
                 <p className="text-lg font-bold" style={{ color: 'var(--lf-text-dark)' }}>{flock.ageWeeks}</p>
                 <p className="text-[10px] uppercase font-medium" style={{ color: 'var(--lf-text-soft)' }}>Minggu</p>
+              </div>
+              <div className="bg-[var(--lf-bg-warm)] rounded-lg p-2 text-center">
+                <p className="text-lg font-bold" style={{ color: 'var(--lf-text-dark)' }}>
+                  {flock.currentPopulation.toLocaleString('id-ID')}
+                </p>
+                <p className="text-[10px] uppercase font-medium" style={{ color: 'var(--lf-text-soft)' }}>Populasi</p>
               </div>
               <div className="bg-[var(--lf-bg-warm)] rounded-lg p-2 text-center">
                 <p className="text-lg font-bold" style={{ color: 'var(--lf-text-dark)' }}>
