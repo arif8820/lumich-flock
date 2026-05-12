@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { saveDailyRecordAction } from '@/lib/actions/daily-record.actions'
 import type { FlockOption } from '@/lib/services/daily-record.service'
 import type { StockItem } from '@/lib/db/schema'
+import { StepperInput } from '@/components/ui/stepper-input'
 
 type StockItemWithBalance = StockItem & { balance: number }
 
@@ -42,8 +43,7 @@ const TABS = [
 
 type TabKey = typeof TABS[number]['key']
 
-const inputClass = 'mt-1 w-full border border-[var(--lf-border)] rounded-lg px-3 py-2 text-sm bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--lf-blue)]'
-const numInputClass = 'w-full border border-[var(--lf-border)] rounded-lg px-2 py-1.5 text-sm text-right bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--lf-blue)]'
+const inputClass = 'mt-1 w-full border border-[var(--lf-border)] rounded-xl px-3 py-3 text-base bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--lf-blue)]'
 
 export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineItems }: Props) {
   const router = useRouter()
@@ -125,7 +125,7 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
   return (
     <div className="space-y-4">
       {/* Header: Flock + Date */}
-      <div className="bg-white rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)] grid grid-cols-2 gap-3">
+      <div className="bg-white rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)] space-y-3">
         <div>
           <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide">Flock</label>
           <select value={flockId} onChange={(e) => setFlockId(e.target.value)} className={inputClass}>
@@ -134,50 +134,69 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
             ))}
           </select>
         </div>
-        <div>
-          <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide">Tanggal</label>
-          <input
-            type="date"
-            value={recordDate}
-            onChange={(e) => setRecordDate(e.target.value)}
-            max={todayUTC()}
-            min={minDate(userRole)}
-            className={inputClass}
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide">Tanggal</label>
+            <input
+              type="date"
+              value={recordDate}
+              onChange={(e) => setRecordDate(e.target.value)}
+              max={todayUTC()}
+              min={minDate(userRole)}
+              className={inputClass}
+            />
+          </div>
+          <div className="bg-[var(--lf-blue-pale)] rounded-xl p-3 flex flex-col justify-center">
+            <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--lf-blue-active)' }}>Populasi</span>
+            <span className="text-2xl font-bold" style={{ color: 'var(--lf-text-dark)' }}>
+              {flock ? flock.currentPopulation.toLocaleString('id-ID') : '—'}
+            </span>
+            <span className="text-[10px]" style={{ color: 'var(--lf-text-soft)' }}>ekor aktif</span>
+          </div>
         </div>
       </div>
 
       {/* Tab strip */}
-      <div className="flex gap-0 border-b border-[var(--lf-border)] bg-white rounded-t-xl overflow-x-auto">
+      <div className="grid grid-cols-4 gap-2">
         {TABS.map((t) => (
           <button
             key={t.key}
             type="button"
             onClick={() => setActiveTab(t.key)}
-            className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors ${
-              t.key === activeTab
-                ? 'border-[var(--lf-blue-active)] text-[var(--lf-blue-active)]'
-                : 'border-transparent text-[var(--lf-text-soft)] hover:text-[var(--lf-text-mid)]'
-            }`}
+            className="flex flex-col items-center justify-center gap-1 py-3 rounded-xl text-xs font-medium transition-colors min-h-[56px]"
+            style={{
+              background: t.key === activeTab ? 'var(--lf-blue-active)' : 'white',
+              color: t.key === activeTab ? 'white' : 'var(--lf-text-soft)',
+              boxShadow: t.key === activeTab ? 'none' : '0 1px 3px rgba(0,0,0,0.08)',
+            }}
           >
-            {t.label}
+            <span className="text-base leading-none">{t.label.split(' ')[0]}</span>
+            <span>{t.label.split(' ').slice(1).join(' ')}</span>
           </button>
         ))}
       </div>
 
       {/* Tab content */}
-      <div className="bg-white rounded-b-xl rounded-tr-xl p-5 shadow-lf-sm border border-[var(--lf-border)] border-t-0 space-y-4">
+      <div className="bg-white rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)] space-y-4">
 
         {activeTab === 'ayam' && (
           <>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide">Kematian (ekor)</label>
-                <input type="number" min="0" value={deaths} onChange={(e) => setDeaths(Number(e.target.value))} className={inputClass} />
+                <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide block mb-2">Kematian (ekor)</label>
+                <StepperInput
+                  value={deaths}
+                  onChange={setDeaths}
+                  min={0}
+                />
               </div>
               <div>
-                <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide">Afkir (ekor)</label>
-                <input type="number" min="0" value={culled} onChange={(e) => setCulled(Number(e.target.value))} className={inputClass} />
+                <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide block mb-2">Afkir (ekor)</label>
+                <StepperInput
+                  value={culled}
+                  onChange={setCulled}
+                  min={0}
+                />
               </div>
             </div>
             {depletionOverflow && (
@@ -191,7 +210,7 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
-                className="mt-1 w-full border border-[var(--lf-border)] rounded-lg px-3 py-2 text-sm bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--lf-blue)]"
+                className="mt-2 w-full border border-[var(--lf-border)] rounded-xl px-3 py-3 text-base bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--lf-blue)]"
               />
             </div>
           </>
@@ -199,38 +218,38 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
 
         {activeTab === 'telur' && (
           <div>
-            <div className="grid grid-cols-[1fr_80px_80px] gap-2 pb-2 border-b border-[var(--lf-border)] text-[10px] font-semibold uppercase tracking-wide text-[var(--lf-text-soft)]">
-              <span>SKU</span>
-              <span className="text-right">Butir</span>
-              <span className="text-right">Kg</span>
-            </div>
             {eggItems.map((item, idx) => (
-              <div key={item.id} className="grid grid-cols-[1fr_80px_80px] gap-2 py-2 border-b border-[var(--lf-border)] last:border-0 items-center">
+              <div key={item.id} className="py-3 border-b border-[var(--lf-border)] last:border-0 space-y-2">
                 <span className="text-sm font-medium text-[var(--lf-text-dark)]">{item.name}</span>
-                <input
-                  type="number"
-                  min="0"
-                  value={eggEntries[idx]?.qtyButir ?? 0}
-                  onChange={(e) => updateEggButir(idx, Number(e.target.value))}
-                  className={numInputClass}
-                />
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={eggEntries[idx]?.qtyKg ?? 0}
-                  onChange={(e) => updateEggKg(idx, Number(e.target.value))}
-                  className={numInputClass}
-                />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide block mb-2">Butir</label>
+                    <StepperInput
+                      value={eggEntries[idx]?.qtyButir ?? 0}
+                      onChange={(val) => updateEggButir(idx, val)}
+                      min={0}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide block mb-2">Kg</label>
+                    <StepperInput
+                      value={eggEntries[idx]?.qtyKg ?? 0}
+                      onChange={(val) => updateEggKg(idx, val)}
+                      min={0}
+                      step={0.1}
+                    />
+                  </div>
+                </div>
               </div>
             ))}
             {eggItems.length === 0 && <p className="text-sm text-[var(--lf-text-soft)] py-4">Tidak ada SKU telur aktif.</p>}
             {eggItems.length > 0 && (
-              <div className="grid grid-cols-[1fr_80px_80px] gap-2 pt-2 text-sm font-semibold">
-                <span className="text-[var(--lf-text-mid)]">Total</span>
+              <div className="grid grid-cols-2 gap-2 pt-3 text-sm font-semibold">
+                <span className="text-[var(--lf-text-mid)]">Total Butir</span>
                 <span className="text-right text-[var(--lf-blue-active)]">
                   {eggEntries.reduce((s, e) => s + e.qtyButir, 0).toLocaleString('id')}
                 </span>
+                <span className="text-[var(--lf-text-mid)]">Total Kg</span>
                 <span className="text-right text-[var(--lf-blue-active)]">
                   {eggEntries.reduce((s, e) => s + e.qtyKg, 0).toFixed(2)}
                 </span>
@@ -242,25 +261,20 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
         {activeTab === 'pakan' && (
           <div>
             {feedItems.length === 0 && <p className="text-sm text-[var(--lf-text-soft)] py-4">Tidak ada item pakan aktif.</p>}
-            <div className="grid grid-cols-[1fr_100px] gap-2 pb-2 border-b border-[var(--lf-border)] text-[10px] font-semibold uppercase tracking-wide text-[var(--lf-text-soft)]">
-              <span>Item</span>
-              <span className="text-right">Dipakai (kg)</span>
-            </div>
             {feedItems.map((item, idx) => (
-              <div key={item.id} className="grid grid-cols-[1fr_100px] gap-2 py-2 border-b border-[var(--lf-border)] last:border-0 items-center">
+              <div key={item.id} className="py-3 border-b border-[var(--lf-border)] last:border-0 space-y-2">
                 <div>
                   <p className="text-sm font-medium text-[var(--lf-text-dark)]">{item.name}</p>
                   <p className="text-xs" style={{ color: 'var(--lf-teal)' }}>Stok: {item.balance.toLocaleString('id')} kg</p>
                 </div>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  max={item.balance}
-                  value={feedEntries[idx]?.qtyUsed ?? 0}
-                  onChange={(e) => updateFeed(idx, Number(e.target.value))}
-                  className={numInputClass}
-                />
+                <div>
+                  <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide block mb-2">Dipakai (kg)</label>
+                  <StepperInput
+                    value={feedEntries[idx]?.qtyUsed ?? 0}
+                    onChange={(val) => updateFeed(idx, val)}
+                    min={0}
+                  />
+                </div>
               </div>
             ))}
           </div>
@@ -269,43 +283,48 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
         {activeTab === 'vaksin' && (
           <div>
             {vaccineItems.length === 0 && <p className="text-sm text-[var(--lf-text-soft)] py-4">Tidak ada item vaksin aktif.</p>}
-            <div className="grid grid-cols-[1fr_100px] gap-2 pb-2 border-b border-[var(--lf-border)] text-[10px] font-semibold uppercase tracking-wide text-[var(--lf-text-soft)]">
-              <span>Item</span>
-              <span className="text-right">Dipakai (dosis)</span>
-            </div>
             {vaccineItems.map((item, idx) => (
-              <div key={item.id} className="grid grid-cols-[1fr_100px] gap-2 py-2 border-b border-[var(--lf-border)] last:border-0 items-center">
+              <div key={item.id} className="py-3 border-b border-[var(--lf-border)] last:border-0 space-y-2">
                 <div>
                   <p className="text-sm font-medium text-[var(--lf-text-dark)]">{item.name}</p>
                   <p className="text-xs" style={{ color: 'var(--lf-teal)' }}>Stok: {item.balance.toLocaleString('id')} dosis</p>
                 </div>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  max={item.balance}
-                  value={vaccineEntries[idx]?.qtyUsed ?? 0}
-                  onChange={(e) => updateVaccine(idx, Number(e.target.value))}
-                  className={numInputClass}
-                />
+                <div>
+                  <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide block mb-2">Dipakai (dosis)</label>
+                  <StepperInput
+                    value={vaccineEntries[idx]?.qtyUsed ?? 0}
+                    onChange={(val) => updateVaccine(idx, val)}
+                    min={0}
+                  />
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {error && (
-        <div className="bg-[var(--lf-danger-bg)] rounded-lg px-4 py-3 text-sm" style={{ color: 'var(--lf-danger-text)' }}>{error}</div>
-      )}
-
-      <button
-        type="button"
-        onClick={() => void submitForm()}
-        disabled={pending || depletionOverflow}
-        className="w-full bg-gradient-to-r from-[#7aadd4] to-[#5090be] text-white font-medium rounded-xl py-3 shadow-lf-btn disabled:opacity-60"
-      >
-        {pending ? 'Menyimpan...' : 'Simpan'}
-      </button>
+      {/* Sticky submit */}
+      <div className="sticky bottom-4 mt-2">
+        {error && (
+          <p className="text-sm text-center mb-2 px-3 py-2 rounded-lg bg-[var(--lf-danger-bg)]" style={{ color: 'var(--lf-danger-text)' }}>
+            {error}
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={() => void submitForm()}
+          disabled={pending || depletionOverflow}
+          className="w-full font-semibold rounded-xl transition-opacity disabled:opacity-50"
+          style={{
+            minHeight: '52px',
+            background: 'linear-gradient(to right, var(--lf-blue), var(--lf-blue-dark))',
+            color: 'white',
+            fontSize: '15px',
+          }}
+        >
+          {pending ? 'Menyimpan...' : 'Simpan'}
+        </button>
+      </div>
     </div>
   )
 }
