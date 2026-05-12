@@ -51,11 +51,11 @@ export default async function StokPage({
   const totalButir = isTelur ? filteredBalances.reduce((s, b) => s + b.balance, 0) : null
 
   return (
-    <div className="p-6">
+    <div className="p-3 md:p-6">
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-xl font-semibold text-[var(--lf-text-dark)]">Stok</h1>
         {hasPermission(session, PERMISSIONS.STOK.ADJUST) && (
-          <div className="flex gap-2">
+          <div className="hidden md:flex gap-2">
             <Link href="/stok/sesuaikan" className="press-feedback text-sm px-3 py-2 bg-gradient-to-r from-[#7aadd4] to-[#5090be] text-white rounded-lg shadow-lf-btn">
               Penyesuaian
             </Link>
@@ -87,40 +87,108 @@ export default async function StokPage({
       </div>
 
       {/* Balance list */}
-      <div className="grid gap-3">
-        {filteredBalances.length === 0 && (
-          <p className="text-[var(--lf-text-soft)] text-center py-16">Tidak ada data stok.</p>
-        )}
-        {filteredBalances.map((b) => (
-          <div
-            key={b.stockItemId}
-            className="bg-white rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)] flex items-center justify-between"
-          >
-            <div>
-              {activeTab.key === 'lainnya' && (
-                <p className="text-[10px] text-[var(--lf-text-soft)] uppercase tracking-wide mb-0.5">{b.categoryName}</p>
-              )}
-              <p className="font-medium text-[var(--lf-text-dark)]">{b.itemName}</p>
-            </div>
-            <div className="text-right">
-              <p className="font-semibold text-[var(--lf-blue-active)]">
-                {b.balance.toLocaleString('id')}
-              </p>
-              <p className="text-[10px] text-[var(--lf-text-soft)]">{b.unit}</p>
-            </div>
-          </div>
-        ))}
+      {filteredBalances.length === 0 ? (
+        <p className="text-[var(--lf-text-soft)] text-center py-16 text-sm">Tidak ada data stok.</p>
+      ) : (
+        <>
+          {/* Mobile card list */}
+          <div className="md:hidden space-y-2">
+            {filteredBalances.map((item) => (
+              <div key={item.stockItemId} className="bg-white rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)]">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0 mr-3">
+                    {activeTab.key === 'lainnya' && (
+                      <p className="text-[10px] text-[var(--lf-text-soft)] uppercase tracking-wide mb-0.5">{item.categoryName}</p>
+                    )}
+                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--lf-text-dark)' }}>{item.itemName}</p>
+                    <span
+                      className="inline-block text-[10px] px-2 py-0.5 rounded-full mt-1"
+                      style={{ background: 'var(--lf-blue-pale)', color: 'var(--lf-blue-active)' }}
+                    >
+                      {item.categoryName}
+                    </span>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-xl font-bold" style={{ color: 'var(--lf-text-dark)' }}>
+                      {item.balance.toLocaleString('id-ID')}
+                    </p>
+                    <p className="text-[10px]" style={{ color: 'var(--lf-text-soft)' }}>{item.unit}</p>
+                  </div>
+                </div>
+                {hasPermission(session, PERMISSIONS.STOK.ADJUST) && (
+                  <div className="flex gap-2 mt-3">
+                    <Link
+                      href="/stok/beli"
+                      className="flex-1 text-center text-xs py-2.5 rounded-lg border border-[var(--lf-border)] min-h-[40px] flex items-center justify-center"
+                      style={{ color: 'var(--lf-text-mid)' }}
+                    >
+                      Beli
+                    </Link>
+                    <Link
+                      href="/stok/regrade"
+                      className="flex-1 text-center text-xs py-2.5 rounded-lg border border-[var(--lf-border)] min-h-[40px] flex items-center justify-center"
+                      style={{ color: 'var(--lf-text-mid)' }}
+                    >
+                      Regrade
+                    </Link>
+                    <Link
+                      href="/stok/sesuaikan"
+                      className="flex-1 text-center text-xs py-2.5 rounded-lg bg-gradient-to-r from-[#7aadd4] to-[#5090be] text-white min-h-[40px] flex items-center justify-center"
+                    >
+                      Sesuaikan
+                    </Link>
+                  </div>
+                )}
+              </div>
+            ))}
 
-        {isTelur && totalButir !== null && filteredBalances.length > 0 && (
-          <div className="bg-[var(--lf-surface)] rounded-xl p-4 border border-[var(--lf-border)] flex items-center justify-between">
-            <p className="text-sm font-semibold text-[var(--lf-text-dark)]">Total Telur</p>
-            <div className="text-right">
-              <p className="font-bold text-[var(--lf-blue-active)]">{totalButir.toLocaleString('id')}</p>
-              <p className="text-[10px] text-[var(--lf-text-soft)]">butir</p>
+            {isTelur && totalButir !== null && (
+              <div className="bg-[var(--lf-surface)] rounded-xl p-4 border border-[var(--lf-border)] flex items-center justify-between">
+                <p className="text-sm font-semibold text-[var(--lf-text-dark)]">Total Telur</p>
+                <div className="text-right">
+                  <p className="font-bold text-[var(--lf-blue-active)]">{totalButir.toLocaleString('id')}</p>
+                  <p className="text-[10px] text-[var(--lf-text-soft)]">butir</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop list */}
+          <div className="hidden md:block">
+            <div className="grid gap-3">
+              {filteredBalances.map((b) => (
+                <div
+                  key={b.stockItemId}
+                  className="bg-white rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)] flex items-center justify-between"
+                >
+                  <div>
+                    {activeTab.key === 'lainnya' && (
+                      <p className="text-[10px] text-[var(--lf-text-soft)] uppercase tracking-wide mb-0.5">{b.categoryName}</p>
+                    )}
+                    <p className="font-medium text-[var(--lf-text-dark)]">{b.itemName}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-[var(--lf-blue-active)]">
+                      {b.balance.toLocaleString('id')}
+                    </p>
+                    <p className="text-[10px] text-[var(--lf-text-soft)]">{b.unit}</p>
+                  </div>
+                </div>
+              ))}
+
+              {isTelur && totalButir !== null && (
+                <div className="bg-[var(--lf-surface)] rounded-xl p-4 border border-[var(--lf-border)] flex items-center justify-between">
+                  <p className="text-sm font-semibold text-[var(--lf-text-dark)]">Total Telur</p>
+                  <div className="text-right">
+                    <p className="font-bold text-[var(--lf-blue-active)]">{totalButir.toLocaleString('id')}</p>
+                    <p className="text-[10px] text-[var(--lf-text-soft)]">butir</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       {isTelur && (
         <p className="text-xs text-[var(--lf-text-soft)] mt-4">Detail per flock tersedia di Laporan.</p>
