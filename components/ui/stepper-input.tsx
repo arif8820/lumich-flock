@@ -12,21 +12,21 @@ interface Props {
 
 export function StepperInput({ value, onChange, min = 0, max, step = 1, className }: Props) {
   function decrement() {
-    const next = value - step
-    if (min !== undefined && next < min) return
+    const next = Math.max(value - step, min)
+    if (next === value) return
     onChange(next)
   }
 
   function increment() {
-    const next = value + step
-    if (max !== undefined && next > max) return
+    const next = max !== undefined ? Math.min(value + step, max) : value + step
+    if (max !== undefined && next === value) return
     onChange(next)
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const parsed = parseInt(e.target.value, 10)
     if (isNaN(parsed)) return
-    if (min !== undefined && parsed < min) return
+    if (parsed < min) return
     if (max !== undefined && parsed > max) return
     onChange(parsed)
   }
@@ -38,7 +38,7 @@ export function StepperInput({ value, onChange, min = 0, max, step = 1, classNam
       <button
         type="button"
         onClick={decrement}
-        disabled={min !== undefined && value <= min}
+        disabled={value <= min}
         className="w-12 h-12 flex items-center justify-center text-xl font-light flex-shrink-0 disabled:opacity-30 transition-opacity"
         style={{ color: 'var(--lf-blue-active)' }}
         aria-label="Kurangi"
