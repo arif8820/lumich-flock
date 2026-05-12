@@ -171,10 +171,13 @@ export async function parseDailyRecordsCsv(
   }
 
   // Batch flock existence check — one query for all unique flock IDs in the CSV
+  // Filter to valid UUIDs first — passing non-UUID strings to inArray throws a Postgres cast error
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   const uniqueFlockIds = [...new Set(dataRows.map((cols) => cols[0]).filter(Boolean))] as string[]
+  const validUUIDs = uniqueFlockIds.filter((id) => UUID_RE.test(id))
   const s = getFarmSchema(farmSchema)
-  const validFlocks = uniqueFlockIds.length > 0
-    ? await db.select({ id: s.flocks.id }).from(s.flocks).where(inArray(s.flocks.id, uniqueFlockIds))
+  const validFlocks = validUUIDs.length > 0
+    ? await db.select({ id: s.flocks.id }).from(s.flocks).where(inArray(s.flocks.id, validUUIDs))
     : []
   const validFlockIdSet = new Set(validFlocks.map((f) => f.id))
 
@@ -463,7 +466,19 @@ export async function generateDailyRecordsCsvTemplate(farmSchema: string): Promi
     return `vaccine_${norm}_dosis`
   })
 
-  return [...fixedCols, ...eggCols, ...feedCols, ...vaccineCols].join(',') + '\n'
+  const header = [...fixedCols, ...eggCols, ...feedCols, ...vaccineCols].join(',')
+
+  const exampleDate = new Date().toISOString().split('T')[0]!
+  const exampleRow = [
+    'GANTI-DENGAN-FLOCK-ID',
+    exampleDate,
+    '0',
+    '0',
+    '',
+    ...Array(eggCols.length + feedCols.length + vaccineCols.length).fill('0'),
+  ].join(',')
+
+  return header + '\n' + exampleRow + '\n'
 }
 
 /**

@@ -211,6 +211,12 @@ export function ImportPanel({ activeFlocks }: { activeFlocks: ActiveFlock[] }) {
             <input type="file" accept=".csv,text/csv" className="hidden" onChange={handleFileChange} />
           </label>
 
+          {entity === 'daily_records' && (
+            <p className="text-[11px]" style={{ color: '#8fa08f' }}>
+              Kolom <code className="px-1 rounded" style={{ background: '#f0f4f0', color: '#3d7cb0' }}>record_date</code> gunakan format <strong>YYYY-MM-DD</strong> — contoh: 2026-01-15
+            </p>
+          )}
+
           {csvText && (
             <p className="text-[12px]" style={{ color: '#5a6b5b' }}>
               File dimuat — {csvText.split('\n').length - 1} baris data
