@@ -126,16 +126,14 @@ describe('import.service -- parseDailyRecordsCsv', () => {
     expect(errors[0]!.errors[0]).toMatch(/flock_id/)
   })
 
-  it('rejects duplicate (flockId, recordDate)', async () => {
-    let callCount = 0
-    setWhereMock(() => {
-      const result = callCount === 0 ? [{ id: 'uuid-flock-1' }] : [{ id: 'existing-record' }]
-      callCount++
-      return Promise.resolve(result)
-    })
+  it('parses valid row even if duplicate exists (duplicate check deferred to commitImport)', async () => {
+    // Duplicate detection moved from parse to commitImport (unique constraint catch).
+    // Parse only validates flock existence and field formats.
+    setWhereMock(() => Promise.resolve([{ id: 'uuid-flock-1' }]))
     const csv = HEADER + 'uuid-flock-1,2026-04-01,2,0,\n'
-    const { errors } = await parseDailyRecordsCsv(csv, FARM)
-    expect(errors[0]!.errors[0]).toMatch(/sudah ada/)
+    const { valid, errors } = await parseDailyRecordsCsv(csv, FARM)
+    expect(errors).toHaveLength(0)
+    expect(valid).toHaveLength(1)
   })
 
   it('returns empty entries when no dynamic columns are present', async () => {
