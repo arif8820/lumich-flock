@@ -6,16 +6,14 @@ import { parseCsvAction, commitImportAction, getCsvTemplateAction } from '@/lib/
 import type { ImportEntity } from '@/lib/services/import.service'
 
 const ENTITIES: { value: ImportEntity; label: string; hint: string }[] = [
-  { value: 'flocks', label: 'Flock (Master)', hint: 'Batch ayam baru — coop_id, nama, tgl_masuk, populasi' },
   { value: 'daily_records', label: 'Produksi Harian', hint: 'Data historis produksi per kandang' },
   { value: 'customers', label: 'Pelanggan', hint: 'Daftar pelanggan dengan limit kredit' },
-  { value: 'opening_stock', label: 'Stok Awal', hint: 'Saldo stok awal cutover — satu kali import per tanggal' },
 ]
 
 type Step = 'select' | 'preview' | 'done'
 
 export function ImportPanel() {
-  const [entity, setEntity] = useState<ImportEntity>('flocks')
+  const [entity, setEntity] = useState<ImportEntity>('daily_records')
   const [step, setStep] = useState<Step>('select')
   const [csvText, setCsvText] = useState('')
   const [preview, setPreview] = useState<{
