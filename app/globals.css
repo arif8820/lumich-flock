@@ -48,6 +48,13 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Fix iOS auto-zoom: inputs must be >= 16px */
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  font-size: 16px;
+}
+
 :root {
   /* LumichFlock design tokens */
   --lf-blue:         #7aadd4;

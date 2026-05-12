@@ -4,6 +4,7 @@ import {
   findActiveFlockByCoopId,
 } from '@/lib/db/queries/flock.queries'
 import { insertFlockDelivery, sumDeliveriesQuantityByFlockId } from '@/lib/db/queries/flock-delivery.queries'
+import { getTotalDepletionByFlock } from '@/lib/db/queries/daily-record.queries'
 import { getPhaseForWeeks } from '@/lib/services/flock-phase.service'
 import { db } from '@/lib/db'
 import { getFarmSchema } from '@/lib/db/schema-factory'
@@ -14,6 +15,7 @@ export type FlockWithMeta = Flock & {
   ageWeeks: number
   phase: FlockPhase | null
   totalCount: number
+  currentPopulation: number
 }
 
 export function getFlockAgeDays(docDate: Date, today: Date = new Date()): number {
@@ -30,9 +32,13 @@ export async function getAllActiveFlocks(farmSchema: string): Promise<FlockWithM
   return Promise.all(
     rawFlocks.map(async (flock) => {
       const ageWeeks = getFlockAgeWeeks(new Date(flock.docDate))
-      const phase = await getPhaseForWeeks(farmSchema, ageWeeks)
-      const totalCount = await sumDeliveriesQuantityByFlockId(farmSchema, flock.id)
-      return { ...flock, ageWeeks, phase, totalCount }
+      const [phase, totalCount, depletion] = await Promise.all([
+        getPhaseForWeeks(farmSchema, ageWeeks),
+        sumDeliveriesQuantityByFlockId(farmSchema, flock.id),
+        getTotalDepletionByFlock(farmSchema, flock.id),
+      ])
+      const currentPopulation = totalCount - depletion.deaths - depletion.culled
+      return { ...flock, ageWeeks, phase, totalCount, currentPopulation }
     })
   )
 }
