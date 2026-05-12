@@ -18,14 +18,14 @@ export function MoreDrawer({ isOpen, onClose, user }: Props) {
     <>
       {/* Backdrop */}
       <div
-        className="md:hidden fixed inset-0 bg-black/40 z-40"
+        className="fixed inset-0 bg-black/40 z-40"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Slide-up sheet */}
       <div
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-lf-md"
+        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-lf-md"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         {/* Handle bar */}
@@ -79,15 +79,15 @@ export function MoreDrawer({ isOpen, onClose, user }: Props) {
         <div className="flex items-center gap-3 px-4 py-3 border-t border-[var(--lf-border)] mx-4 mb-2">
           <div className="w-9 h-9 rounded-full bg-[var(--lf-blue-pale)] flex items-center justify-center flex-shrink-0">
             <span className="text-sm font-semibold" style={{ color: 'var(--lf-blue-active)' }}>
-              {user.email?.[0]?.toUpperCase() ?? '?'}
+              {user.fullName?.[0]?.toUpperCase() ?? '?'}
             </span>
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold truncate" style={{ color: 'var(--lf-text-dark)' }}>
-              {user.email}
+              {user.fullName}
             </p>
             <p className="text-xs" style={{ color: 'var(--lf-text-soft)' }}>
-              {user.roleSlug} · {user.farmSchema}
+              {user.roleName} · {user.farmSchema}
             </p>
           </div>
           {/* Logout via GET route that calls supabase.auth.signOut() and redirects to /login */}
