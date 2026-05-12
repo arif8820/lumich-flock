@@ -1,8 +1,10 @@
-'use client' // client: needs usePathname for active nav state
+'use client' // client: needs usePathname for active nav state + drawer open state
 
+import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Sidebar } from './sidebar'
 import { BottomNav } from './bottom-nav'
+import { MoreDrawer } from './more-drawer'
 import type { SessionUser } from '@/lib/auth/get-session'
 import type { Notification } from '@/lib/services/notification.service'
 import type { PermissionKey } from '@/lib/auth/permissions'
@@ -26,6 +28,7 @@ export function AppShell({
   hasNewVersion: boolean
 }) {
   const pathname = usePathname()
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   return (
     <div className="min-h-screen flex" style={{ background: '#f7f5f1' }}>
@@ -36,10 +39,18 @@ export function AppShell({
         readNotificationIds={readNotificationIds}
         hasNewVersion={hasNewVersion}
       />
-      <main className="flex-1 overflow-auto pb-16 md:pb-0">
+      <main className="flex-1 overflow-auto pb-24 md:pb-6">
         {children}
       </main>
-      <BottomNav />
+      <BottomNav
+        onMoreClick={() => setDrawerOpen(true)}
+        isMoreOpen={drawerOpen}
+      />
+      <MoreDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        user={user}
+      />
     </div>
   )
 }

@@ -67,6 +67,7 @@ export type DailyRecordWithFlock = {
   createdAt: Date
   flockName: string
   coopName: string
+  totalEggsButir: number
 }
 
 export async function findRecentDailyRecordsMultiFlocks(
@@ -75,8 +76,8 @@ export async function findRecentDailyRecordsMultiFlocks(
   limit: number,
 ): Promise<DailyRecordWithFlock[]> {
   if (flockIds.length === 0) return []
-  const { dailyRecords, flocks, coops } = getFarmSchema(farmSchema)
-  return db
+  const { dailyRecords, dailyEggRecords, flocks, coops } = getFarmSchema(farmSchema)
+  const rows = await db
     .select({
       id: dailyRecords.id,
       flockId: dailyRecords.flockId,
@@ -93,14 +94,16 @@ export async function findRecentDailyRecordsMultiFlocks(
       createdAt: dailyRecords.createdAt,
       flockName: flocks.name,
       coopName: coops.name,
+      totalEggsButir: sql<number>`COALESCE((SELECT SUM(${dailyEggRecords.qtyButir}) FROM ${dailyEggRecords} WHERE ${dailyEggRecords.dailyRecordId} = ${dailyRecords.id}), 0)`,
     })
     .from(dailyRecords)
     .innerJoin(flocks, eq(flocks.id, dailyRecords.flockId))
     .innerJoin(coops, eq(coops.id, flocks.coopId))
     .where(inArray(dailyRecords.flockId, flockIds))
     .orderBy(desc(dailyRecords.recordDate))
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .limit(limit) as any
+    .limit(limit)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return rows.map(r => ({ ...r, totalEggsButir: Number(r.totalEggsButir) })) as any
 }
 
 export async function getTotalDepletionByFlock(
