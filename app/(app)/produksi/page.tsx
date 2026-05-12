@@ -35,7 +35,7 @@ export default async function ProduksiPage({
   const now = new Date()
 
   return (
-    <div className="p-6">
+    <div className="p-3 md:p-6">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold text-[var(--lf-text-dark)]">Produksi</h1>
         <Link
@@ -55,66 +55,125 @@ export default async function ProduksiPage({
       {records.length === 0 ? (
         <p className="text-[var(--lf-text-soft)] text-center py-16">Belum ada data produksi.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border-separate border-spacing-y-1">
-            <thead>
-              <tr className="text-xs text-[var(--lf-text-soft)] uppercase tracking-wide text-left">
-                <th className="px-3 py-2">Tanggal</th>
-                <th className="px-3 py-2">Kandang</th>
-                <th className="px-3 py-2 text-right">Kematian</th>
-                <th className="px-3 py-2 text-right">Afkir</th>
-                <th className="px-3 py-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {records.map((r) => {
-                const recordDate = new Date(r.recordDate)
-                const isAdmin = session.isAdmin
-                const lockDays = session.roleSlug === 'operator' ? 1 : 7
-                const withinLockWindow = isWithinLockWindow(recordDate, now, lockDays)
-                const editable = isAdmin || withinLockWindow
-                const showCorrection = isAdmin && !withinLockWindow
+        <>
+          {/* Mobile card list */}
+          <div className="md:hidden space-y-2">
+            {records.map((r) => {
+              const recordDate = new Date(r.recordDate)
+              const isAdmin = session.isAdmin
+              const lockDays = session.roleSlug === 'operator' ? 1 : 7
+              const withinLockWindow = isWithinLockWindow(recordDate, now, lockDays)
+              const editable = isAdmin || withinLockWindow
+              const showCorrection = isAdmin && !withinLockWindow
 
-                return (
-                  <tr key={r.id} className="bg-white rounded-xl shadow-lf-sm">
-                    <td className="px-3 py-3 rounded-l-xl font-medium text-[var(--lf-text-dark)]">
-                      {recordDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}
-                      {r.isLateInput && (
-                        <span className="ml-2 text-[10px] bg-[var(--lf-danger-bg)] rounded px-1.5 py-0.5" style={{ color: 'var(--lf-danger-text)' }}>Terlambat</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-[var(--lf-text-soft)] text-xs">{r.coopName}</td>
-                    <td className="px-3 py-3 text-right text-[var(--lf-text-mid)]">{r.deaths}</td>
-                    <td className="px-3 py-3 text-right text-[var(--lf-text-mid)]">{r.culled}</td>
-                    <td className="px-3 py-3 text-right rounded-r-xl">
-                      {editable ? (
-                        <Link
-                          href={`/produksi/${r.id}/edit`}
-                          className="text-xs px-2.5 py-1 rounded-lg"
-                          style={{
-                            background: showCorrection ? '#fff3cd' : '#e3f0f9',
-                            color: showCorrection ? '#856404' : '#3d7cb0',
-                          }}
-                          title={showCorrection ? 'Koreksi (wajib isi alasan)' : 'Edit'}
-                        >
-                          {showCorrection ? 'Koreksi' : 'Edit'}
-                        </Link>
-                      ) : (
-                        <span
-                          className="text-xs px-2.5 py-1 rounded-lg cursor-not-allowed"
-                          style={{ background: '#f0f0f0', color: '#aaa' }}
-                          title="Periode koreksi telah berakhir"
-                        >
-                          Terkunci
+              return (
+                <div key={r.id} className="bg-white rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)]">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold" style={{ color: 'var(--lf-text-dark)' }}>
+                          {recordDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
                         </span>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+                        {r.isLateInput && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--lf-danger-bg)]" style={{ color: 'var(--lf-danger-text)' }}>
+                            Terlambat
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--lf-text-soft)' }}>
+                        {r.coopName} · {r.flockName}
+                      </p>
+                    </div>
+                    {editable && (
+                      <Link
+                        href={`/produksi/${r.id}/edit`}
+                        className="text-xs px-3 py-2 rounded-lg min-h-[40px] flex items-center flex-shrink-0 ml-2"
+                        style={{
+                          background: showCorrection ? '#fff3cd' : 'var(--lf-blue-pale)',
+                          color: showCorrection ? '#856404' : 'var(--lf-blue-active)',
+                        }}
+                      >
+                        {showCorrection ? 'Koreksi' : 'Edit'}
+                      </Link>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-[var(--lf-bg-warm)] rounded-lg p-2 text-center">
+                      <p className="text-lg font-bold" style={{ color: 'var(--lf-text-dark)' }}>{r.deaths}</p>
+                      <p className="text-[10px] uppercase font-medium" style={{ color: 'var(--lf-text-soft)' }}>Mati</p>
+                    </div>
+                    <div className="bg-[var(--lf-bg-warm)] rounded-lg p-2 text-center">
+                      <p className="text-lg font-bold" style={{ color: 'var(--lf-text-dark)' }}>{r.culled}</p>
+                      <p className="text-[10px] uppercase font-medium" style={{ color: 'var(--lf-text-soft)' }}>Afkir</p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Desktop table — unchanged */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-sm border-separate border-spacing-y-1">
+              <thead>
+                <tr className="text-xs text-[var(--lf-text-soft)] uppercase tracking-wide text-left">
+                  <th className="px-3 py-2">Tanggal</th>
+                  <th className="px-3 py-2">Kandang</th>
+                  <th className="px-3 py-2 text-right">Kematian</th>
+                  <th className="px-3 py-2 text-right">Afkir</th>
+                  <th className="px-3 py-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {records.map((r) => {
+                  const recordDate = new Date(r.recordDate)
+                  const isAdmin = session.isAdmin
+                  const lockDays = session.roleSlug === 'operator' ? 1 : 7
+                  const withinLockWindow = isWithinLockWindow(recordDate, now, lockDays)
+                  const editable = isAdmin || withinLockWindow
+                  const showCorrection = isAdmin && !withinLockWindow
+
+                  return (
+                    <tr key={r.id} className="bg-white rounded-xl shadow-lf-sm">
+                      <td className="px-3 py-3 rounded-l-xl font-medium text-[var(--lf-text-dark)]">
+                        {recordDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}
+                        {r.isLateInput && (
+                          <span className="ml-2 text-[10px] bg-[var(--lf-danger-bg)] rounded px-1.5 py-0.5" style={{ color: 'var(--lf-danger-text)' }}>Terlambat</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-[var(--lf-text-soft)] text-xs">{r.coopName}</td>
+                      <td className="px-3 py-3 text-right text-[var(--lf-text-mid)]">{r.deaths}</td>
+                      <td className="px-3 py-3 text-right text-[var(--lf-text-mid)]">{r.culled}</td>
+                      <td className="px-3 py-3 text-right rounded-r-xl">
+                        {editable ? (
+                          <Link
+                            href={`/produksi/${r.id}/edit`}
+                            className="text-xs px-2.5 py-1 rounded-lg"
+                            style={{
+                              background: showCorrection ? '#fff3cd' : '#e3f0f9',
+                              color: showCorrection ? '#856404' : '#3d7cb0',
+                            }}
+                            title={showCorrection ? 'Koreksi (wajib isi alasan)' : 'Edit'}
+                          >
+                            {showCorrection ? 'Koreksi' : 'Edit'}
+                          </Link>
+                        ) : (
+                          <span
+                            className="text-xs px-2.5 py-1 rounded-lg cursor-not-allowed"
+                            style={{ background: '#f0f0f0', color: '#aaa' }}
+                            title="Periode koreksi telah berakhir"
+                          >
+                            Terkunci
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   )
