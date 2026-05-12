@@ -58,7 +58,7 @@ export function MoreDrawer({ isOpen, onClose, user }: Props) {
             <span className="text-sm font-medium" style={{ color: 'var(--lf-text-soft)' }}>Penjualan</span>
           </div>
 
-          {user.isAdmin && (
+          {user.isAdmin ? (
             <Link
               href="/admin"
               onClick={onClose}
@@ -67,6 +67,11 @@ export function MoreDrawer({ isOpen, onClose, user }: Props) {
               <Settings size={20} style={{ color: 'var(--lf-text-mid)' }} />
               <span className="text-sm font-medium" style={{ color: 'var(--lf-text-dark)' }}>Admin</span>
             </Link>
+          ) : (
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-[var(--lf-bg-warm)] min-h-[56px] opacity-40 cursor-not-allowed select-none">
+              <Settings size={20} style={{ color: 'var(--lf-text-soft)' }} />
+              <span className="text-sm font-medium" style={{ color: 'var(--lf-text-soft)' }}>Admin</span>
+            </div>
           )}
         </div>
 
