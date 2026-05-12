@@ -1,8 +1,24 @@
 import type { VersionEntry } from './types'
 
-export const CURRENT_VERSION = 'v0.3.0' as const
+export const CURRENT_VERSION = 'v0.4.0' as const
 
 export const changelog: VersionEntry[] = [
+  {
+    version: 'v0.4.0',
+    date: '2026-05-12',
+    title: 'Mobile UX — Operator First',
+    changes: [
+      { type: 'feature',     text: 'Bottom nav baru: Produksi · Stok · Flock · Laporan · Lainnya' },
+      { type: 'feature',     text: 'Drawer "Lainnya" dengan akses Dashboard, Kas, dan info user' },
+      { type: 'feature',     text: 'Stepper +/− untuk input angka di form produksi harian' },
+      { type: 'improvement', text: 'Form produksi: selector flock full-width, tab grid 4 kolom, tombol simpan sticky' },
+      { type: 'improvement', text: 'List Produksi, Stok, Flock, dan Kas tampil sebagai card di mobile — tanpa scroll horizontal' },
+      { type: 'improvement', text: 'Populasi aktif flock tampil di header form produksi untuk cross-check sebelum input' },
+      { type: 'fix',         text: 'Input font-size 16px — mencegah iOS auto-zoom saat tap field' },
+      { type: 'fix',         text: 'Semua tombol min 44px — lebih mudah ditap di lapangan' },
+      { type: 'fix',         text: 'Padding halaman mobile 12px (sebelumnya 24px) — konten lebih lega' },
+    ],
+  },
   {
     version: 'v0.3.0',
     date: '2026-05-12',
