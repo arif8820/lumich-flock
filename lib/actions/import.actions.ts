@@ -3,12 +3,11 @@
 import { getSession } from '@/lib/auth/get-session'
 import { requireAdmin } from '@/lib/auth/guards'
 import {
-  parseFlockscsv,
   parseDailyRecordsCsv,
   parseCustomersCsv,
-  parseOpeningStockCsv,
   commitImport,
   getCsvTemplate,
+  generateDailyRecordsCsvTemplate,
 } from '@/lib/services/import.service'
 import type { ImportEntity, ParseResult, ParsedRow, ImportResult } from '@/lib/services/import.service'
 
@@ -24,12 +23,13 @@ export async function parseCsvAction(
   const guard = await requireAdmin()
   if (guard) return guard
 
+  const session = await getSession()
+  if (!session) return { success: false, error: 'Sesi tidak ditemukan' }
+
   try {
     let result
-    if (entity === 'flocks') result = await parseFlockscsv(csvText)
-    else if (entity === 'daily_records') result = await parseDailyRecordsCsv(csvText)
-    else if (entity === 'customers') result = parseCustomersCsv(csvText)
-    else result = await parseOpeningStockCsv(csvText)
+    if (entity === 'daily_records') result = await parseDailyRecordsCsv(csvText, session.farmSchema)
+    else result = parseCustomersCsv(csvText)
 
     return {
       success: true,
@@ -51,15 +51,21 @@ export async function commitImportAction(
 
   // requireAdmin() already confirmed session exists — getSession() is safe
   const session = await getSession()
+  if (!session) return { success: false, error: 'Sesi tidak ditemukan' }
 
   try {
-    const result = await commitImport(entity, rows, session!.id)
+    const result = await commitImport(entity, rows, session.id, session.farmSchema)
     return { success: true, data: result }
   } catch (e) {
-    return {
-      success: false,
-      error: e instanceof Error ? e.message : 'Gagal mengimpor data — semua perubahan dibatalkan',
+    // Drizzle wraps errors from db.transaction() — walk cause chain for the postgres error
+    let err: unknown = e
+    while (err instanceof Error) {
+      if (err.message.includes('daily_records_flock_date_idx')) {
+        return { success: false, error: 'Data untuk flock pada tanggal tersebut sudah ada' }
+      }
+      err = err.cause
     }
+    return { success: false, error: 'Gagal mengimpor data — semua perubahan dibatalkan' }
   }
 }
 
@@ -68,6 +74,13 @@ export async function getCsvTemplateAction(
 ): Promise<ActionResult<string>> {
   const guard = await requireAdmin()
   if (guard) return guard
+
+  if (entity === 'daily_records') {
+    const session = await getSession()
+    if (!session) return { success: false, error: 'Sesi tidak ditemukan' }
+    const template = await generateDailyRecordsCsvTemplate(session.farmSchema)
+    return { success: true, data: template }
+  }
 
   return { success: true, data: getCsvTemplate(entity) }
 }

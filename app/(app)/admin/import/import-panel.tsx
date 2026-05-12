@@ -1,21 +1,85 @@
 'use client' // client: file upload, multi-step state, CSV preview
 
 import { useState, useTransition } from 'react'
-import { Upload, Download, AlertCircle, CheckCircle2, ChevronRight } from 'lucide-react'
+import { Upload, Download, AlertCircle, CheckCircle2, ChevronRight, Copy, Check } from 'lucide-react'
 import { parseCsvAction, commitImportAction, getCsvTemplateAction } from '@/lib/actions/import.actions'
 import type { ImportEntity } from '@/lib/services/import.service'
 
 const ENTITIES: { value: ImportEntity; label: string; hint: string }[] = [
-  { value: 'flocks', label: 'Flock (Master)', hint: 'Batch ayam baru — coop_id, nama, tgl_masuk, populasi' },
   { value: 'daily_records', label: 'Produksi Harian', hint: 'Data historis produksi per kandang' },
   { value: 'customers', label: 'Pelanggan', hint: 'Daftar pelanggan dengan limit kredit' },
-  { value: 'opening_stock', label: 'Stok Awal', hint: 'Saldo stok awal cutover — satu kali import per tanggal' },
 ]
+
+type ActiveFlock = {
+  id: string
+  name: string
+  coopName: string
+  arrivalDate: Date | string
+}
 
 type Step = 'select' | 'preview' | 'done'
 
-export function ImportPanel() {
-  const [entity, setEntity] = useState<ImportEntity>('flocks')
+function FlockReferenceTable({ flocks }: { flocks: ActiveFlock[] }) {
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  function handleCopy(id: string) {
+    void navigator.clipboard.writeText(id)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 1500)
+  }
+
+  if (flocks.length === 0) {
+    return (
+      <p className="text-[12px] py-2" style={{ color: '#8fa08f' }}>Tidak ada flock aktif.</p>
+    )
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-[12px]">
+        <thead>
+          <tr style={{ borderBottom: '1px solid var(--lf-border)' }}>
+            <th className="text-left py-1.5 pr-3 font-semibold" style={{ color: '#8fa08f' }}>Nama Flock</th>
+            <th className="text-left py-1.5 pr-3 font-semibold" style={{ color: '#8fa08f' }}>Kandang</th>
+            <th className="text-left py-1.5 pr-3 font-semibold" style={{ color: '#8fa08f' }}>Tgl Masuk</th>
+            <th className="text-left py-1.5 font-semibold" style={{ color: '#8fa08f' }}>Flock ID</th>
+          </tr>
+        </thead>
+        <tbody>
+          {flocks.map((f) => (
+            <tr key={f.id} style={{ borderBottom: '1px solid #f0f4f0' }}>
+              <td className="py-1.5 pr-3 font-medium" style={{ color: '#2d3a2e' }}>{f.name}</td>
+              <td className="py-1.5 pr-3" style={{ color: '#5a6b5b' }}>{f.coopName}</td>
+              <td className="py-1.5 pr-3" style={{ color: '#5a6b5b' }}>
+                {typeof f.arrivalDate === 'string'
+                  ? f.arrivalDate
+                  : f.arrivalDate.toISOString().split('T')[0]}
+              </td>
+              <td className="py-1.5">
+                <div className="flex items-center gap-1.5">
+                  <code className="text-[11px] px-1.5 py-0.5 rounded" style={{ background: '#f0f4f0', color: '#3d7cb0', fontFamily: 'monospace' }}>
+                    {f.id}
+                  </code>
+                  <button
+                    onClick={() => handleCopy(f.id)}
+                    className="flex-shrink-0 p-1 rounded transition-colors"
+                    style={{ color: copiedId === f.id ? '#1a7a5e' : '#8fa08f' }}
+                    title="Salin ID"
+                  >
+                    {copiedId === f.id ? <Check size={12} /> : <Copy size={12} />}
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+export function ImportPanel({ activeFlocks }: { activeFlocks: ActiveFlock[] }) {
+  const [entity, setEntity] = useState<ImportEntity>('daily_records')
   const [step, setStep] = useState<Step>('select')
   const [csvText, setCsvText] = useState('')
   const [preview, setPreview] = useState<{
@@ -110,6 +174,17 @@ export function ImportPanel() {
         </div>
       </div>
 
+      {/* Flock reference table — only for daily_records */}
+      {entity === 'daily_records' && (
+        <div className="bg-white rounded-2xl border p-5" style={{ borderColor: 'var(--lf-border)' }}>
+          <p className="text-sm font-semibold mb-1" style={{ color: '#2d3a2e' }}>Referensi Flock ID</p>
+          <p className="text-[11px] mb-3" style={{ color: '#8fa08f' }}>
+            Salin Flock ID untuk kolom <code className="px-1 rounded" style={{ background: '#f0f4f0', color: '#3d7cb0' }}>flock_id</code> di CSV.
+          </p>
+          <FlockReferenceTable flocks={activeFlocks} />
+        </div>
+      )}
+
       {/* Step: select */}
       {step === 'select' && (
         <div className="bg-white rounded-2xl border p-5 space-y-4" style={{ borderColor: 'var(--lf-border)' }}>
@@ -135,6 +210,12 @@ export function ImportPanel() {
             <p className="text-[11px] mt-1" style={{ color: '#b0bab0' }}>Encoding: UTF-8 · Delimiter: koma</p>
             <input type="file" accept=".csv,text/csv" className="hidden" onChange={handleFileChange} />
           </label>
+
+          {entity === 'daily_records' && (
+            <p className="text-[11px]" style={{ color: '#8fa08f' }}>
+              Kolom <code className="px-1 rounded" style={{ background: '#f0f4f0', color: '#3d7cb0' }}>record_date</code> gunakan format <strong>YYYY-MM-DD</strong> — contoh: 2026-01-15
+            </p>
+          )}
 
           {csvText && (
             <p className="text-[12px]" style={{ color: '#5a6b5b' }}>

@@ -1,10 +1,10 @@
 /**
- * Import Service — Sprint 8
- * CSV import for: flocks, daily_records, customers, opening stock.
+ * Import Service — Sprint 8 (updated)
+ * CSV import for: daily_records, customers.
  *
  * Flow:
- *   1. parse(csvText, entity)  → { valid, errors }   (no DB write)
- *   2. importRows(valid, entity, adminId)             (DB write in transaction)
+ *   1. parse(csvText, entity, farmSchema)  → { valid, errors }   (no DB write)
+ *   2. commitImport(entity, rows, adminId, farmSchema)            (DB write in transaction)
  *
  * All imported records: is_imported = true, imported_by = adminId.
  * System errors → full rollback, no partial save.
@@ -12,17 +12,23 @@
  */
 
 import { db } from '@/lib/db'
+import { getFarmSchema } from '@/lib/db/schema-factory'
+import { inArray } from 'drizzle-orm'
+import type { NewCustomer } from '@/lib/db/schema'
 import {
-  flocks,
-  flockDeliveries,
-  dailyRecords,
-  customers,
-  inventoryMovements,
-  coops,
-  stockItems,
-} from '@/lib/db/schema'
-import { eq, and, sql } from 'drizzle-orm'
-import type { NewFlock, NewDailyRecord, NewCustomer, NewInventoryMovement } from '@/lib/db/schema'
+  getActiveEggItems,
+  getActiveFeedItems,
+  getActiveVaccineItems,
+} from '@/lib/services/stock-catalog.service'
+
+// ─── Domain error class ───────────────────────────────────────────────────────
+
+export class ImportDomainError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'ImportDomainError'
+  }
+}
 
 // ─── CSV parsing helpers ──────────────────────────────────────────────────────
 
@@ -75,77 +81,105 @@ function parseCsv(text: string): string[][] {
     .map((line) => line.split(',').map((c) => c.trim().replace(/^"|"$/g, '')))
 }
 
-// ─── Flock import ─────────────────────────────────────────────────────────────
-
-export type FlockImportRow = Omit<NewFlock, 'isImported' | 'importedBy'> & {
-  quantity: number
-}
-
-/**
- * Expected CSV columns: coop_id, name, arrival_date, quantity, breed (opt), notes (opt)
- * quantity = first delivery quantity (DOC count); docDate defaults to arrival_date.
- */
-export async function parseFlockscsv(csvText: string): Promise<ParseResult<FlockImportRow>> {
-  const rows = parseCsv(csvText)
-  const [, ...dataRows] = rows // skip header
-
-  const valid: ParsedRow<FlockImportRow>[] = []
-  const errors: ParseError[] = []
-
-  for (const [idx, cols] of dataRows.entries()) {
-    const rowNum = idx + 2
-    const rowErrors: string[] = []
-
-    const [coopId, name, arrivalDateStr, quantityStr, breed, notes] = cols
-
-    if (!coopId) {
-      rowErrors.push(`Baris ${rowNum}: coop_id wajib diisi`)
-    } else {
-      const [coopRow] = await db.select({ id: coops.id }).from(coops).where(eq(coops.id, coopId)).limit(1)
-      if (!coopRow) rowErrors.push(`Baris ${rowNum}: coop_id "${coopId}" tidak ditemukan`)
-    }
-    if (!name) rowErrors.push(`Baris ${rowNum}: name wajib diisi`)
-
-    const { dateObj: arrivalDate, error: dateErr } = parseISODate(arrivalDateStr ?? '', 'arrival_date', rowNum)
-    if (dateErr) rowErrors.push(dateErr)
-
-    const { num: quantity, error: countErr } = parseInt2(quantityStr ?? '', 'quantity', rowNum)
-    if (countErr) rowErrors.push(countErr)
-    if (quantity !== undefined && quantity <= 0) rowErrors.push(`Baris ${rowNum}: quantity harus > 0`)
-
-    if (rowErrors.length > 0) {
-      errors.push({ rowNum, errors: rowErrors })
-      continue
-    }
-
-    valid.push({
-      rowNum,
-      data: {
-        coopId: coopId!,
-        name: name!,
-        arrivalDate: arrivalDate!,
-        docDate: arrivalDate!, // default docDate to arrivalDate for CSV imports
-        quantity: quantity!,
-        breed: breed || null,
-        notes: notes || null,
-      },
-    })
-  }
-
-  return { valid, errors }
+/** Normalise a column header name for matching: lowercase + spaces→underscore */
+function normalizeColName(name: string): string {
+  return name.toLowerCase().replace(/\s+/g, '_')
 }
 
 // ─── DailyRecord import ───────────────────────────────────────────────────────
 
-export type DailyRecordImportRow = Pick<NewDailyRecord, 'flockId' | 'recordDate' | 'deaths' | 'culled' | 'eggsCracked' | 'eggsAbnormal' | 'isLateInput'>
+export type DailyRecordImportRow = {
+  flockId: string
+  recordDate: string
+  deaths: number
+  culled: number
+  notes: string | null
+  eggEntries: { stockItemId: string; qtyButir: number; qtyKg: number }[]
+  feedEntries: { stockItemId: string; qtyUsed: number }[]
+  vaccineEntries: { stockItemId: string; qtyUsed: number }[]
+}
+
+type DynColMeta =
+  | { type: 'egg'; stockItemId: string; field: 'butir' | 'kg' }
+  | { type: 'feed'; stockItemId: string; field: 'qty' }
+  | { type: 'vaccine'; stockItemId: string; field: 'qty' }
 
 /**
- * Expected CSV columns: flock_id, record_date, deaths, culled, eggs_cracked (opt), eggs_abnormal (opt)
- * Note: egg/feed entries are imported separately via the daily input form.
+ * Parse CSV text for daily_records import.
+ *
+ * Fixed columns (index 0-4): flock_id, record_date, deaths, culled, notes
+ * Dynamic columns (index ≥ 5): derived from active egg/feed/vaccine stock items.
+ *   Egg:     egg_{normalizedName}_butir  /  egg_{normalizedName}_kg
+ *   Feed:    feed_{normalizedName}_kg    (maps to qtyUsed)
+ *   Vaccine: vaccine_{normalizedName}_qty (maps to qtyUsed)
  */
-export async function parseDailyRecordsCsv(csvText: string): Promise<ParseResult<DailyRecordImportRow>> {
+export async function parseDailyRecordsCsv(
+  csvText: string,
+  farmSchema: string
+): Promise<ParseResult<DailyRecordImportRow>> {
   const rows = parseCsv(csvText)
-  const [, ...dataRows] = rows
+  if (rows.length === 0) return { valid: [], errors: [] }
+
+  const [headerRow, ...dataRows] = rows
+  const headers = (headerRow ?? []).map(normalizeColName)
+
+  // Fetch active items for dynamic column mapping
+  const [eggItems, feedItems, vaccineItems] = await Promise.all([
+    getActiveEggItems(farmSchema),
+    getActiveFeedItems(farmSchema),
+    getActiveVaccineItems(farmSchema),
+  ])
+
+  // Build column map: colIndex → DynColMeta
+  const colMap = new Map<number, DynColMeta>()
+
+  for (let i = 5; i < headers.length; i++) {
+    const h = headers[i] ?? ''
+
+    // Egg columns
+    for (const item of eggItems) {
+      const norm = normalizeColName(item.name)
+      if (h === `egg_${norm}_butir`) {
+        colMap.set(i, { type: 'egg', stockItemId: item.id, field: 'butir' })
+        break
+      }
+      if (h === `egg_${norm}_kg`) {
+        colMap.set(i, { type: 'egg', stockItemId: item.id, field: 'kg' })
+        break
+      }
+    }
+    if (colMap.has(i)) continue
+
+    // Feed columns
+    for (const item of feedItems) {
+      const norm = normalizeColName(item.name)
+      if (h === `feed_${norm}_kg`) {
+        colMap.set(i, { type: 'feed', stockItemId: item.id, field: 'qty' })
+        break
+      }
+    }
+    if (colMap.has(i)) continue
+
+    // Vaccine columns
+    for (const item of vaccineItems) {
+      const norm = normalizeColName(item.name)
+      if (h === `vaccine_${norm}_dosis`) {
+        colMap.set(i, { type: 'vaccine', stockItemId: item.id, field: 'qty' })
+        break
+      }
+    }
+  }
+
+  // Batch flock existence check — one query for all unique flock IDs in the CSV
+  // Filter to valid UUIDs first — passing non-UUID strings to inArray throws a Postgres cast error
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const uniqueFlockIds = [...new Set(dataRows.map((cols) => cols[0]).filter(Boolean))] as string[]
+  const validUUIDs = uniqueFlockIds.filter((id) => UUID_RE.test(id))
+  const s = getFarmSchema(farmSchema)
+  const validFlocks = validUUIDs.length > 0
+    ? await db.select({ id: s.flocks.id }).from(s.flocks).where(inArray(s.flocks.id, validUUIDs))
+    : []
+  const validFlockIdSet = new Set(validFlocks.map((f) => f.id))
 
   const valid: ParsedRow<DailyRecordImportRow>[] = []
   const errors: ParseError[] = []
@@ -154,40 +188,62 @@ export async function parseDailyRecordsCsv(csvText: string): Promise<ParseResult
     const rowNum = idx + 2
     const rowErrors: string[] = []
 
-    const [flockId, recordDateStr, deathsStr, culledStr, crackedStr, abnormalStr] = cols
+    const [flockId, recordDateStr, deathsStr, culledStr, notesRaw] = cols
 
+    // Validate flock_id using pre-fetched set
     if (!flockId) {
       rowErrors.push(`Baris ${rowNum}: flock_id wajib diisi`)
-    } else {
-      const [flockRow] = await db.select({ id: flocks.id }).from(flocks).where(eq(flocks.id, flockId)).limit(1)
-      if (!flockRow) rowErrors.push(`Baris ${rowNum}: flock_id "${flockId}" tidak ditemukan`)
+    } else if (!validFlockIdSet.has(flockId)) {
+      rowErrors.push(`Baris ${rowNum}: flock_id "${flockId}" tidak ditemukan`)
     }
 
     const { date: recordDate, error: dateErr } = parseISODate(recordDateStr ?? '', 'record_date', rowNum)
     if (dateErr) rowErrors.push(dateErr)
 
-    // Duplicate check: (flockId, recordDate) must not already exist
-    if (flockId && recordDate && rowErrors.length === 0) {
-      const [dup] = await db
-        .select({ id: dailyRecords.id })
-        .from(dailyRecords)
-        .where(and(eq(dailyRecords.flockId, flockId), eq(dailyRecords.recordDate, recordDate)))
-        .limit(1)
-      if (dup) rowErrors.push(`Baris ${rowNum}: data untuk flock_id "${flockId}" pada tanggal ini sudah ada`)
-    }
-
     const { num: deaths, error: e1 } = parseInt2(deathsStr ?? '', 'deaths', rowNum)
     if (e1) rowErrors.push(e1)
     const { num: culled, error: e2 } = parseInt2(culledStr ?? '', 'culled', rowNum)
     if (e2) rowErrors.push(e2)
-    const { num: eggsCracked, error: e5 } = parseInt2(crackedStr ?? '', 'eggs_cracked', rowNum, false)
-    if (e5) rowErrors.push(e5)
-    const { num: eggsAbnormal, error: e6 } = parseInt2(abnormalStr ?? '', 'eggs_abnormal', rowNum, false)
-    if (e6) rowErrors.push(e6)
 
     if (rowErrors.length > 0) {
       errors.push({ rowNum, errors: rowErrors })
       continue
+    }
+
+    // Build accumulators keyed by stockItemId
+    const eggMap = new Map<string, { qtyButir: number; qtyKg: number }>()
+    const feedMap = new Map<string, { qtyUsed: number }>()
+    const vaccineMap = new Map<string, { qtyUsed: number }>()
+
+    // Initialise all known items to 0
+    for (const item of eggItems) eggMap.set(item.id, { qtyButir: 0, qtyKg: 0 })
+    for (const item of feedItems) feedMap.set(item.id, { qtyUsed: 0 })
+    for (const item of vaccineItems) vaccineMap.set(item.id, { qtyUsed: 0 })
+
+    // Fill in values from dynamic columns
+    for (const [colIdx, meta] of colMap.entries()) {
+      const rawVal = cols[colIdx] ?? ''
+      if (meta.type === 'egg') {
+        const entry = eggMap.get(meta.stockItemId) ?? { qtyButir: 0, qtyKg: 0 }
+        if (meta.field === 'butir') {
+          const { num } = parseInt2(rawVal, `col_${colIdx}`, rowNum, false)
+          entry.qtyButir = num ?? 0
+        } else {
+          const { num } = parseFloat2(rawVal, `col_${colIdx}`, rowNum)
+          entry.qtyKg = num ?? 0
+        }
+        eggMap.set(meta.stockItemId, entry)
+      } else if (meta.type === 'feed') {
+        const entry = feedMap.get(meta.stockItemId) ?? { qtyUsed: 0 }
+        const { num } = parseFloat2(rawVal, `col_${colIdx}`, rowNum)
+        entry.qtyUsed = num ?? 0
+        feedMap.set(meta.stockItemId, entry)
+      } else {
+        const entry = vaccineMap.get(meta.stockItemId) ?? { qtyUsed: 0 }
+        const { num } = parseFloat2(rawVal, `col_${colIdx}`, rowNum)
+        entry.qtyUsed = num ?? 0
+        vaccineMap.set(meta.stockItemId, entry)
+      }
     }
 
     valid.push({
@@ -197,9 +253,10 @@ export async function parseDailyRecordsCsv(csvText: string): Promise<ParseResult
         recordDate: recordDate!,
         deaths: deaths!,
         culled: culled!,
-        eggsCracked: eggsCracked ?? 0,
-        eggsAbnormal: eggsAbnormal ?? 0,
-        isLateInput: false,
+        notes: notesRaw || null,
+        eggEntries: Array.from(eggMap.entries()).map(([stockItemId, v]) => ({ stockItemId, ...v })),
+        feedEntries: Array.from(feedMap.entries()).map(([stockItemId, v]) => ({ stockItemId, ...v })),
+        vaccineEntries: Array.from(vaccineMap.entries()).map(([stockItemId, v]) => ({ stockItemId, ...v })),
       },
     })
   }
@@ -261,82 +318,9 @@ export function parseCustomersCsv(csvText: string): ParseResult<CustomerImportRo
   return { valid, errors }
 }
 
-// ─── Opening stock import ─────────────────────────────────────────────────────
-
-export type OpeningStockImportRow = Pick<NewInventoryMovement, 'stockItemId' | 'movementType' | 'source' | 'sourceType' | 'quantity' | 'movementDate'>
-
-/**
- * Expected CSV columns: stock_item_id, quantity, movement_date
- */
-export async function parseOpeningStockCsv(csvText: string): Promise<ParseResult<OpeningStockImportRow>> {
-  const rows = parseCsv(csvText)
-  const [, ...dataRows] = rows
-
-  const valid: ParsedRow<OpeningStockImportRow>[] = []
-  const errors: ParseError[] = []
-
-  const checkedDates = new Set<string>()
-
-  for (const [idx, cols] of dataRows.entries()) {
-    const rowNum = idx + 2
-    const rowErrors: string[] = []
-
-    const [stockItemId, quantityStr, movementDateStr] = cols
-
-    if (!stockItemId) {
-      rowErrors.push(`Baris ${rowNum}: stock_item_id wajib diisi`)
-    } else {
-      const [itemRow] = await db.select({ id: stockItems.id }).from(stockItems).where(eq(stockItems.id, stockItemId)).limit(1)
-      if (!itemRow) rowErrors.push(`Baris ${rowNum}: stock_item_id "${stockItemId}" tidak ditemukan`)
-    }
-
-    const { num: quantity, error: qErr } = parseInt2(quantityStr ?? '', 'quantity', rowNum)
-    if (qErr) rowErrors.push(qErr)
-    if (quantity !== undefined && quantity <= 0) rowErrors.push(`Baris ${rowNum}: quantity harus > 0`)
-
-    const { date: movementDate, error: dErr } = parseISODate(movementDateStr ?? '', 'movement_date', rowNum)
-    if (dErr) rowErrors.push(dErr)
-
-    if (movementDate && !checkedDates.has(movementDate)) {
-      checkedDates.add(movementDate)
-      const [existing] = await db
-        .select({ count: sql<string>`COUNT(*)` })
-        .from(inventoryMovements)
-        .where(
-          and(
-            eq(inventoryMovements.source, 'import'),
-            eq(inventoryMovements.movementDate, movementDate)
-          )
-        )
-      if (Number(existing?.count ?? 0) > 0) {
-        rowErrors.push(`Baris ${rowNum}: import untuk tanggal "${movementDateStr}" sudah ada`)
-      }
-    }
-
-    if (rowErrors.length > 0) {
-      errors.push({ rowNum, errors: rowErrors })
-      continue
-    }
-
-    valid.push({
-      rowNum,
-      data: {
-        stockItemId: stockItemId!,
-        movementType: 'in',
-        source: 'import',
-        sourceType: 'import',
-        quantity: quantity!,
-        movementDate: movementDate!,
-      },
-    })
-  }
-
-  return { valid, errors }
-}
-
 // ─── DB write ─────────────────────────────────────────────────────────────────
 
-export type ImportEntity = 'flocks' | 'daily_records' | 'customers' | 'opening_stock'
+export type ImportEntity = 'daily_records' | 'customers'
 
 export type ImportResult = {
   inserted: number
@@ -347,61 +331,99 @@ export type ImportResult = {
  * Writes valid parsed rows to DB inside a single transaction.
  * Any system error → full rollback.
  * admin-only: sets is_imported = true, imported_by = adminId.
+ *
+ * farmSchema is required to scope DB writes to the correct farm schema.
  */
 export async function commitImport(
   entity: ImportEntity,
-  // any: dynamic row types across 4 entity types
-  // any: row data varies by entity
+  // any: dynamic row types across entity types
   rows: ParsedRow<Record<string, unknown>>[],
-  adminId: string
+  adminId: string,
+  farmSchema: string
 ): Promise<ImportResult> {
   if (rows.length === 0) return { inserted: 0, skipped: 0 }
+
+  const {
+    dailyRecords,
+    dailyEggRecords,
+    dailyFeedRecords,
+    dailyVaccineRecords,
+    customers: farmCustomers,
+  } = getFarmSchema(farmSchema)
 
   return db.transaction(async (tx) => {
     let inserted = 0
 
-    if (entity === 'flocks') {
+    if (entity === 'daily_records') {
       for (const row of rows) {
-        const { quantity, ...flockData } = row.data as FlockImportRow
-        const [inserted_flock] = await tx.insert(flocks).values({
-          ...flockData,
-          isImported: true,
-          importedBy: adminId,
-          createdBy: adminId,
-        }).returning()
-        await tx.insert(flockDeliveries).values({
-          flockId: inserted_flock!.id,
-          deliveryDate: flockData.arrivalDate!,
-          quantity,
-          ageAtArrivalDays: 0,
-          createdBy: adminId,
-        })
-        inserted++
-      }
-    } else if (entity === 'daily_records') {
-      for (const row of rows) {
-        await tx.insert(dailyRecords).values({
-          ...(row.data as NewDailyRecord),
-          isImported: true,
-          importedBy: adminId,
-          createdBy: adminId,
-        })
+        const rowData = row.data as unknown as DailyRecordImportRow
+
+        try {
+          const [newRecord] = await tx
+            .insert(dailyRecords)
+            .values({
+              flockId: rowData.flockId,
+              recordDate: new Date(rowData.recordDate),
+              deaths: rowData.deaths,
+              culled: rowData.culled,
+              notes: rowData.notes,
+              isLateInput: false,
+              isImported: true,
+              importedBy: adminId,
+              createdBy: adminId,
+            })
+            .returning()
+
+          if (!newRecord) throw new ImportDomainError(`Gagal menyimpan daily record baris ${row.rowNum}`)
+          const dailyRecordId = newRecord.id
+
+          const eggInserts = rowData.eggEntries.filter((e) => e.qtyButir > 0 || e.qtyKg > 0)
+          if (eggInserts.length > 0) {
+            await tx.insert(dailyEggRecords).values(
+              eggInserts.map((e) => ({
+                dailyRecordId,
+                stockItemId: e.stockItemId,
+                qtyButir: e.qtyButir,
+                qtyKg: String(e.qtyKg),
+              }))
+            )
+          }
+
+          const feedInserts = rowData.feedEntries.filter((e) => e.qtyUsed > 0)
+          if (feedInserts.length > 0) {
+            await tx.insert(dailyFeedRecords).values(
+              feedInserts.map((e) => ({
+                dailyRecordId,
+                stockItemId: e.stockItemId,
+                qtyUsed: String(e.qtyUsed),
+              }))
+            )
+          }
+
+          const vaccineInserts = rowData.vaccineEntries.filter((e) => e.qtyUsed > 0)
+          if (vaccineInserts.length > 0) {
+            await tx.insert(dailyVaccineRecords).values(
+              vaccineInserts.map((e) => ({
+                dailyRecordId,
+                stockItemId: e.stockItemId,
+                qtyUsed: String(e.qtyUsed),
+              }))
+            )
+          }
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : ''
+          if (msg.includes('daily_records_flock_date_idx') || msg.includes('unique')) {
+            throw new ImportDomainError(`Data untuk flock pada tanggal tersebut sudah ada (baris ${row.rowNum})`)
+          }
+          throw e
+        }
+
         inserted++
       }
     } else if (entity === 'customers') {
       for (const row of rows) {
-        await tx.insert(customers).values({
+        await tx.insert(farmCustomers).values({
           ...(row.data as NewCustomer),
-          isImported: true,
-          importedBy: adminId,
-          createdBy: adminId,
-        })
-        inserted++
-      }
-    } else if (entity === 'opening_stock') {
-      for (const row of rows) {
-        await tx.insert(inventoryMovements).values({
-          ...(row.data as NewInventoryMovement),
           isImported: true,
           importedBy: adminId,
           createdBy: adminId,
@@ -416,13 +438,52 @@ export async function commitImport(
 
 // ─── CSV templates ───────────────────────────────────────────────────────────
 
-const TEMPLATES: Record<ImportEntity, string> = {
-  flocks: 'coop_id,name,arrival_date,quantity,breed,notes\n',
-  daily_records: 'flock_id,record_date,deaths,culled,eggs_cracked,eggs_abnormal\n',
-  customers: 'name,type,phone,address,credit_limit,payment_terms\n',
-  opening_stock: 'stock_item_id,quantity,movement_date\n',
+/**
+ * Generate a dynamic CSV template for daily_records based on active stock items.
+ * Returns the header row followed by a newline (no data rows).
+ */
+export async function generateDailyRecordsCsvTemplate(farmSchema: string): Promise<string> {
+  const [eggItems, feedItems, vaccineItems] = await Promise.all([
+    getActiveEggItems(farmSchema),
+    getActiveFeedItems(farmSchema),
+    getActiveVaccineItems(farmSchema),
+  ])
+
+  const fixedCols = ['flock_id', 'record_date', 'deaths', 'culled', 'notes']
+
+  const eggCols = eggItems.flatMap((item) => {
+    const norm = normalizeColName(item.name)
+    return [`egg_${norm}_butir`, `egg_${norm}_kg`]
+  })
+
+  const feedCols = feedItems.map((item) => {
+    const norm = normalizeColName(item.name)
+    return `feed_${norm}_kg`
+  })
+
+  const vaccineCols = vaccineItems.map((item) => {
+    const norm = normalizeColName(item.name)
+    return `vaccine_${norm}_dosis`
+  })
+
+  const header = [...fixedCols, ...eggCols, ...feedCols, ...vaccineCols].join(',')
+
+  const exampleDate = new Date().toISOString().split('T')[0]!
+  const exampleRow = [
+    'GANTI-DENGAN-FLOCK-ID',
+    exampleDate,
+    '0',
+    '0',
+    '',
+    ...Array(eggCols.length + feedCols.length + vaccineCols.length).fill('0'),
+  ].join(',')
+
+  return header + '\n' + exampleRow + '\n'
 }
 
-export function getCsvTemplate(entity: ImportEntity): string {
-  return TEMPLATES[entity]
+/**
+ * Returns a static CSV template header for customers.
+ */
+export function getCsvTemplate(_entity: 'customers'): string {
+  return 'name,type,phone,address,credit_limit,payment_terms\n'
 }
