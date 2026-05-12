@@ -96,6 +96,14 @@ export default async function ProduksiPage({
                         {showCorrection ? 'Koreksi' : 'Edit'}
                       </Link>
                     )}
+                    {!editable && (
+                      <span
+                        className="text-xs px-3 py-2 rounded-lg flex items-center flex-shrink-0 ml-2"
+                        style={{ background: '#f0f0f0', color: '#aaa' }}
+                      >
+                        Terkunci
+                      </span>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="bg-[var(--lf-bg-warm)] rounded-lg p-2 text-center">
