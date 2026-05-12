@@ -108,7 +108,7 @@ export default async function AccountLedgerPage({
   const reportDateTo = dateTo ?? defaultDateTo.toISOString().split('T')[0]!
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-3 md:p-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3 mb-5">
         <Link href="/kas" className="press-feedback p-1.5 rounded-lg" style={{ color: '#5a6b5b' }}>
@@ -216,9 +216,9 @@ export default async function AccountLedgerPage({
             </form>
           </div>
 
-          {/* Ledger table */}
+          {/* Ledger */}
           <div className="rounded-xl border overflow-hidden" style={{ borderColor: '#e0e8df', background: 'white' }}>
-            {/* Table header */}
+            {/* Desktop header — hidden on mobile */}
             <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto] gap-4 px-4 py-2 border-b text-[11px] font-medium" style={{ borderColor: '#e0e8df', color: '#8fa08f' }}>
               <span>Transaksi</span>
               <span className="text-right">Masuk</span>
@@ -237,38 +237,68 @@ export default async function AccountLedgerPage({
                   const Icon = cfg.icon
                   const isCredit = tx.type === 'in' || tx.type === 'transfer_in'
                   return (
-                    <div key={tx.id} className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-x-4 gap-y-0.5 px-4 py-3 items-center">
-                      {/* Description cell */}
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                          style={{ background: cfg.bg }}
-                        >
-                          <Icon size={13} strokeWidth={2} style={{ color: cfg.color }} />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[13px] font-medium truncate" style={{ color: '#2d3a2e' }}>
-                            {tx.description ?? tx.categoryName ?? cfg.label}
-                          </p>
-                          <p className="text-[11px]" style={{ color: '#8fa08f' }}>
-                            {cfg.label}
-                            {tx.referenceNumber ? ` · ${tx.referenceNumber}` : ''}
-                            {' · '}{formatDate(tx.transactionDate)}
-                          </p>
+                    <div key={tx.id}>
+                      {/* Mobile card — hidden on sm+ */}
+                      <div className="sm:hidden px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                            style={{ background: cfg.bg }}
+                          >
+                            <Icon size={14} strokeWidth={2} style={{ color: cfg.color }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-medium truncate" style={{ color: '#2d3a2e' }}>
+                              {tx.description ?? tx.categoryName ?? cfg.label}
+                            </p>
+                            <p className="text-[11px]" style={{ color: '#8fa08f' }}>
+                              {formatDate(tx.transactionDate)} · {cfg.label}
+                            </p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p
+                              className="text-[14px] font-semibold"
+                              style={{ color: isCredit ? '#3da88a' : '#e07070' }}
+                            >
+                              {cfg.sign}{formatRupiah(Number(tx.amount))}
+                            </p>
+                            <p className="text-[10px]" style={{ color: '#b0bab0' }}>
+                              {formatRupiah(tx.runningBalance)}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                      {/* Masuk */}
-                      <p className="text-[12px] font-medium text-right" style={{ color: isCredit ? '#3da88a' : '#d0d8d0' }}>
-                        {isCredit ? formatRupiah(Number(tx.amount)) : '—'}
-                      </p>
-                      {/* Keluar */}
-                      <p className="text-[12px] font-medium text-right" style={{ color: !isCredit ? '#e07070' : '#d0d8d0' }}>
-                        {!isCredit ? formatRupiah(Number(tx.amount)) : '—'}
-                      </p>
-                      {/* Saldo berjalan */}
-                      <p className="text-[12px] font-semibold text-right" style={{ color: '#2d3a2e' }}>
-                        {formatRupiah(tx.runningBalance)}
-                      </p>
+
+                      {/* Desktop row — hidden on mobile */}
+                      <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto] gap-x-4 gap-y-0.5 px-4 py-3 items-center">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                            style={{ background: cfg.bg }}
+                          >
+                            <Icon size={13} strokeWidth={2} style={{ color: cfg.color }} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[13px] font-medium truncate" style={{ color: '#2d3a2e' }}>
+                              {tx.description ?? tx.categoryName ?? cfg.label}
+                            </p>
+                            <p className="text-[11px]" style={{ color: '#8fa08f' }}>
+                              {cfg.label}
+                              {tx.referenceNumber ? ` · ${tx.referenceNumber}` : ''}
+                              {' · '}{formatDate(tx.transactionDate)}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="text-[12px] font-medium text-right" style={{ color: isCredit ? '#3da88a' : '#d0d8d0' }}>
+                          {isCredit ? formatRupiah(Number(tx.amount)) : '—'}
+                        </p>
+                        <p className="text-[12px] font-medium text-right" style={{ color: !isCredit ? '#e07070' : '#d0d8d0' }}>
+                          {!isCredit ? formatRupiah(Number(tx.amount)) : '—'}
+                        </p>
+                        <p className="text-[12px] font-semibold text-right" style={{ color: '#2d3a2e' }}>
+                          {formatRupiah(tx.runningBalance)}
+                        </p>
+                      </div>
                     </div>
                   )
                 })}
