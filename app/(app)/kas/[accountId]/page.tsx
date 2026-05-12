@@ -351,8 +351,8 @@ export default async function AccountLedgerPage({
           </form>
 
           {/* Daily report table */}
-          <div className="rounded-xl border overflow-hidden" style={{ borderColor: '#e0e8df', background: 'white' }}>
-            <div className="grid grid-cols-5 gap-2 px-4 py-2 border-b text-[11px] font-medium" style={{ borderColor: '#e0e8df', color: '#8fa08f' }}>
+          <div className="rounded-xl border overflow-x-auto" style={{ borderColor: '#e0e8df', background: 'white' }}>
+            <div className="grid grid-cols-5 gap-2 px-4 py-2 border-b text-[11px] font-medium" style={{ minWidth: '480px', borderColor: '#e0e8df', color: '#8fa08f' }}>
               <span>Tanggal</span>
               <span className="text-right">Saldo Awal</span>
               <span className="text-right">Total Masuk</span>
@@ -365,7 +365,7 @@ export default async function AccountLedgerPage({
                 <p className="text-[13px]" style={{ color: '#8fa08f' }}>Tidak ada data pada periode ini.</p>
               </div>
             ) : (
-              <div className="divide-y divide-[#f0f4f0]">
+              <div className="divide-y divide-[#f0f4f0]" style={{ minWidth: '480px' }}>
                 {dailyReport.map((row) => (
                   <div key={row.transactionDate.toISOString()} className="grid grid-cols-5 gap-2 px-4 py-2.5 items-center">
                     <p className="text-[12px]" style={{ color: '#2d3a2e' }}>{formatDate(row.transactionDate)}</p>

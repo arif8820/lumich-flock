@@ -79,7 +79,7 @@ export function FlockListClient({ flocks, canCreate, canDelete }: Props) {
                 <Link
                   href={`/flock/${flock.id}`}
                   onClick={(e) => e.stopPropagation()}
-                  className="text-xs px-3 py-2 rounded-lg min-h-[36px] flex items-center"
+                  className="text-xs px-3 py-2 rounded-lg min-h-[44px] flex items-center"
                   style={{ background: 'var(--lf-blue-pale)', color: 'var(--lf-blue-active)' }}
                 >
                   Detail

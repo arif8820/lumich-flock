@@ -143,7 +143,7 @@ export default async function StokPage({
             ))}
 
             {isTelur && totalButir !== null && (
-              <div className="bg-[var(--lf-surface)] rounded-xl p-4 border border-[var(--lf-border)] flex items-center justify-between">
+              <div className="bg-[var(--lf-bg-warm)] rounded-xl p-4 border border-[var(--lf-border)] flex items-center justify-between">
                 <p className="text-sm font-semibold text-[var(--lf-text-dark)]">Total Telur</p>
                 <div className="text-right">
                   <p className="font-bold text-[var(--lf-blue-active)]">{totalButir.toLocaleString('id')}</p>
@@ -177,7 +177,7 @@ export default async function StokPage({
               ))}
 
               {isTelur && totalButir !== null && (
-                <div className="bg-[var(--lf-surface)] rounded-xl p-4 border border-[var(--lf-border)] flex items-center justify-between">
+                <div className="bg-[var(--lf-bg-warm)] rounded-xl p-4 border border-[var(--lf-border)] flex items-center justify-between">
                   <p className="text-sm font-semibold text-[var(--lf-text-dark)]">Total Telur</p>
                   <div className="text-right">
                     <p className="font-bold text-[var(--lf-blue-active)]">{totalButir.toLocaleString('id')}</p>

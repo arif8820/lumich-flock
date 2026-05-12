@@ -93,7 +93,7 @@ export function MoreDrawer({ isOpen, onClose, user }: Props) {
           {/* Logout via GET route that calls supabase.auth.signOut() and redirects to /login */}
           <a
             href="/logout"
-            className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg min-h-[36px]"
+            className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg min-h-[44px]"
             style={{ color: 'var(--lf-danger-text)', background: 'var(--lf-danger-bg)' }}
           >
             <LogOut size={13} />

@@ -28,7 +28,7 @@ function todayUTC(): string {
 }
 
 function minDate(role: 'operator' | 'supervisor' | 'admin'): string {
-  const days = role === 'operator' ? 1 : role === 'supervisor' ? 3 : 365
+  const days = role === 'operator' ? 1 : role === 'supervisor' ? 7 : 365
   const d = new Date()
   d.setDate(d.getDate() - days)
   return d.toISOString().split('T')[0]!
@@ -53,6 +53,7 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
   const [recordDate, setRecordDate] = useState(todayUTC())
   const [deaths, setDeaths] = useState(0)
   const [culled, setCulled] = useState(0)
+  // deferred: telur retak & abnormal UI not yet built — hardcoded 0 for now
   const [eggsCracked] = useState(0)
   const [eggsAbnormal] = useState(0)
   const [notes, setNotes] = useState('')
