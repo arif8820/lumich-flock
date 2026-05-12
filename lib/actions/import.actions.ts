@@ -8,7 +8,6 @@ import {
   commitImport,
   getCsvTemplate,
   generateDailyRecordsCsvTemplate,
-  ImportDomainError,
 } from '@/lib/services/import.service'
 import type { ImportEntity, ParseResult, ParsedRow, ImportResult } from '@/lib/services/import.service'
 
@@ -58,8 +57,13 @@ export async function commitImportAction(
     const result = await commitImport(entity, rows, session.id, session.farmSchema)
     return { success: true, data: result }
   } catch (e) {
-    if (e instanceof ImportDomainError) {
-      return { success: false, error: e.message }
+    // Drizzle wraps errors from db.transaction() — walk cause chain for the postgres error
+    let err: unknown = e
+    while (err instanceof Error) {
+      if (err.message.includes('daily_records_flock_date_idx')) {
+        return { success: false, error: 'Data untuk flock pada tanggal tersebut sudah ada' }
+      }
+      err = err.cause
     }
     return { success: false, error: 'Gagal mengimpor data — semua perubahan dibatalkan' }
   }
