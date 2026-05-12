@@ -231,7 +231,7 @@ export default async function AccountLedgerPage({
                 <p className="text-[13px]" style={{ color: '#8fa08f' }}>Tidak ada transaksi.</p>
               </div>
             ) : (
-              <div className="divide-y" style={{ borderColor: '#f0f4f0' }}>
+              <div className="divide-y divide-[#f0f4f0]">
                 {rowsWithBalance.map((tx) => {
                   const cfg = TX_TYPE_CONFIG[tx.type] ?? TX_TYPE_CONFIG.out
                   const Icon = cfg.icon
@@ -365,7 +365,7 @@ export default async function AccountLedgerPage({
                 <p className="text-[13px]" style={{ color: '#8fa08f' }}>Tidak ada data pada periode ini.</p>
               </div>
             ) : (
-              <div className="divide-y" style={{ borderColor: '#f0f4f0' }}>
+              <div className="divide-y divide-[#f0f4f0]">
                 {dailyReport.map((row) => (
                   <div key={row.transactionDate.toISOString()} className="grid grid-cols-5 gap-2 px-4 py-2.5 items-center">
                     <p className="text-[12px]" style={{ color: '#2d3a2e' }}>{formatDate(row.transactionDate)}</p>
