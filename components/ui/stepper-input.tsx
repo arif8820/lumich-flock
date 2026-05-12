@@ -24,7 +24,7 @@ export function StepperInput({ value, onChange, min = 0, max, step = 1, classNam
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const parsed = parseInt(e.target.value, 10)
+    const parsed = parseFloat(e.target.value)
     if (isNaN(parsed)) return
     if (parsed < min) return
     if (max !== undefined && parsed > max) return

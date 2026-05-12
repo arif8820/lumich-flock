@@ -123,7 +123,7 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-20 md:pb-0">
       {/* Header: Flock + Date */}
       <div className="bg-white rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)] space-y-3">
         <div>
@@ -304,7 +304,7 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
       </div>
 
       {/* Sticky submit */}
-      <div className="sticky bottom-4 mt-2">
+      <div className="fixed bottom-4 left-4 right-4 z-10 md:static md:z-auto md:left-auto md:right-auto md:bottom-auto md:mt-2">
         {error && (
           <p className="text-sm text-center mb-2 px-3 py-2 rounded-lg bg-[var(--lf-danger-bg)]" style={{ color: 'var(--lf-danger-text)' }}>
             {error}
