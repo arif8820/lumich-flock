@@ -1,5 +1,6 @@
 import { revalidateTag } from 'next/cache'
-import { createSupabaseServerClient, createSupabaseServiceClient } from '@/lib/auth/server'
+import { createClient } from '@supabase/supabase-js'
+import { createSupabaseServiceClient } from '@/lib/auth/server'
 import { getUserProfil, updateUserProfil } from '@/lib/db/queries/profil.queries'
 
 export async function updateInfoAkunService(
@@ -19,8 +20,11 @@ export async function gantiPasswordService(
   newPassword: string,
   userId: string
 ) {
-  const supabase = await createSupabaseServerClient()
-  const { error: signInError } = await supabase.auth.signInWithPassword({
+  const anonClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+  const { error: signInError } = await anonClient.auth.signInWithPassword({
     email,
     password: currentPassword,
   })
