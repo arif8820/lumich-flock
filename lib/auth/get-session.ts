@@ -10,6 +10,7 @@ export type SessionUser = {
   id: string
   email: string
   fullName: string
+  phone: string | null
   roleId: string
   roleSlug: string
   roleName: string
@@ -72,6 +73,7 @@ function getCachedSession(userId: string, email: string) {
         id: dbUser.id,
         email: dbUser.email,
         fullName: dbUser.fullName,
+        phone: dbUser.phone,
         roleId: dbUser.roleId,
         roleSlug: roleRow.name,
         roleName: roleRow.displayName,
