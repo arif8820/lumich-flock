@@ -1,7 +1,7 @@
 import { revalidateTag } from 'next/cache'
 import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServiceClient } from '@/lib/auth/server'
-import { getUserProfil, updateUserProfil } from '@/lib/db/queries/profil.queries'
+import { updateUserProfil } from '@/lib/db/queries/profil.queries'
 
 export async function updateInfoAkunService(
   farmSchema: string,
