@@ -55,6 +55,7 @@ CREATE TABLE "users" (
     "id" uuid PRIMARY KEY NOT NULL,
     "email" text NOT NULL,
     "full_name" text NOT NULL,
+    "phone" text,
     "role_id" uuid NOT NULL REFERENCES "roles"("id"),
     "is_active" boolean DEFAULT true NOT NULL,
     "created_by" uuid,

@@ -5,6 +5,7 @@ export const users = pgTable('users', {
   id: uuid('id').primaryKey(),
   email: text('email').unique().notNull(),
   fullName: text('full_name').notNull(),
+  phone: text('phone'),
   roleId: uuid('role_id').references(() => roles.id).notNull(),
   isActive: boolean('is_active').default(true).notNull(),
   createdBy: uuid('created_by'),
