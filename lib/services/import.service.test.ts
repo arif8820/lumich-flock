@@ -63,6 +63,7 @@ import {
   parseDailyRecordsCsv,
   parseCustomersCsv,
   getCsvTemplate,
+  commitImport,
 } from './import.service'
 
 // any: vitest mock type
@@ -252,5 +253,76 @@ describe('import.service -- parseDailyRecordsCsv stock validation', () => {
     expect(msg).toContain('5')
     expect(msg).toContain('20')
     expect(msg).toContain('Newcastle ND')
+  })
+})
+
+describe('import.service -- commitImport inventory movements', () => {
+  const FARM = 'farm1'
+  const ADMIN_ID = 'admin-uuid-1'
+  const FLOCK_ID = '00000000-0000-0000-0000-000000000001'
+  const DR_ID = 'daily-record-uuid-1'
+
+  beforeEach(() => {
+    // INSERT daily_records returns the new record id
+    mockDb.values.mockImplementation((vals: unknown) => {
+      // First insert (daily_records) returns row with id
+      if (Array.isArray(vals) && (vals[0] as any)?.flockId) {
+        return { returning: () => Promise.resolve([{ id: DR_ID }]) }
+      }
+      return Promise.resolve([])
+    })
+    mockDb.insert.mockReturnValue(mockDb)
+    mockDb.returning = vi.fn().mockResolvedValue([{ id: DR_ID }])
+  })
+
+  it('inserts inventory_movements for egg (in), feed (out), vaccine (out)', async () => {
+    const insertSpy = vi.spyOn(mockDb, 'insert')
+
+    const rows = [{
+      rowNum: 2,
+      data: {
+        flockId: FLOCK_ID,
+        recordDate: '2026-01-01',
+        deaths: 0,
+        culled: 0,
+        notes: null,
+        eggEntries: [{ stockItemId: 'egg-1', qtyButir: 100, qtyKg: 1.2 }],
+        feedEntries: [{ stockItemId: 'feed-1', qtyUsed: 50 }],
+        vaccineEntries: [{ stockItemId: 'vax-1', qtyUsed: 10 }],
+      },
+    }]
+
+    await commitImport('daily_records', rows as any, ADMIN_ID, FARM)
+
+    // inventoryMovements insert should have been called
+    const insertCalls = insertSpy.mock.calls
+    // At least one call should be to inventoryMovements (the schema stub is {})
+    expect(insertCalls.length).toBe(5) // dailyRecords + egg + feed + vax + movements
+  })
+
+  it('does not insert movements when all qty = 0', async () => {
+    const insertSpy = vi.spyOn(mockDb, 'insert')
+
+    const rows = [{
+      rowNum: 2,
+      data: {
+        flockId: FLOCK_ID,
+        recordDate: '2026-01-01',
+        deaths: 0,
+        culled: 0,
+        notes: null,
+        eggEntries: [{ stockItemId: 'egg-1', qtyButir: 0, qtyKg: 0 }],
+        feedEntries: [{ stockItemId: 'feed-1', qtyUsed: 0 }],
+        vaccineEntries: [],
+      },
+    }]
+
+    await commitImport('daily_records', rows as any, ADMIN_ID, FARM)
+
+    // movements array is empty → insert(inventoryMovements) not called
+    // Only dailyRecords insert should have happened (no egg/feed/vax child inserts either)
+    const insertCalls = insertSpy.mock.calls
+    // Should only be 1 insert: dailyRecords
+    expect(insertCalls).toHaveLength(1)
   })
 })

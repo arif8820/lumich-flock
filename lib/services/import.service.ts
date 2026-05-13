@@ -398,6 +398,7 @@ export async function commitImport(
     dailyEggRecords,
     dailyFeedRecords,
     dailyVaccineRecords,
+    inventoryMovements,
     customers: farmCustomers,
   } = getFarmSchema(farmSchema)
 
@@ -411,7 +412,7 @@ export async function commitImport(
         try {
           const [newRecord] = await tx
             .insert(dailyRecords)
-            .values({
+            .values([{
               flockId: rowData.flockId,
               recordDate: new Date(rowData.recordDate),
               deaths: rowData.deaths,
@@ -421,7 +422,7 @@ export async function commitImport(
               isImported: true,
               importedBy: adminId,
               createdBy: adminId,
-            })
+            }])
             .returning()
 
           if (!newRecord) throw new ImportDomainError(`Gagal menyimpan daily record baris ${row.rowNum}`)
@@ -460,6 +461,51 @@ export async function commitImport(
               }))
             )
           }
+
+          const movementDate = new Date(rowData.recordDate)
+          const eggMovementInserts = eggInserts.filter((e) => e.qtyButir > 0)
+          const movements = [
+            ...eggMovementInserts.map((e) => ({
+              stockItemId: e.stockItemId,
+              flockId: rowData.flockId,
+              movementType: 'in' as const,
+              source: 'import' as const,
+              sourceType: 'daily_egg_records' as const,
+              sourceId: dailyRecordId,
+              quantity: e.qtyButir,
+              movementDate,
+              isImported: true,
+              importedBy: adminId,
+              createdBy: adminId,
+            })),
+            ...feedInserts.map((e) => ({
+              stockItemId: e.stockItemId,
+              flockId: rowData.flockId,
+              movementType: 'out' as const,
+              source: 'import' as const,
+              sourceType: 'daily_feed_records' as const,
+              sourceId: dailyRecordId,
+              quantity: Math.round(Number(e.qtyUsed)),
+              movementDate,
+              isImported: true,
+              importedBy: adminId,
+              createdBy: adminId,
+            })),
+            ...vaccineInserts.map((e) => ({
+              stockItemId: e.stockItemId,
+              flockId: rowData.flockId,
+              movementType: 'out' as const,
+              source: 'import' as const,
+              sourceType: 'daily_vaccine_records' as const,
+              sourceId: dailyRecordId,
+              quantity: Math.round(Number(e.qtyUsed)),
+              movementDate,
+              isImported: true,
+              importedBy: adminId,
+              createdBy: adminId,
+            })),
+          ]
+          if (movements.length > 0) await tx.insert(inventoryMovements).values(movements)
         } catch (e) {
           const msg = e instanceof Error ? e.message : ''
           if (msg.includes('daily_records_flock_date_idx') || msg.includes('unique')) {
