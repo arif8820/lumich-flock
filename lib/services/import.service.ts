@@ -20,6 +20,7 @@ import {
   getActiveFeedItems,
   getActiveVaccineItems,
 } from '@/lib/services/stock-catalog.service'
+import { getStockBalance } from '@/lib/db/queries/inventory.queries'
 
 // ─── Domain error class ───────────────────────────────────────────────────────
 
@@ -181,6 +182,19 @@ export async function parseDailyRecordsCsv(
     : []
   const validFlockIdSet = new Set(validFlocks.map((f) => f.id))
 
+  // Build item name lookup map for user-friendly error messages
+  const itemNameMap = new Map<string, string>()
+  for (const item of feedItems) itemNameMap.set(item.id, item.name)
+  for (const item of vaccineItems) itemNameMap.set(item.id, item.name)
+
+  // Fetch starting balances for all feed + vaccine items (running balance for stock validation)
+  const allConsumableIds = [...feedItems.map((i) => i.id), ...vaccineItems.map((i) => i.id)]
+  const balanceEntries = await Promise.all(
+    allConsumableIds.map(async (id) => [id, await getStockBalance(farmSchema, id)] as const)
+  )
+  const balanceMap = new Map(balanceEntries)
+  let hasStockError = false
+
   const valid: ParsedRow<DailyRecordImportRow>[] = []
   const errors: ParseError[] = []
 
@@ -246,6 +260,41 @@ export async function parseDailyRecordsCsv(
       }
     }
 
+    // Running balance check — feed
+    for (const [stockItemId, e] of feedMap.entries()) {
+      if (e.qtyUsed <= 0) continue
+      const bal = balanceMap.get(stockItemId) ?? 0
+      if (e.qtyUsed > bal) {
+        const itemName = itemNameMap.get(stockItemId) ?? stockItemId
+        rowErrors.push(
+          `Baris ${rowNum} (${recordDateStr ?? ''}): stok ${itemName} tidak mencukupi (tersedia: ${bal}, dibutuhkan: ${e.qtyUsed})`
+        )
+        hasStockError = true
+      } else {
+        balanceMap.set(stockItemId, bal - e.qtyUsed)
+      }
+    }
+
+    // Running balance check — vaccine
+    for (const [stockItemId, e] of vaccineMap.entries()) {
+      if (e.qtyUsed <= 0) continue
+      const bal = balanceMap.get(stockItemId) ?? 0
+      if (e.qtyUsed > bal) {
+        const itemName = itemNameMap.get(stockItemId) ?? stockItemId
+        rowErrors.push(
+          `Baris ${rowNum} (${recordDateStr ?? ''}): stok ${itemName} tidak mencukupi (tersedia: ${bal}, dibutuhkan: ${e.qtyUsed})`
+        )
+        hasStockError = true
+      } else {
+        balanceMap.set(stockItemId, bal - e.qtyUsed)
+      }
+    }
+
+    if (rowErrors.length > 0) {
+      errors.push({ rowNum, errors: rowErrors })
+      continue
+    }
+
     valid.push({
       rowNum,
       data: {
@@ -261,6 +310,7 @@ export async function parseDailyRecordsCsv(
     })
   }
 
+  if (hasStockError) return { valid: [], errors }
   return { valid, errors }
 }
 
