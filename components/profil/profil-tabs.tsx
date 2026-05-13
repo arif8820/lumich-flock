@@ -1,4 +1,4 @@
-// client: tab state (custom Tabs)
+// client: tab state (shadcn Tabs)
 'use client'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'

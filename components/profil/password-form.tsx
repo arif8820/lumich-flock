@@ -83,6 +83,9 @@ export function PasswordForm() {
         setCurrentPassword('')
         setNewPassword('')
         setConfirmPassword('')
+        setShowCurrent(false)
+        setShowNew(false)
+        setShowConfirm(false)
       }
     } finally {
       setLoading(false)
