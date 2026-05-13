@@ -260,34 +260,44 @@ export async function parseDailyRecordsCsv(
       }
     }
 
-    // Running balance check — feed
+    // Running balance check — collect errors and deductions separately per-row,
+    // then only apply deductions if no stock errors occurred for this row.
+    const rowStockErrors: string[] = []
+    const rowStockDeductions: Array<[string, number]> = []
+
     for (const [stockItemId, e] of feedMap.entries()) {
       if (e.qtyUsed <= 0) continue
+      const itemName = itemNameMap.get(stockItemId) ?? stockItemId
       const bal = balanceMap.get(stockItemId) ?? 0
-      if (e.qtyUsed > bal) {
-        const itemName = itemNameMap.get(stockItemId) ?? stockItemId
-        rowErrors.push(
-          `Baris ${rowNum} (${recordDateStr ?? ''}): stok ${itemName} tidak mencukupi (tersedia: ${bal}, dibutuhkan: ${e.qtyUsed})`
+      const qtyRounded = Math.round(e.qtyUsed)
+      if (qtyRounded > bal) {
+        rowStockErrors.push(
+          `Baris ${rowNum} (${recordDateStr ?? ''}): stok ${itemName} tidak mencukupi (tersedia: ${bal}, dibutuhkan: ${qtyRounded})`
         )
-        hasStockError = true
       } else {
-        balanceMap.set(stockItemId, bal - e.qtyUsed)
+        rowStockDeductions.push([stockItemId, bal - qtyRounded])
       }
     }
 
-    // Running balance check — vaccine
     for (const [stockItemId, e] of vaccineMap.entries()) {
       if (e.qtyUsed <= 0) continue
+      const itemName = itemNameMap.get(stockItemId) ?? stockItemId
       const bal = balanceMap.get(stockItemId) ?? 0
-      if (e.qtyUsed > bal) {
-        const itemName = itemNameMap.get(stockItemId) ?? stockItemId
-        rowErrors.push(
-          `Baris ${rowNum} (${recordDateStr ?? ''}): stok ${itemName} tidak mencukupi (tersedia: ${bal}, dibutuhkan: ${e.qtyUsed})`
+      const qtyRounded = Math.round(e.qtyUsed)
+      if (qtyRounded > bal) {
+        rowStockErrors.push(
+          `Baris ${rowNum} (${recordDateStr ?? ''}): stok ${itemName} tidak mencukupi (tersedia: ${bal}, dibutuhkan: ${qtyRounded})`
         )
-        hasStockError = true
       } else {
-        balanceMap.set(stockItemId, bal - e.qtyUsed)
+        rowStockDeductions.push([stockItemId, bal - qtyRounded])
       }
+    }
+
+    if (rowStockErrors.length > 0) {
+      rowErrors.push(...rowStockErrors)
+      hasStockError = true
+    } else {
+      for (const [id, newBal] of rowStockDeductions) balanceMap.set(id, newBal)
     }
 
     if (rowErrors.length > 0) {

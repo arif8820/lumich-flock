@@ -277,6 +277,7 @@ describe('import.service -- commitImport inventory movements', () => {
 
   it('inserts inventory_movements for egg (in), feed (out), vaccine (out)', async () => {
     const insertSpy = vi.spyOn(mockDb, 'insert')
+    const valuesSpy = vi.spyOn(mockDb, 'values')
 
     const rows = [{
       rowNum: 2,
@@ -294,10 +295,24 @@ describe('import.service -- commitImport inventory movements', () => {
 
     await commitImport('daily_records', rows as any, ADMIN_ID, FARM)
 
-    // inventoryMovements insert should have been called
-    const insertCalls = insertSpy.mock.calls
-    // At least one call should be to inventoryMovements (the schema stub is {})
-    expect(insertCalls.length).toBe(5) // dailyRecords + egg + feed + vax + movements
+    // Should have: dailyRecords + egg + feed + vax + movements = 5 inserts
+    expect(insertSpy.mock.calls.length).toBe(5)
+
+    // Last values() call is the movements insert — verify movement types and source
+    const lastValuesArg = valuesSpy.mock.calls[valuesSpy.mock.calls.length - 1]![0] as any[]
+    expect(lastValuesArg).toHaveLength(3) // egg + feed + vaccine movements
+    const eggMovement = lastValuesArg.find((m: any) => m.stockItemId === 'egg-1')
+    const feedMovement = lastValuesArg.find((m: any) => m.stockItemId === 'feed-1')
+    const vaxMovement = lastValuesArg.find((m: any) => m.stockItemId === 'vax-1')
+    expect(eggMovement?.movementType).toBe('in')
+    expect(eggMovement?.source).toBe('import')
+    expect(eggMovement?.quantity).toBe(100)
+    expect(feedMovement?.movementType).toBe('out')
+    expect(feedMovement?.source).toBe('import')
+    expect(feedMovement?.quantity).toBe(50)
+    expect(vaxMovement?.movementType).toBe('out')
+    expect(vaxMovement?.source).toBe('import')
+    expect(vaxMovement?.quantity).toBe(10)
   })
 
   it('does not insert movements when all qty = 0', async () => {
