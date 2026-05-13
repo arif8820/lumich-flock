@@ -275,19 +275,24 @@ export function Sidebar({
       <VersionBadge hasNewVersion={hasNewVersion} />
 
       {/* User card */}
-      <div className="mx-[10px] mb-4 px-[10px] py-2 rounded-[9px] flex items-center gap-2.5" style={{ background: '#f7f5f1' }}>
-        <div
-          className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center text-[11px] font-bold flex-shrink-0"
-          style={{ background: '#bbd5ee', color: '#3d7cb0' }}
+      <div className="mx-[10px] mb-4 rounded-[9px] flex items-center gap-2.5" style={{ background: '#f7f5f1' }}>
+        <Link
+          href="/profil"
+          className="flex items-center gap-2.5 flex-1 min-w-0 px-[10px] py-2 rounded-[9px] hover:bg-[#ece9e4] transition-colors"
         >
-          {getInitials(user.fullName)}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[12px] font-semibold truncate" style={{ color: '#2d3a2e' }}>{user.fullName}</p>
-          <p className="text-[10px]" style={{ color: '#8fa08f' }}>{user.roleName}</p>
-        </div>
+          <div
+            className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center text-[11px] font-bold flex-shrink-0"
+            style={{ background: '#bbd5ee', color: '#3d7cb0' }}
+          >
+            {getInitials(user.fullName)}
+          </div>
+          <div className="min-w-0">
+            <p className="text-[12px] font-semibold truncate" style={{ color: '#2d3a2e' }}>{user.fullName}</p>
+            <p className="text-[10px]" style={{ color: '#8fa08f' }}>{user.roleName}</p>
+          </div>
+        </Link>
         {/* Logout via GET route that calls supabase.auth.signOut() and redirects to /login */}
-        <a href="/logout" style={{ color: '#8fa08f' }}>
+        <a href="/logout" className="pr-[10px]" style={{ color: '#8fa08f' }}>
           <LogOut size={14} strokeWidth={1.8} />
         </a>
       </div>
