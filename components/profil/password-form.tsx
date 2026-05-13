@@ -2,12 +2,18 @@
 'use client'
 
 import { useState } from 'react'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { gantiPasswordAction } from '@/lib/actions/profil.actions'
 
-const inputClass = 'mt-1 w-full border border-[var(--lf-border)] rounded-lg px-3 py-2 text-sm bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--lf-blue)]'
 const labelClass = 'block text-xs font-medium text-[var(--lf-text-mid)]'
+
+function inputClass(saved: boolean) {
+  const base = 'mt-1 w-full border rounded-lg px-3 py-2 text-sm bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2'
+  return saved
+    ? `${base} border-[#22c55e] focus:ring-[#22c55e]`
+    : `${base} border-[var(--lf-border)] focus:ring-[var(--lf-blue)]`
+}
 
 function PasswordInput({
   label,
@@ -16,6 +22,7 @@ function PasswordInput({
   show,
   onToggle,
   placeholder,
+  saved,
 }: {
   label: string
   value: string
@@ -23,13 +30,14 @@ function PasswordInput({
   show: boolean
   onToggle: () => void
   placeholder?: string
+  saved: boolean
 }) {
   return (
     <div>
       <label className={labelClass}>{label}</label>
       <div className="relative">
         <input
-          className={inputClass}
+          className={inputClass(saved)}
           type={show ? 'text' : 'password'}
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -37,14 +45,22 @@ function PasswordInput({
           placeholder={placeholder}
           style={{ paddingRight: '2.5rem' }}
         />
-        <button
-          type="button"
-          onClick={onToggle}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--lf-text-soft)]"
-          tabIndex={-1}
-        >
-          {show ? <EyeOff size={15} strokeWidth={1.8} /> : <Eye size={15} strokeWidth={1.8} />}
-        </button>
+        {saved ? (
+          <CheckCircle2
+            size={15}
+            className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ color: '#22c55e' }}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={onToggle}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--lf-text-soft)]"
+            tabIndex={-1}
+          >
+            {show ? <EyeOff size={15} strokeWidth={1.8} /> : <Eye size={15} strokeWidth={1.8} />}
+          </button>
+        )}
       </div>
     </div>
   )
@@ -59,6 +75,7 @@ export function PasswordForm() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [saved, setSaved] = useState(false)
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -80,12 +97,17 @@ export function PasswordForm() {
         setError(result.error)
       } else {
         toast.success('Password berhasil diubah')
-        setCurrentPassword('')
-        setNewPassword('')
-        setConfirmPassword('')
-        setShowCurrent(false)
-        setShowNew(false)
-        setShowConfirm(false)
+        setSaved(true)
+        // brief green state before clearing
+        setTimeout(() => {
+          setCurrentPassword('')
+          setNewPassword('')
+          setConfirmPassword('')
+          setShowCurrent(false)
+          setShowNew(false)
+          setShowConfirm(false)
+          setSaved(false)
+        }, 1500)
       }
     } finally {
       setLoading(false)
@@ -101,6 +123,7 @@ export function PasswordForm() {
         show={showCurrent}
         onToggle={() => setShowCurrent(!showCurrent)}
         placeholder="Masukkan password saat ini"
+        saved={saved}
       />
       <PasswordInput
         label="Password Baru"
@@ -109,6 +132,7 @@ export function PasswordForm() {
         show={showNew}
         onToggle={() => setShowNew(!showNew)}
         placeholder="Minimal 8 karakter"
+        saved={saved}
       />
       <PasswordInput
         label="Konfirmasi Password Baru"
@@ -117,6 +141,7 @@ export function PasswordForm() {
         show={showConfirm}
         onToggle={() => setShowConfirm(!showConfirm)}
         placeholder="Ulangi password baru"
+        saved={saved}
       />
 
       {error && (
@@ -128,7 +153,7 @@ export function PasswordForm() {
       <div className="flex justify-end">
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || saved}
           className="px-5 py-2 text-sm rounded-lg text-white disabled:opacity-50"
           style={{ background: 'var(--lf-blue)' }}
         >
