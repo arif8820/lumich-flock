@@ -77,6 +77,7 @@ export default async function LaporanKasPage({
           {hasPermission(session, PERMISSIONS.LAPORAN.EXPORT) && (
             <a
               href={`/api/laporan/kas-csv?from=${safeFrom}&to=${safeTo}`}
+              download="laporan-kas.csv"
               className="inline-flex items-center px-4 py-2 rounded-[10px] text-sm font-medium"
               style={{ backgroundColor: 'var(--lf-teal)', color: '#ffffff' }}
             >

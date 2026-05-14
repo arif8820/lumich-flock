@@ -73,6 +73,7 @@ export default async function LaporanFlockPage({
           {hasPermission(session, PERMISSIONS.LAPORAN.EXPORT) && (
             <a
               href={`/api/laporan/flock-csv?from=${safeFrom}&to=${safeTo}${flockId ? `&flock=${flockId}` : ''}`}
+              download="laporan-flock.csv"
               className="inline-flex items-center px-4 py-2 rounded-[10px] text-sm font-medium"
               style={{ backgroundColor: 'var(--lf-teal)', color: '#ffffff' }}
             >

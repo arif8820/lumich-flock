@@ -23,7 +23,7 @@ export default async function LaporanStokPage() {
           <p className="text-[13px] mt-1" style={{ color: '#8fa08f' }}>Saldo stok terkini semua item</p>
         </div>
         {hasPermission(session, PERMISSIONS.LAPORAN.EXPORT) && (
-          <a href="/api/laporan/stok-csv" className="inline-flex items-center px-4 py-2 rounded-[10px] text-sm font-medium no-print" style={{ backgroundColor: 'var(--lf-teal)', color: '#ffffff' }}>
+          <a href="/api/laporan/stok-csv" download="laporan-stok.csv" className="inline-flex items-center px-4 py-2 rounded-[10px] text-sm font-medium no-print" style={{ backgroundColor: 'var(--lf-teal)', color: '#ffffff' }}>
             Export CSV
           </a>
         )}

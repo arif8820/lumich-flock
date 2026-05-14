@@ -62,6 +62,7 @@ export default async function PiutangPage() {
         {hasPermission(session, PERMISSIONS.LAPORAN.EXPORT) && (
           <a
             href="/api/laporan/aging-csv"
+            download="laporan-aging.csv"
             className="inline-flex items-center px-4 py-2 rounded-[10px] text-sm font-medium transition-colors"
             style={{
               backgroundColor: 'var(--lf-teal)',

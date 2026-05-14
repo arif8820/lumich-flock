@@ -61,7 +61,7 @@ export async function createSalesReturn(farmSchema: string, input: CreateReturnI
     returnNumber,
     orderId: input.orderId,
     customerId: so.customerId,
-    returnDate: input.returnDate,
+    returnDate: input.returnDate instanceof Date ? input.returnDate.toISOString().split('T')[0]! : input.returnDate,
     reasonType: input.reasonType,
     notes: input.notes || null,
     status: 'pending',

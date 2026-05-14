@@ -26,9 +26,6 @@ export async function getCashFlowReport(
 ): Promise<CashFlowReport> {
   const { cashTransactions, cashAccounts, cashCategories } = getFarmSchema(farmSchema)
 
-  const fromDate = new Date(from)
-  const toDate = new Date(to)
-
   const rawRows = await db
     .select({
       id: cashTransactions.id,
@@ -44,8 +41,8 @@ export async function getCashFlowReport(
     .leftJoin(cashCategories, sql`${cashTransactions.categoryId} = ${cashCategories.id}`)
     .where(
       and(
-        gte(cashTransactions.transactionDate, fromDate),
-        lte(cashTransactions.transactionDate, toDate)
+        gte(cashTransactions.transactionDate, from),
+        lte(cashTransactions.transactionDate, to)
       )
     )
     .orderBy(desc(cashTransactions.transactionDate), desc(cashTransactions.createdAt))

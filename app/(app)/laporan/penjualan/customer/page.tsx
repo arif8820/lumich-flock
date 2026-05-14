@@ -63,6 +63,7 @@ export default async function LaporanPenjualanCustomerPage({
           {hasPermission(session, PERMISSIONS.LAPORAN.EXPORT) && (
             <a
               href={`/api/laporan/penjualan-customer-csv?from=${safeFrom}&to=${safeTo}${customerId ? '&customer=' + customerId : ''}`}
+              download="laporan-penjualan-customer.csv"
               className="inline-flex items-center px-4 py-2 rounded-[10px] text-sm font-medium"
               style={{ backgroundColor: 'var(--lf-teal)', color: '#ffffff' }}
             >

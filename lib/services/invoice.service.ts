@@ -38,7 +38,7 @@ export async function recordPayment(
       farmSchema,
       {
         invoiceId,
-        paymentDate: input.paymentDate,
+        paymentDate: input.paymentDate instanceof Date ? input.paymentDate.toISOString().split('T')[0]! : input.paymentDate,
         amount: input.amount.toString(),
         method: input.method,
         referenceNumber: input.referenceNumber ?? null,

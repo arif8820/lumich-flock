@@ -76,7 +76,7 @@ export default async function LaporanProduksiPage({
             Rekap produksi harian per kandang
           </p>
         </div>
-        <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-4 flex-wrap no-print">
           <Suspense fallback={null}>
             <LaporanFilter
               defaultFrom={safeFrom}
@@ -89,6 +89,7 @@ export default async function LaporanProduksiPage({
           {hasPermission(session, PERMISSIONS.LAPORAN.EXPORT) && (
             <a
               href={`/api/laporan/produksi-csv?from=${safeFrom}&to=${safeTo}${coopId ? '&coop=' + coopId : ''}`}
+              download="laporan-produksi.csv"
               className="inline-flex items-center px-4 py-2 rounded-[10px] text-sm font-medium transition-colors"
               style={{ backgroundColor: 'var(--lf-teal)', color: '#ffffff' }}
             >

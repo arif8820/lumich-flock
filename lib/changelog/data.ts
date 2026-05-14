@@ -1,8 +1,27 @@
 import type { VersionEntry } from './types'
 
-export const CURRENT_VERSION = 'v0.6.0' as const
+export const CURRENT_VERSION = 'v0.7.0' as const
 
 export const changelog: VersionEntry[] = [
+  {
+    version: 'v0.7.0',
+    date: '2026-05-14',
+    title: 'Laporan Hub & 8 Basic Reports',
+    changes: [
+      { type: 'feature',     text: 'Hub Laporan: navigasi sidebar diganti 1 flat item "Laporan" → halaman hub dengan grid card semua report' },
+      { type: 'feature',     text: 'Laporan Produksi Harian: filter kandang baru + kolom HDP%' },
+      { type: 'feature',     text: 'Laporan Performa Flock: HDP% rata-rata, mortalitas%, FCR per flock dengan color coding' },
+      { type: 'feature',     text: 'Laporan Stok Balance: saldo terkini semua item + total masuk/keluar' },
+      { type: 'feature',     text: 'Laporan Mutasi Stok: riwayat pergerakan stok dengan filter item & date range' },
+      { type: 'feature',     text: 'Laporan Penjualan Summary: KPI total SO, revenue, avg per SO + tabel per order' },
+      { type: 'feature',     text: 'Laporan Penjualan per Pelanggan: breakdown revenue per customer' },
+      { type: 'feature',     text: 'Laporan Piutang Aging: dipindah ke /laporan/keuangan/piutang (URL baru)' },
+      { type: 'feature',     text: 'Laporan Kas & Cash Flow: total masuk/keluar/net + tabel transaksi dengan badge Masuk/Keluar' },
+      { type: 'feature',     text: 'Export CSV untuk semua 8 laporan' },
+      { type: 'feature',     text: 'Permission per-report: laporan.produksi.view, laporan.flock.view, laporan.stok.view, laporan.stok.mutasi.view, laporan.penjualan.view, laporan.keuangan.view' },
+      { type: 'improvement', text: 'Print-friendly CSS: filter & sidebar disembunyikan saat Ctrl+P' },
+    ],
+  },
   {
     version: 'v0.6.0',
     date: '2026-05-14',

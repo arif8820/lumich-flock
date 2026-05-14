@@ -179,8 +179,8 @@ export async function getSalesReport(
     .leftJoin(customers, eq(salesOrders.customerId, customers.id))
     .leftJoin(salesOrderItems, eq(salesOrderItems.orderId, salesOrders.id))
     .where(and(
-      gte(salesOrders.orderDate, new Date(from)),
-      lte(salesOrders.orderDate, new Date(to))
+      gte(salesOrders.orderDate, from),
+      lte(salesOrders.orderDate, to)
     ))
     .groupBy(
       salesOrders.id,
@@ -222,8 +222,8 @@ export async function getSalesPerCustomerReport(
 ): Promise<SalesPerCustomerRow[]> {
   const { salesOrders, customers } = getFarmSchema(farmSchema)
   const conditions = [
-    gte(salesOrders.orderDate, new Date(from)),
-    lte(salesOrders.orderDate, new Date(to)),
+    gte(salesOrders.orderDate, from),
+    lte(salesOrders.orderDate, to),
     ...(customerId ? [eq(salesOrders.customerId, customerId)] : []),
   ]
 
