@@ -8,6 +8,8 @@ export type StockBalance = {
   categoryName: string
   itemName: string
   unit: string
+  totalIn: number
+  totalOut: number
   balance: number
 }
 
@@ -31,7 +33,9 @@ export async function getAllStockBalances(farmSchema: string): Promise<StockBala
       categoryName: stockCategories.name,
       itemName: stockItems.name,
       unit: stockCategories.unit,
-      balance: sum(sql<number>`CASE WHEN ${inventoryMovements.movementType} = 'in' THEN ${inventoryMovements.quantity} ELSE -${inventoryMovements.quantity} END`),
+      totalIn: sql<number>`COALESCE(SUM(CASE WHEN ${inventoryMovements.movementType} = 'in' THEN ${inventoryMovements.quantity} ELSE 0 END), 0)`,
+      totalOut: sql<number>`COALESCE(SUM(CASE WHEN ${inventoryMovements.movementType} != 'in' THEN ${inventoryMovements.quantity} ELSE 0 END), 0)`,
+      balance: sql<number>`COALESCE(SUM(CASE WHEN ${inventoryMovements.movementType} = 'in' THEN ${inventoryMovements.quantity} ELSE -${inventoryMovements.quantity} END), 0)`,
     })
     .from(inventoryMovements)
     .innerJoin(stockItems, eq(inventoryMovements.stockItemId, stockItems.id))
@@ -43,7 +47,12 @@ export async function getAllStockBalances(farmSchema: string): Promise<StockBala
       stockItems.name,
       stockCategories.unit
     )
-  return rows.map((r) => ({ ...r, balance: Number(r.balance ?? '0') }))
+  return rows.map((r) => ({
+    ...r,
+    totalIn: Number(r.totalIn ?? '0'),
+    totalOut: Number(r.totalOut ?? '0'),
+    balance: Number(r.balance ?? '0'),
+  }))
 }
 
 // any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
