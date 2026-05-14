@@ -4,6 +4,8 @@ import {
   getTotalDepletionByFlock,
   getCumulativeDepletionByFlockUpTo,
   getProductionReport,
+  getFlockPerformanceReport,
+  type FlockPerformanceRow,
 } from '@/lib/db/queries/daily-record.queries'
 import { getStockBalance } from '@/lib/db/queries/inventory.queries'
 import { findAllActiveFlocks, findFlockById } from '@/lib/db/queries/flock.queries'
@@ -306,4 +308,15 @@ export async function updateDailyRecordAyam(
     .returning()
   // any: farm schema date fields (recordDate: Date) differ from public DailyRecord type (recordDate: string)
   return updated! as unknown as DailyRecord
+}
+
+export type { FlockPerformanceRow }
+
+export async function getFlockPerformanceData(
+  farmSchema: string,
+  from: string,
+  to: string,
+  flockId?: string
+): Promise<FlockPerformanceRow[]> {
+  return getFlockPerformanceReport(farmSchema, from, to, flockId)
 }
