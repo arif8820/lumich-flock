@@ -222,6 +222,8 @@ export type EnrichedProductionRow = {
   activePopulation: number
   deaths: number
   culled: number
+  totalEggsButir: number
+  hdp: number
 }
 
 export type ProductionReportResult = {
@@ -236,11 +238,12 @@ export async function getProductionReportData(
   farmSchema: string,
   from: string,
   to: string,
-  role: Role
+  role: Role,
+  coopId?: string
 ): Promise<ProductionReportResult> {
   if (role === 'operator') throw new Error('Akses ditolak')
 
-  const rawRows = await getProductionReport(farmSchema, from, to)
+  const rawRows = await getProductionReport(farmSchema, from, to, coopId)
 
   const enriched: EnrichedProductionRow[] = await Promise.all(
     rawRows.map(async (row) => {
@@ -250,6 +253,9 @@ export async function getProductionReportData(
         row.recordDate as string
       )
       const activePopulation = Math.max(0, row.flockTotalCount - cumDeaths - cumCulled)
+      const hdp = activePopulation > 0
+        ? Math.round((row.totalEggsButir / activePopulation) * 100 * 10) / 10
+        : 0
       return {
         recordDate: row.recordDate as string,
         coopId: row.coopId,
@@ -259,6 +265,8 @@ export async function getProductionReportData(
         activePopulation,
         deaths: row.deaths,
         culled: row.culled,
+        totalEggsButir: row.totalEggsButir,
+        hdp,
       }
     })
   )

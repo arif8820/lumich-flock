@@ -6,7 +6,8 @@ import { PERMISSIONS } from '@/lib/auth/permissions'
 import { getProductionReportData } from '@/lib/services/daily-record.service'
 import type { Role } from '@/lib/services/daily-record.service'
 import { KpiCard } from '@/components/ui/kpi-card'
-import { ProductionReportFilter } from '@/components/forms/production-report-filter'
+import { LaporanFilter } from '@/components/forms/laporan-filter'
+import { findAllCoops } from '@/lib/db/queries/coop.queries'
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr)
@@ -40,16 +41,20 @@ export default async function LaporanProduksiPage({
 
   const fromStr = typeof params.from === 'string' ? params.from : toISODate(defaultFrom)
   const toStr = typeof params.to === 'string' ? params.to : toISODate(today)
+  const coopId = typeof params.coop === 'string' ? params.coop : undefined
 
   const safeFrom = parseSafeISODate(fromStr, defaultFrom)
   const safeTo = parseSafeISODate(toStr, today)
+
+  const coops = await findAllCoops(session.farmSchema)
+  const coopOptions = coops.map((c) => ({ id: c.id, label: c.name }))
 
   let result: Awaited<ReturnType<typeof getProductionReportData>> = {
     rows: [],
     kpi: { totalDeaths: 0, totalCulled: 0 },
   }
   try {
-    result = await getProductionReportData(session.farmSchema, safeFrom, safeTo, session.roleSlug as Role)
+    result = await getProductionReportData(session.farmSchema, safeFrom, safeTo, session.roleSlug as Role, coopId)
   } catch {
     // DB error — render empty state
   }
@@ -73,11 +78,17 @@ export default async function LaporanProduksiPage({
         </div>
         <div className="flex items-center gap-4 flex-wrap">
           <Suspense fallback={null}>
-            <ProductionReportFilter defaultFrom={safeFrom} defaultTo={safeTo} />
+            <LaporanFilter
+              defaultFrom={safeFrom}
+              defaultTo={safeTo}
+              entityType="coop"
+              entities={coopOptions}
+              entityParamName="coop"
+            />
           </Suspense>
           {hasPermission(session, PERMISSIONS.LAPORAN.EXPORT) && (
             <a
-              href={`/api/laporan/produksi-csv?from=${safeFrom}&to=${safeTo}`}
+              href={`/api/laporan/produksi-csv?from=${safeFrom}&to=${safeTo}${coopId ? '&coop=' + coopId : ''}`}
               className="inline-flex items-center px-4 py-2 rounded-[10px] text-sm font-medium transition-colors"
               style={{ backgroundColor: 'var(--lf-teal)', color: '#ffffff' }}
             >
@@ -102,6 +113,8 @@ export default async function LaporanProduksiPage({
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Kandang</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Flock</th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Populasi</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Telur (butir)</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>HDP%</th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Kematian</th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Afkir</th>
             </tr>
@@ -109,7 +122,7 @@ export default async function LaporanProduksiPage({
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm" style={{ color: 'var(--lf-text-soft)' }}>
+                <td colSpan={8} className="px-4 py-8 text-center text-sm" style={{ color: 'var(--lf-text-soft)' }}>
                   Tidak ada data produksi untuk periode ini
                 </td>
               </tr>
@@ -120,6 +133,8 @@ export default async function LaporanProduksiPage({
                   <td className="px-4 py-3 text-sm font-medium" style={{ color: 'var(--lf-text-dark)' }}>{row.coopName}</td>
                   <td className="px-4 py-3 text-sm" style={{ color: 'var(--lf-text-mid)' }}>{row.flockName}</td>
                   <td className="px-4 py-3 text-sm text-right" style={{ color: 'var(--lf-text-dark)' }}>{row.activePopulation.toLocaleString('id-ID')}</td>
+                  <td className="px-4 py-3 text-sm text-right" style={{ color: 'var(--lf-text-dark)' }}>{row.totalEggsButir.toLocaleString('id-ID')}</td>
+                  <td className="px-4 py-3 text-sm text-right font-medium" style={{ color: 'var(--lf-teal)' }}>{row.hdp.toFixed(1)}%</td>
                   <td className="px-4 py-3 text-sm text-right" style={{ color: 'var(--lf-text-mid)' }}>{row.deaths}</td>
                   <td className="px-4 py-3 text-sm text-right" style={{ color: 'var(--lf-text-mid)' }}>{row.culled}</td>
                 </tr>

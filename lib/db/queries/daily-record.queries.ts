@@ -215,14 +215,21 @@ export type ProductionReportRow = {
   flockTotalCount: number
   deaths: number
   culled: number
+  totalEggsButir: number
 }
 
 export async function getProductionReport(
   farmSchema: string,
   from: string,
-  to: string
+  to: string,
+  coopId?: string
 ): Promise<ProductionReportRow[]> {
-  const { dailyRecords, flocks, coops, flockDeliveries } = getFarmSchema(farmSchema)
+  const { dailyRecords, flocks, coops, flockDeliveries, dailyEggRecords } = getFarmSchema(farmSchema)
+  const dateFilter = and(
+    sql`${dailyRecords.recordDate} >= ${from}`,
+    sql`${dailyRecords.recordDate} <= ${to}`,
+    coopId ? eq(coops.id, coopId) : undefined
+  )
   const rows = await db
     .select({
       recordDate: dailyRecords.recordDate,
@@ -233,12 +240,17 @@ export async function getProductionReport(
       flockTotalCount: sql<number>`COALESCE((SELECT SUM(${flockDeliveries.quantity}) FROM ${flockDeliveries} WHERE ${flockDeliveries.flockId} = ${flocks.id}), 0)`,
       deaths: dailyRecords.deaths,
       culled: dailyRecords.culled,
+      totalEggsButir: sql<number>`COALESCE((SELECT SUM(${dailyEggRecords.qtyButir}) FROM ${dailyEggRecords} WHERE ${dailyEggRecords.dailyRecordId} = ${dailyRecords.id}), 0)`,
     })
     .from(dailyRecords)
     .innerJoin(flocks, eq(flocks.id, dailyRecords.flockId))
     .innerJoin(coops, eq(coops.id, flocks.coopId))
-    .where(and(sql`${dailyRecords.recordDate} >= ${from}`, sql`${dailyRecords.recordDate} <= ${to}`))
+    .where(dateFilter)
     .orderBy(asc(coops.name), asc(dailyRecords.recordDate))
 
-  return rows.map((r) => ({ ...r, flockTotalCount: Number(r.flockTotalCount) })) as ProductionReportRow[]
+  return rows.map((r) => ({
+    ...r,
+    flockTotalCount: Number(r.flockTotalCount),
+    totalEggsButir: Number(r.totalEggsButir),
+  })) as ProductionReportRow[]
 }

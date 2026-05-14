@@ -118,6 +118,7 @@ describe('daily-record.service — pure functions', () => {
       flockTotalCount: 1000,
       deaths: 5,
       culled: 2,
+      totalEggsButir: 930,
     }
 
     beforeEach(() => {
