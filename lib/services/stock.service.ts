@@ -131,7 +131,7 @@ export async function createStockPurchase(
     movementType: 'in',
     source: 'purchase',
     quantity: input.quantity,
-    movementDate: input.purchaseDate,
+    movementDate: new Date(input.purchaseDate),
     createdBy: userId,
   })
 }

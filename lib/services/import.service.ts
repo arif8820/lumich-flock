@@ -20,6 +20,7 @@ import {
   getActiveFeedItems,
   getActiveVaccineItems,
 } from '@/lib/services/stock-catalog.service'
+import { getStockBalance } from '@/lib/db/queries/inventory.queries'
 
 // ─── Domain error class ───────────────────────────────────────────────────────
 
@@ -181,6 +182,19 @@ export async function parseDailyRecordsCsv(
     : []
   const validFlockIdSet = new Set(validFlocks.map((f) => f.id))
 
+  // Build item name lookup map for user-friendly error messages
+  const itemNameMap = new Map<string, string>()
+  for (const item of feedItems) itemNameMap.set(item.id, item.name)
+  for (const item of vaccineItems) itemNameMap.set(item.id, item.name)
+
+  // Fetch starting balances for all feed + vaccine items (running balance for stock validation)
+  const allConsumableIds = [...feedItems.map((i) => i.id), ...vaccineItems.map((i) => i.id)]
+  const balanceEntries = await Promise.all(
+    allConsumableIds.map(async (id) => [id, await getStockBalance(farmSchema, id)] as const)
+  )
+  const balanceMap = new Map(balanceEntries)
+  let hasStockError = false
+
   const valid: ParsedRow<DailyRecordImportRow>[] = []
   const errors: ParseError[] = []
 
@@ -246,6 +260,51 @@ export async function parseDailyRecordsCsv(
       }
     }
 
+    // Running balance check — collect errors and deductions separately per-row,
+    // then only apply deductions if no stock errors occurred for this row.
+    const rowStockErrors: string[] = []
+    const rowStockDeductions: Array<[string, number]> = []
+
+    for (const [stockItemId, e] of feedMap.entries()) {
+      if (e.qtyUsed <= 0) continue
+      const itemName = itemNameMap.get(stockItemId) ?? stockItemId
+      const bal = balanceMap.get(stockItemId) ?? 0
+      const qtyRounded = Math.round(e.qtyUsed)
+      if (qtyRounded > bal) {
+        rowStockErrors.push(
+          `Baris ${rowNum} (${recordDateStr ?? ''}): stok ${itemName} tidak mencukupi (tersedia: ${bal}, dibutuhkan: ${qtyRounded})`
+        )
+      } else {
+        rowStockDeductions.push([stockItemId, bal - qtyRounded])
+      }
+    }
+
+    for (const [stockItemId, e] of vaccineMap.entries()) {
+      if (e.qtyUsed <= 0) continue
+      const itemName = itemNameMap.get(stockItemId) ?? stockItemId
+      const bal = balanceMap.get(stockItemId) ?? 0
+      const qtyRounded = Math.round(e.qtyUsed)
+      if (qtyRounded > bal) {
+        rowStockErrors.push(
+          `Baris ${rowNum} (${recordDateStr ?? ''}): stok ${itemName} tidak mencukupi (tersedia: ${bal}, dibutuhkan: ${qtyRounded})`
+        )
+      } else {
+        rowStockDeductions.push([stockItemId, bal - qtyRounded])
+      }
+    }
+
+    if (rowStockErrors.length > 0) {
+      rowErrors.push(...rowStockErrors)
+      hasStockError = true
+    } else {
+      for (const [id, newBal] of rowStockDeductions) balanceMap.set(id, newBal)
+    }
+
+    if (rowErrors.length > 0) {
+      errors.push({ rowNum, errors: rowErrors })
+      continue
+    }
+
     valid.push({
       rowNum,
       data: {
@@ -261,6 +320,7 @@ export async function parseDailyRecordsCsv(
     })
   }
 
+  if (hasStockError) return { valid: [], errors }
   return { valid, errors }
 }
 
@@ -348,6 +408,7 @@ export async function commitImport(
     dailyEggRecords,
     dailyFeedRecords,
     dailyVaccineRecords,
+    inventoryMovements,
     customers: farmCustomers,
   } = getFarmSchema(farmSchema)
 
@@ -361,7 +422,7 @@ export async function commitImport(
         try {
           const [newRecord] = await tx
             .insert(dailyRecords)
-            .values({
+            .values([{
               flockId: rowData.flockId,
               recordDate: new Date(rowData.recordDate),
               deaths: rowData.deaths,
@@ -371,7 +432,7 @@ export async function commitImport(
               isImported: true,
               importedBy: adminId,
               createdBy: adminId,
-            })
+            }])
             .returning()
 
           if (!newRecord) throw new ImportDomainError(`Gagal menyimpan daily record baris ${row.rowNum}`)
@@ -410,6 +471,51 @@ export async function commitImport(
               }))
             )
           }
+
+          const movementDate = new Date(rowData.recordDate)
+          const eggMovementInserts = eggInserts.filter((e) => e.qtyButir > 0)
+          const movements = [
+            ...eggMovementInserts.map((e) => ({
+              stockItemId: e.stockItemId,
+              flockId: rowData.flockId,
+              movementType: 'in' as const,
+              source: 'import' as const,
+              sourceType: 'daily_egg_records' as const,
+              sourceId: dailyRecordId,
+              quantity: e.qtyButir,
+              movementDate,
+              isImported: true,
+              importedBy: adminId,
+              createdBy: adminId,
+            })),
+            ...feedInserts.map((e) => ({
+              stockItemId: e.stockItemId,
+              flockId: rowData.flockId,
+              movementType: 'out' as const,
+              source: 'import' as const,
+              sourceType: 'daily_feed_records' as const,
+              sourceId: dailyRecordId,
+              quantity: Math.round(Number(e.qtyUsed)),
+              movementDate,
+              isImported: true,
+              importedBy: adminId,
+              createdBy: adminId,
+            })),
+            ...vaccineInserts.map((e) => ({
+              stockItemId: e.stockItemId,
+              flockId: rowData.flockId,
+              movementType: 'out' as const,
+              source: 'import' as const,
+              sourceType: 'daily_vaccine_records' as const,
+              sourceId: dailyRecordId,
+              quantity: Math.round(Number(e.qtyUsed)),
+              movementDate,
+              isImported: true,
+              importedBy: adminId,
+              createdBy: adminId,
+            })),
+          ]
+          if (movements.length > 0) await tx.insert(inventoryMovements).values(movements)
         } catch (e) {
           const msg = e instanceof Error ? e.message : ''
           if (msg.includes('daily_records_flock_date_idx') || msg.includes('unique')) {

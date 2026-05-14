@@ -1,8 +1,20 @@
 import type { VersionEntry } from './types'
 
-export const CURRENT_VERSION = 'v0.4.0' as const
+export const CURRENT_VERSION = 'v0.5.0' as const
 
 export const changelog: VersionEntry[] = [
+  {
+    version: 'v0.5.0',
+    date: '2026-05-14',
+    title: 'Import CSV — Inventory & Flock Sync',
+    changes: [
+      { type: 'feature',     text: 'Import produksi harian kini otomatis mencatat gerakan stok: telur masuk (+), pakan & vaksin keluar (−)' },
+      { type: 'feature',     text: 'Validasi stok kumulatif per-baris saat pratinjau — batch ditolak seluruhnya jika ada baris yang kekurangan stok' },
+      { type: 'feature',     text: 'Pesan error stok informatif: tanggal, nama item, saldo tersedia, dan jumlah dibutuhkan' },
+      { type: 'improvement', text: 'Audit trail lengkap: setiap gerakan stok dari import tertaut ke daily_record asal via source_id' },
+      { type: 'improvement', text: 'Populasi flock diperbarui otomatis dari data deaths/culled — tidak ada update manual diperlukan' },
+    ],
+  },
   {
     version: 'v0.4.0',
     date: '2026-05-12',
