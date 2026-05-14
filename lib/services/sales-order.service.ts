@@ -81,7 +81,7 @@ export async function createDraftSO(farmSchema: string, input: CreateDraftInput,
 
   const salesOrder: NewSalesOrder = {
     orderNumber,
-    orderDate: input.orderDate,
+    orderDate: input.orderDate instanceof Date ? input.orderDate.toISOString().split('T')[0]! : input.orderDate,
     customerId: input.customerId,
     paymentMethod: input.paymentMethod,
     status: 'draft',

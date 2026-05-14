@@ -33,7 +33,7 @@ export async function createFlockDelivery(
 
   return insertFlockDelivery(farmSchema, {
     flockId: input.flockId,
-    deliveryDate: input.deliveryDate,
+    deliveryDate: input.deliveryDate instanceof Date ? input.deliveryDate.toISOString().split('T')[0]! : input.deliveryDate,
     quantity: input.quantity,
     ageAtArrivalDays: input.ageAtArrivalDays ?? null,
     notes: input.notes ?? null,

@@ -71,6 +71,9 @@ export async function provisionFarm(schemaName: string, farmName: string): Promi
         ('kas.view'),('kas.create'),('kas.update'),('kas.delete'),
         ('sales.view'),('sales.create'),
         ('laporan.view'),('laporan.export'),
+        ('laporan.produksi.view'),('laporan.flock.view'),
+        ('laporan.stok.view'),('laporan.stok.mutasi.view'),
+        ('laporan.penjualan.view'),('laporan.keuangan.view'),
         ('user.view')
       ) AS p(key)
       WHERE r.name = 'supervisor'
@@ -83,7 +86,10 @@ export async function provisionFarm(schemaName: string, farmName: string): Promi
         ('produksi.view'),('produksi.create'),('produksi.update'),
         ('stok.view'),
         ('flock.view'),
-        ('kas.view')
+        ('kas.view'),
+        ('laporan.view'),('laporan.export'),
+        ('laporan.produksi.view'),('laporan.flock.view'),
+        ('laporan.stok.view'),('laporan.penjualan.view')
       ) AS p(key)
       WHERE r.name = 'operator'
       ON CONFLICT DO NOTHING;

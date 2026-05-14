@@ -215,14 +215,21 @@ export type ProductionReportRow = {
   flockTotalCount: number
   deaths: number
   culled: number
+  totalEggsButir: number
 }
 
 export async function getProductionReport(
   farmSchema: string,
   from: string,
-  to: string
+  to: string,
+  coopId?: string
 ): Promise<ProductionReportRow[]> {
-  const { dailyRecords, flocks, coops, flockDeliveries } = getFarmSchema(farmSchema)
+  const { dailyRecords, flocks, coops, flockDeliveries, dailyEggRecords } = getFarmSchema(farmSchema)
+  const dateFilter = and(
+    sql`${dailyRecords.recordDate} >= ${from}`,
+    sql`${dailyRecords.recordDate} <= ${to}`,
+    coopId ? eq(coops.id, coopId) : undefined
+  )
   const rows = await db
     .select({
       recordDate: dailyRecords.recordDate,
@@ -233,12 +240,111 @@ export async function getProductionReport(
       flockTotalCount: sql<number>`COALESCE((SELECT SUM(${flockDeliveries.quantity}) FROM ${flockDeliveries} WHERE ${flockDeliveries.flockId} = ${flocks.id}), 0)`,
       deaths: dailyRecords.deaths,
       culled: dailyRecords.culled,
+      totalEggsButir: sql<number>`COALESCE((SELECT SUM(${dailyEggRecords.qtyButir}) FROM ${dailyEggRecords} WHERE ${dailyEggRecords.dailyRecordId} = ${dailyRecords.id}), 0)`,
     })
     .from(dailyRecords)
     .innerJoin(flocks, eq(flocks.id, dailyRecords.flockId))
     .innerJoin(coops, eq(coops.id, flocks.coopId))
-    .where(and(sql`${dailyRecords.recordDate} >= ${from}`, sql`${dailyRecords.recordDate} <= ${to}`))
+    .where(dateFilter)
     .orderBy(asc(coops.name), asc(dailyRecords.recordDate))
 
-  return rows.map((r) => ({ ...r, flockTotalCount: Number(r.flockTotalCount) })) as ProductionReportRow[]
+  return rows.map((r) => ({
+    ...r,
+    flockTotalCount: Number(r.flockTotalCount),
+    totalEggsButir: Number(r.totalEggsButir),
+  })) as ProductionReportRow[]
+}
+
+export type FlockPerformanceRow = {
+  flockId: string
+  flockName: string
+  coopName: string
+  initialCount: number
+  arrivalDate: string
+  totalDays: number
+  ageWeeks: number
+  totalEggsButir: number
+  totalDeaths: number
+  totalCulled: number
+  totalFeedKg: number
+  avgHdp: number
+  mortalityPct: number
+  fcr: number
+}
+
+export async function getFlockPerformanceReport(
+  farmSchema: string,
+  from: string,
+  to: string,
+  flockId?: string
+): Promise<FlockPerformanceRow[]> {
+  const { dailyRecords, dailyEggRecords, dailyFeedRecords, flocks, coops, flockDeliveries } =
+    getFarmSchema(farmSchema)
+
+  const conditions = [
+    sql`${dailyRecords.recordDate} >= ${from}`,
+    sql`${dailyRecords.recordDate} <= ${to}`,
+    ...(flockId ? [eq(dailyRecords.flockId, flockId)] : []),
+  ]
+
+  const rows = await db
+    .select({
+      flockId: flocks.id,
+      flockName: flocks.name,
+      coopName: coops.name,
+      initialCount: sql<number>`COALESCE((SELECT SUM(${flockDeliveries.quantity}) FROM ${flockDeliveries} WHERE ${flockDeliveries.flockId} = ${flocks.id}), 0)`,
+      arrivalDate: flocks.arrivalDate,
+      totalDays: sql<number>`COUNT(DISTINCT ${dailyRecords.recordDate})`,
+      totalEggsButir: sql<number>`COALESCE(SUM(${dailyEggRecords.qtyButir}), 0)`,
+      totalDeaths: sql<number>`COALESCE(SUM(${dailyRecords.deaths}), 0)`,
+      totalCulled: sql<number>`COALESCE(SUM(${dailyRecords.culled}), 0)`,
+      totalFeedKg: sql<number>`COALESCE(SUM(${dailyFeedRecords.qtyUsed}), 0)`,
+    })
+    .from(dailyRecords)
+    .innerJoin(flocks, eq(dailyRecords.flockId, flocks.id))
+    .innerJoin(coops, eq(flocks.coopId, coops.id))
+    .leftJoin(dailyEggRecords, eq(dailyEggRecords.dailyRecordId, dailyRecords.id))
+    .leftJoin(dailyFeedRecords, eq(dailyFeedRecords.dailyRecordId, dailyRecords.id))
+    .where(and(...conditions))
+    .groupBy(flocks.id, flocks.name, coops.name, flocks.arrivalDate)
+    .orderBy(flocks.name)
+
+  return rows.map((r) => {
+    const initialCount = Number(r.initialCount)
+    const totalEggs = Number(r.totalEggsButir)
+    const totalDays = Number(r.totalDays)
+    const totalDeaths = Number(r.totalDeaths)
+    const totalFeedKg = Number(r.totalFeedKg)
+    const avgPop = totalDeaths > 0 ? initialCount - totalDeaths / 2 : initialCount
+    const avgHdp =
+      avgPop > 0 && totalDays > 0
+        ? Math.round((totalEggs / (avgPop * totalDays)) * 100 * 10) / 10
+        : 0
+    const mortalityPct =
+      initialCount > 0 ? Math.round((totalDeaths / initialCount) * 100 * 10) / 10 : 0
+    const fcr =
+      totalEggs > 0 ? Math.round((totalFeedKg / (totalEggs / 1000)) * 100) / 100 : 0
+    const arrivalDate =
+      r.arrivalDate instanceof Date ? r.arrivalDate : new Date(String(r.arrivalDate))
+    const ageWeeks = Math.floor(
+      (Date.now() - arrivalDate.getTime()) / (7 * 24 * 60 * 60 * 1000)
+    )
+
+    return {
+      flockId: r.flockId,
+      flockName: r.flockName,
+      coopName: r.coopName,
+      initialCount,
+      arrivalDate: arrivalDate.toISOString().split('T')[0]!,
+      totalDays,
+      ageWeeks,
+      totalEggsButir: totalEggs,
+      totalDeaths,
+      totalCulled: Number(r.totalCulled),
+      totalFeedKg,
+      avgHdp,
+      mortalityPct,
+      fcr,
+    }
+  })
 }

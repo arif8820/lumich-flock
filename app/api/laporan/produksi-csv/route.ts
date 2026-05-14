@@ -33,6 +33,7 @@ export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url)
   const fromParam = searchParams.get('from')
   const toParam = searchParams.get('to')
+  const coopParam = searchParams.get('coop') ?? undefined
 
   const today = new Date()
   const defaultFrom = new Date(today)
@@ -43,7 +44,7 @@ export async function GET(request: Request): Promise<Response> {
 
   let result: ProductionReportResult
   try {
-    result = await getProductionReportData(session.farmSchema, from, to, session.roleSlug as Role)
+    result = await getProductionReportData(session.farmSchema, from, to, session.roleSlug as Role, coopParam)
   } catch {
     return new Response('Gagal mengambil data laporan', { status: 500 })
   }
@@ -53,6 +54,8 @@ export async function GET(request: Request): Promise<Response> {
     'Kandang',
     'Flock',
     'Populasi',
+    'Telur (butir)',
+    'HDP%',
     'Kematian',
     'Afkir',
   ].join(',')
@@ -62,6 +65,8 @@ export async function GET(request: Request): Promise<Response> {
     escapeField(row.coopName),
     escapeField(row.flockName),
     row.activePopulation,
+    row.totalEggsButir,
+    row.hdp.toFixed(1),
     row.deaths,
     row.culled,
   ].join(','))

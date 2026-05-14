@@ -141,3 +141,14 @@ textarea {
     @apply font-sans;
   }
 }
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  aside,
+  nav,
+  [data-sidebar] {
+    display: none !important;
+  }
+}

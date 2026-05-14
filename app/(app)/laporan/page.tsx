@@ -2,164 +2,128 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/get-session'
 import { hasPermission } from '@/lib/auth/guards'
 import { PERMISSIONS } from '@/lib/auth/permissions'
-import { getAgingData } from '@/lib/services/invoice.service'
-import { KpiCard } from '@/components/ui/kpi-card'
+import {
+  Egg, Bird, Package, ShoppingCart, Users, Landmark, ArrowRight,
+} from 'lucide-react'
+import Link from 'next/link'
 
-function formatRupiah(n: number): string {
-  return `Rp ${n.toLocaleString('id-ID')}`
+type ReportCard = {
+  href: string
+  icon: React.ElementType
+  title: string
+  description: string
+  permissionKey: string
 }
 
-function formatDate(d: Date): string {
-  return new Date(d).toLocaleDateString('id-ID')
-}
+const REPORTS: ReportCard[] = [
+  {
+    href: '/laporan/produksi',
+    icon: Egg,
+    title: 'Produksi Harian',
+    description: 'Rekap telur, kematian, afkir, dan HDP% per kandang',
+    permissionKey: PERMISSIONS.LAPORAN.PRODUKSI.VIEW,
+  },
+  {
+    href: '/laporan/flock',
+    icon: Bird,
+    title: 'Performa Flock',
+    description: 'HDP%, mortalitas, dan FCR per flock',
+    permissionKey: PERMISSIONS.LAPORAN.FLOCK.VIEW,
+  },
+  {
+    href: '/laporan/stok',
+    icon: Package,
+    title: 'Stok Balance',
+    description: 'Saldo stok terkini semua item',
+    permissionKey: PERMISSIONS.LAPORAN.STOK.VIEW,
+  },
+  {
+    href: '/laporan/stok/mutasi',
+    icon: Package,
+    title: 'Mutasi Stok',
+    description: 'Riwayat pergerakan stok masuk dan keluar',
+    permissionKey: PERMISSIONS.LAPORAN.STOK.MUTASI.VIEW,
+  },
+  {
+    href: '/laporan/penjualan',
+    icon: ShoppingCart,
+    title: 'Penjualan',
+    description: 'Ringkasan sales order per periode',
+    permissionKey: PERMISSIONS.LAPORAN.PENJUALAN.VIEW,
+  },
+  {
+    href: '/laporan/penjualan/customer',
+    icon: Users,
+    title: 'Penjualan per Pelanggan',
+    description: 'Breakdown penjualan per pelanggan',
+    permissionKey: PERMISSIONS.LAPORAN.PENJUALAN.VIEW,
+  },
+  {
+    href: '/laporan/keuangan/piutang',
+    icon: Landmark,
+    title: 'Piutang Aging',
+    description: 'Status piutang berdasarkan hari keterlambatan',
+    permissionKey: PERMISSIONS.LAPORAN.KEUANGAN.VIEW,
+  },
+  {
+    href: '/laporan/keuangan/kas',
+    icon: Landmark,
+    title: 'Kas & Cash Flow',
+    description: 'Arus kas masuk dan keluar per periode',
+    permissionKey: PERMISSIONS.LAPORAN.KEUANGAN.VIEW,
+  },
+]
 
-function getDaysOverdueStyle(bucket: string): React.CSSProperties {
-  switch (bucket) {
-    case '0-7':
-      return { color: 'var(--lf-text-dark)' }
-    case '8-14':
-      return { color: '#e67e22' }
-    case '15-30':
-      return { color: '#e74c3c' }
-    case '>30':
-      return { color: '#c0392b', fontWeight: 'bold' }
-    default:
-      return { color: 'var(--lf-text-dark)' }
-  }
-}
-
-export default async function LaporanPage() {
+export default async function LaporanHubPage() {
   const session = await getSession()
   if (!session || !hasPermission(session, PERMISSIONS.LAPORAN.VIEW)) redirect('/dashboard')
 
-  let agingData: Awaited<ReturnType<typeof getAgingData>> = []
-  try {
-    agingData = await getAgingData(session.farmSchema)
-  } catch {
-    // DB error — render empty state
-  }
-
-  const bucket07 = agingData.filter((r) => r.bucket === '0-7').reduce((s, r) => s + r.outstanding, 0)
-  const bucket814 = agingData.filter((r) => r.bucket === '8-14').reduce((s, r) => s + r.outstanding, 0)
-  const bucket1530 = agingData.filter((r) => r.bucket === '15-30').reduce((s, r) => s + r.outstanding, 0)
-  const bucket30 = agingData.filter((r) => r.bucket === '>30').reduce((s, r) => s + r.outstanding, 0)
+  const visibleReports = REPORTS.filter((r) =>
+    hasPermission(session, r.permissionKey as Parameters<typeof hasPermission>[1])
+  )
 
   return (
     <div className="p-6 space-y-6">
-      {/* Page header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1
-            className="text-[18px] font-bold"
-            style={{ color: '#2d3a2e', letterSpacing: '-0.3px' }}
-          >
-            Laporan Piutang
-          </h1>
-          <p className="text-[13px] mt-1" style={{ color: '#8fa08f' }}>
-            Aging piutang pelanggan berdasarkan hari keterlambatan
-          </p>
+      <div>
+        <h1 className="text-[18px] font-bold" style={{ color: '#2d3a2e', letterSpacing: '-0.3px' }}>
+          Laporan
+        </h1>
+        <p className="text-[13px] mt-1" style={{ color: '#8fa08f' }}>
+          Pilih laporan yang ingin dilihat
+        </p>
+      </div>
+
+      {visibleReports.length === 0 ? (
+        <p className="text-sm" style={{ color: 'var(--lf-text-soft)' }}>
+          Tidak ada laporan yang dapat diakses.
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {visibleReports.map((report) => {
+            const Icon = report.icon
+            return (
+              <Link
+                key={report.href}
+                href={report.href}
+                className="group flex items-start gap-4 p-5 rounded-[14px] border transition-colors hover:border-[var(--lf-blue)]"
+                style={{ borderColor: 'var(--lf-border)', background: '#fff' }}
+              >
+                <div
+                  className="w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0"
+                  style={{ background: '#e3f0f9' }}
+                >
+                  <Icon size={18} style={{ color: '#5090be' }} strokeWidth={1.8} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[14px] font-semibold" style={{ color: '#2d3a2e' }}>{report.title}</p>
+                  <p className="text-[12px] mt-0.5 leading-relaxed" style={{ color: '#8fa08f' }}>{report.description}</p>
+                </div>
+                <ArrowRight size={16} strokeWidth={1.8} style={{ color: '#b0bab0', flexShrink: 0, marginTop: 2 }} />
+              </Link>
+            )
+          })}
         </div>
-        {hasPermission(session, PERMISSIONS.LAPORAN.EXPORT) && (
-          <a
-            href="/api/laporan/aging-csv"
-            className="inline-flex items-center px-4 py-2 rounded-[10px] text-sm font-medium transition-colors"
-            style={{
-              backgroundColor: 'var(--lf-teal)',
-              color: '#ffffff',
-            }}
-          >
-            Export CSV
-          </a>
-        )}
-      </div>
-
-      {/* KPI Row */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <KpiCard
-          label="0–7 Hari"
-          value={formatRupiah(bucket07)}
-        />
-        <KpiCard
-          label="8–14 Hari"
-          value={formatRupiah(bucket814)}
-        />
-        <KpiCard
-          label="15–30 Hari"
-          value={formatRupiah(bucket1530)}
-        />
-        <KpiCard
-          label=">30 Hari"
-          value={formatRupiah(bucket30)}
-        />
-      </div>
-
-      {/* Aging Table */}
-      <div className="border rounded-lg overflow-hidden" style={{ borderColor: 'var(--lf-border)' }}>
-        <table className="w-full">
-          <thead>
-            <tr style={{ backgroundColor: 'var(--lf-bg-soft)' }}>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Pelanggan</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>No. Invoice</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Tgl Terbit</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Jatuh Tempo</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Total</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Terbayar</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Sisa</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Hari Lewat</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--lf-text-soft)' }}>Kategori</th>
-            </tr>
-          </thead>
-          <tbody>
-            {agingData.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={9}
-                  className="px-4 py-8 text-center text-sm"
-                  style={{ color: 'var(--lf-text-soft)' }}
-                >
-                  Tidak ada data piutang jatuh tempo
-                </td>
-              </tr>
-            ) : (
-              agingData.map((row) => (
-                <tr
-                  key={row.invoiceId}
-                  className="border-t"
-                  style={{ borderColor: 'var(--lf-border)' }}
-                >
-                  <td className="px-4 py-3 text-sm" style={{ color: 'var(--lf-text-dark)' }}>
-                    {row.customerName}
-                  </td>
-                  <td className="px-4 py-3 text-sm font-medium" style={{ color: 'var(--lf-text-dark)' }}>
-                    {row.invoiceNumber}
-                  </td>
-                  <td className="px-4 py-3 text-sm" style={{ color: 'var(--lf-text-mid)' }}>
-                    {formatDate(row.issueDate)}
-                  </td>
-                  <td className="px-4 py-3 text-sm" style={{ color: 'var(--lf-text-mid)' }}>
-                    {formatDate(row.dueDate)}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-right" style={{ color: 'var(--lf-text-dark)' }}>
-                    {formatRupiah(row.totalAmount)}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-right" style={{ color: 'var(--lf-text-mid)' }}>
-                    {formatRupiah(row.paidAmount)}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-right font-medium" style={{ color: 'var(--lf-text-dark)' }}>
-                    {formatRupiah(row.outstanding)}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-right" style={getDaysOverdueStyle(row.bucket)}>
-                    {row.daysOverdue}
-                  </td>
-                  <td className="px-4 py-3 text-sm" style={getDaysOverdueStyle(row.bucket)}>
-                    {row.bucket} hari
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      )}
     </div>
   )
 }

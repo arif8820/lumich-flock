@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { getFarmSchema } from '@/lib/db/schema-factory'
-import { eq, and, desc, sql, count, getTableColumns } from 'drizzle-orm'
+import { eq, and, desc, sql, count, getTableColumns, gte, lte, sum, max } from 'drizzle-orm'
 
 export async function findSalesOrderById(farmSchema: string, id: string) {
   const { salesOrders, customers } = getFarmSchema(farmSchema)
@@ -147,6 +147,117 @@ export async function getCustomerOutstandingCredit(farmSchema: string, customerI
       sql`${invoices.status} IN ('sent', 'partial', 'overdue')`
     ))
   return Number(row?.outstanding ?? 0)
+}
+
+export type SalesReportRow = {
+  id: string
+  orderNumber: string
+  orderDate: string
+  customerName: string
+  itemCount: number
+  totalAmount: number
+  status: string
+}
+
+export async function getSalesReport(
+  farmSchema: string,
+  from: string,
+  to: string
+): Promise<SalesReportRow[]> {
+  const { salesOrders, salesOrderItems, customers } = getFarmSchema(farmSchema)
+  const rows = await db
+    .select({
+      id: salesOrders.id,
+      orderNumber: salesOrders.orderNumber,
+      orderDate: salesOrders.orderDate,
+      customerName: customers.name,
+      itemCount: count(salesOrderItems.id),
+      totalAmount: salesOrders.totalAmount,
+      status: salesOrders.status,
+    })
+    .from(salesOrders)
+    .leftJoin(customers, eq(salesOrders.customerId, customers.id))
+    .leftJoin(salesOrderItems, eq(salesOrderItems.orderId, salesOrders.id))
+    .where(and(
+      gte(salesOrders.orderDate, from),
+      lte(salesOrders.orderDate, to)
+    ))
+    .groupBy(
+      salesOrders.id,
+      salesOrders.orderNumber,
+      salesOrders.orderDate,
+      customers.name,
+      salesOrders.totalAmount,
+      salesOrders.status
+    )
+    .orderBy(desc(salesOrders.orderDate))
+
+  return rows.map((r) => ({
+    id: r.id,
+    orderNumber: r.orderNumber,
+    orderDate: r.orderDate instanceof Date
+      ? r.orderDate.toISOString().split('T')[0]!
+      : String(r.orderDate),
+    customerName: r.customerName ?? '',
+    itemCount: Number(r.itemCount),
+    totalAmount: Number(r.totalAmount),
+    status: r.status,
+  }))
+}
+
+export type SalesPerCustomerRow = {
+  customerId: string
+  customerName: string
+  totalOrders: number
+  totalRevenue: number
+  avgOrderValue: number
+  lastOrderDate: string
+}
+
+export async function getSalesPerCustomerReport(
+  farmSchema: string,
+  from: string,
+  to: string,
+  customerId?: string
+): Promise<SalesPerCustomerRow[]> {
+  const { salesOrders, customers } = getFarmSchema(farmSchema)
+  const conditions = [
+    gte(salesOrders.orderDate, from),
+    lte(salesOrders.orderDate, to),
+    ...(customerId ? [eq(salesOrders.customerId, customerId)] : []),
+  ]
+
+  const rows = await db
+    .select({
+      customerId: customers.id,
+      customerName: customers.name,
+      totalOrders: count(salesOrders.id),
+      totalRevenue: sum(salesOrders.totalAmount),
+      lastOrderDate: max(salesOrders.orderDate),
+    })
+    .from(salesOrders)
+    .leftJoin(customers, eq(salesOrders.customerId, customers.id))
+    .where(and(...conditions))
+    .groupBy(customers.id, customers.name)
+    .orderBy(desc(sum(salesOrders.totalAmount)))
+
+  return rows.map((r) => {
+    const totalRevenue = Number(r.totalRevenue ?? 0)
+    const totalOrders = Number(r.totalOrders)
+    const lastDate = r.lastOrderDate instanceof Date
+      ? r.lastOrderDate.toISOString().split('T')[0]!
+      : r.lastOrderDate
+        ? String(r.lastOrderDate)
+        : ''
+    return {
+      customerId: r.customerId ?? '',
+      customerName: r.customerName ?? '',
+      totalOrders,
+      totalRevenue,
+      avgOrderValue: totalOrders > 0 ? totalRevenue / totalOrders : 0,
+      lastOrderDate: lastDate,
+    }
+  })
 }
 
 export async function listSalesOrders(

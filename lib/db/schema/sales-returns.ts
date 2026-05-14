@@ -11,7 +11,7 @@ export const salesReturns = pgTable('sales_returns', {
   returnNumber: text('return_number').notNull().unique(),
   orderId: uuid('order_id').notNull().references(() => salesOrders.id),
   customerId: uuid('customer_id').notNull().references(() => customers.id),
-  returnDate: date('return_date', { mode: 'date' }).notNull(),
+  returnDate: date('return_date', { mode: 'string' }).notNull(),
   reasonType: returnReasonTypeEnum('reason_type').notNull(),
   notes: text('notes'),
   status: salesReturnStatusEnum('status').notNull().default('pending'),

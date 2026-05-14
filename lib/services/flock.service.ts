@@ -93,8 +93,8 @@ export async function createFlock(farmSchema: string, input: CreateFlockInput): 
       .values({
         coopId: input.coopId,
         name: input.name,
-        arrivalDate: input.arrivalDate,
-        docDate,
+        arrivalDate: input.arrivalDate instanceof Date ? input.arrivalDate.toISOString().split('T')[0]! : input.arrivalDate,
+        docDate: docDate instanceof Date ? docDate.toISOString().split('T')[0]! : docDate,
         breed: input.breed,
         notes: input.notes,
         createdBy: input.createdBy,
@@ -105,7 +105,7 @@ export async function createFlock(farmSchema: string, input: CreateFlockInput): 
       .insert(flockDeliveries)
       .values({
         flockId: flock!.id,
-        deliveryDate: input.firstDeliveryDate,
+        deliveryDate: input.firstDeliveryDate instanceof Date ? input.firstDeliveryDate.toISOString().split('T')[0]! : input.firstDeliveryDate,
         quantity: input.firstDeliveryQuantity,
         ageAtArrivalDays: input.ageAtArrivalDays ?? 0,
         createdBy: input.createdBy,

@@ -8,7 +8,7 @@ export const paymentMethodEnum = pgEnum('payment_method', ['cash', 'credit'])
 export const salesOrders = pgTable('sales_orders', {
   id: uuid('id').primaryKey().defaultRandom(),
   orderNumber: text('order_number').notNull().unique(),
-  orderDate: date('order_date', { mode: 'date' }).notNull(),
+  orderDate: date('order_date', { mode: 'string' }).notNull(),
   customerId: uuid('customer_id').notNull().references(() => customers.id),
   paymentMethod: paymentMethodEnum('payment_method').notNull(),
   status: salesOrderStatusEnum('status').notNull().default('draft'),

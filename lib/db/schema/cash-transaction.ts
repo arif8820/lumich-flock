@@ -10,7 +10,7 @@ export const cashTransactions = pgTable('cash_transactions', {
   accountId: uuid('account_id').notNull().references(() => cashAccounts.id),
   type: cashTransactionTypeEnum('type').notNull(),
   amount: numeric('amount', { precision: 15, scale: 2 }).notNull(),
-  transactionDate: date('transaction_date', { mode: 'date' }).notNull(),
+  transactionDate: date('transaction_date', { mode: 'string' }).notNull(),
   categoryId: uuid('category_id').references(() => cashCategories.id),
   referenceNumber: text('reference_number'),
   description: text('description'),

@@ -5,7 +5,7 @@ import { users } from './users'
 export const flockDeliveries = pgTable('flock_deliveries', {
   id: uuid('id').primaryKey().defaultRandom(),
   flockId: uuid('flock_id').notNull().references(() => flocks.id),
-  deliveryDate: date('delivery_date', { mode: 'date' }).notNull(),
+  deliveryDate: date('delivery_date', { mode: 'string' }).notNull(),
   quantity: integer('quantity').notNull(),
   ageAtArrivalDays: integer('age_at_arrival_days'),
   notes: text('notes'),

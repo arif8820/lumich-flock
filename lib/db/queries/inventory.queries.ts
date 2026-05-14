@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { getFarmSchema } from '@/lib/db/schema-factory'
-import { eq, desc, sql, sum } from 'drizzle-orm'
+import { eq, desc, sql, sum, and } from 'drizzle-orm'
 
 export type StockBalance = {
   stockItemId: string
@@ -8,6 +8,8 @@ export type StockBalance = {
   categoryName: string
   itemName: string
   unit: string
+  totalIn: number
+  totalOut: number
   balance: number
 }
 
@@ -31,7 +33,9 @@ export async function getAllStockBalances(farmSchema: string): Promise<StockBala
       categoryName: stockCategories.name,
       itemName: stockItems.name,
       unit: stockCategories.unit,
-      balance: sum(sql<number>`CASE WHEN ${inventoryMovements.movementType} = 'in' THEN ${inventoryMovements.quantity} ELSE -${inventoryMovements.quantity} END`),
+      totalIn: sql<number>`COALESCE(SUM(CASE WHEN ${inventoryMovements.movementType} = 'in' THEN ${inventoryMovements.quantity} ELSE 0 END), 0)`,
+      totalOut: sql<number>`COALESCE(SUM(CASE WHEN ${inventoryMovements.movementType} != 'in' THEN ${inventoryMovements.quantity} ELSE 0 END), 0)`,
+      balance: sql<number>`COALESCE(SUM(CASE WHEN ${inventoryMovements.movementType} = 'in' THEN ${inventoryMovements.quantity} ELSE -${inventoryMovements.quantity} END), 0)`,
     })
     .from(inventoryMovements)
     .innerJoin(stockItems, eq(inventoryMovements.stockItemId, stockItems.id))
@@ -43,7 +47,12 @@ export async function getAllStockBalances(farmSchema: string): Promise<StockBala
       stockItems.name,
       stockCategories.unit
     )
-  return rows.map((r) => ({ ...r, balance: Number(r.balance ?? '0') }))
+  return rows.map((r) => ({
+    ...r,
+    totalIn: Number(r.totalIn ?? '0'),
+    totalOut: Number(r.totalOut ?? '0'),
+    balance: Number(r.balance ?? '0'),
+  }))
 }
 
 // any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
@@ -103,6 +112,62 @@ export async function updateRegradeRequestStatus(
     .update(regradeRequests)
     .set({ status, reviewedBy, reviewedAt: new Date() })
     .where(eq(regradeRequests.id, id))
+}
+
+export type StockMovementRow = {
+  id: string
+  movementDate: string
+  itemName: string
+  categoryName: string
+  movementType: string
+  quantity: number
+  source: string
+  sourceType: string | null
+}
+
+export async function getStockMovementReport(
+  farmSchema: string,
+  from: string,
+  to: string,
+  stockItemId?: string
+): Promise<StockMovementRow[]> {
+  const { inventoryMovements, stockItems, stockCategories } = getFarmSchema(farmSchema)
+
+  const conditions = [
+    sql`${inventoryMovements.movementDate} >= ${from}`,
+    sql`${inventoryMovements.movementDate} <= ${to}`,
+    ...(stockItemId ? [eq(inventoryMovements.stockItemId, stockItemId)] : []),
+  ]
+
+  const rows = await db
+    .select({
+      id: inventoryMovements.id,
+      movementDate: inventoryMovements.movementDate,
+      itemName: stockItems.name,
+      categoryName: stockCategories.name,
+      movementType: inventoryMovements.movementType,
+      quantity: inventoryMovements.quantity,
+      source: inventoryMovements.source,
+      sourceType: inventoryMovements.sourceType,
+    })
+    .from(inventoryMovements)
+    .innerJoin(stockItems, eq(inventoryMovements.stockItemId, stockItems.id))
+    .innerJoin(stockCategories, eq(stockItems.categoryId, stockCategories.id))
+    .where(and(...conditions))
+    .orderBy(desc(inventoryMovements.movementDate))
+
+  return rows.map((r) => ({
+    id: r.id,
+    movementDate: r.movementDate instanceof Date
+      ? r.movementDate.toISOString().split('T')[0]!
+      : String(r.movementDate),
+    itemName: r.itemName,
+    categoryName: r.categoryName,
+    movementType: r.movementType,
+    quantity: Number(r.quantity),
+    source: r.source,
+    sourceType: r.sourceType ?? null,
+  }))
 }
 
 export async function approveRegradeRequestTx(farmSchema: string, requestId: string, reviewedBy: string): Promise<void> {

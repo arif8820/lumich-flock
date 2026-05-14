@@ -83,15 +83,11 @@ const NAV_SECTIONS: { section?: string; items: NavItem[] }[] = [
     section: 'Laporan',
     items: [
       {
-        kind: 'accordion',
-        id: 'laporan',
+        kind: 'flat',
+        href: '/laporan',
         icon: BarChart2,
         label: 'Laporan',
         requiredPermission: PERMISSIONS.LAPORAN.VIEW,
-        children: [
-          { href: '/laporan', label: 'Piutang', requiredPermission: PERMISSIONS.LAPORAN.VIEW },
-          { href: '/laporan/produksi', label: 'Produksi', requiredPermission: PERMISSIONS.LAPORAN.VIEW },
-        ],
       },
     ],
   },
