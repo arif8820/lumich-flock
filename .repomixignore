@@ -19,6 +19,7 @@ docs/
 CLAUDE.md
 repomix/
 lib/db/migrations/
+public/
 
 # next.js
 /.next/

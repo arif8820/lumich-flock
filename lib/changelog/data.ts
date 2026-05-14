@@ -1,8 +1,19 @@
 import type { VersionEntry } from './types'
 
-export const CURRENT_VERSION = 'v0.7.0' as const
+export const CURRENT_VERSION = 'v0.8.0' as const
 
 export const changelog: VersionEntry[] = [
+  {
+    version: 'v0.8.0',
+    date: '2026-05-14',
+    title: 'Brand Identity & TypeScript Build Fixes',
+    changes: [
+      { type: 'feature',     text: 'Logo resmi LumichFlock (SVG) tampil di sidebar, halaman login, dan halaman changelog' },
+      { type: 'feature',     text: 'Favicon baru: icon.svg squircle biru + favicon.ico multi-resolusi di browser tab' },
+      { type: 'feature',     text: 'Theme color #7aadd4 untuk browser mobile (address bar biru)' },
+      { type: 'fix',         text: 'Build TypeScript: semua kolom date Drizzle dikoreksi dari Date ke string — eliminasi instanceof Date yang tidak valid' },
+    ],
+  },
   {
     version: 'v0.7.0',
     date: '2026-05-14',
