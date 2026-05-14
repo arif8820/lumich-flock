@@ -38,6 +38,11 @@ vi.mock('@/lib/services/stock-catalog.service', () => ({
   getActiveVaccineItems: vi.fn().mockResolvedValue([]),
 }))
 
+// Mock inventory queries untuk stock balance check
+vi.mock('@/lib/db/queries/inventory.queries', () => ({
+  getStockBalance: vi.fn().mockResolvedValue(0),
+}))
+
 // Mock schema-factory: return minimal table stubs with the fields we query
 vi.mock('@/lib/db/schema-factory', () => ({
   getFarmSchema: vi.fn().mockReturnValue({
@@ -46,15 +51,19 @@ vi.mock('@/lib/db/schema-factory', () => ({
     dailyEggRecords: {},
     dailyFeedRecords: {},
     dailyVaccineRecords: {},
+    inventoryMovements: {},
     customers: {},
   }),
 }))
 
 import * as dbModule from '@/lib/db'
+import * as inventoryQueries from '@/lib/db/queries/inventory.queries'
+import * as stockCatalog from '@/lib/services/stock-catalog.service'
 import {
   parseDailyRecordsCsv,
   parseCustomersCsv,
   getCsvTemplate,
+  commitImport,
 } from './import.service'
 
 // any: vitest mock type
@@ -172,5 +181,163 @@ describe('import.service -- parseCustomersCsv', () => {
 describe('import.service -- getCsvTemplate', () => {
   it('returns header row for customers', () => {
     expect(getCsvTemplate('customers')).toContain('name')
+  })
+})
+
+describe('import.service -- parseDailyRecordsCsv stock validation', () => {
+  const FARM = 'farm1'
+  const FLOCK_ID = '00000000-0000-0000-0000-000000000001'
+
+  beforeEach(() => {
+    // Flock exists
+    setWhereMock(() => Promise.resolve([{ id: FLOCK_ID }]))
+  })
+
+  it('passes when feed qtyUsed <= balance (running balance updated)', async () => {
+    vi.mocked(stockCatalog.getActiveFeedItems).mockResolvedValue([
+      { id: 'feed-1', name: 'Pakan Starter' } as any,
+    ])
+    vi.mocked(inventoryQueries.getStockBalance).mockResolvedValue(100)
+
+    const header = `flock_id,record_date,deaths,culled,notes,feed_pakan_starter_kg\n`
+    const csv = header + `${FLOCK_ID},2026-01-01,0,0,,50\n` + `${FLOCK_ID},2026-01-02,0,0,,40\n`
+    const { valid, errors } = await parseDailyRecordsCsv(csv, FARM)
+    // row1: balance 100-50=50, row2: balance 50-40=10 → both valid
+    expect(errors).toHaveLength(0)
+    expect(valid).toHaveLength(2)
+  })
+
+  it('returns valid:[] when one row causes negative balance', async () => {
+    vi.mocked(stockCatalog.getActiveFeedItems).mockResolvedValue([
+      { id: 'feed-1', name: 'Pakan Starter' } as any,
+    ])
+    vi.mocked(inventoryQueries.getStockBalance).mockResolvedValue(30)
+
+    const header = `flock_id,record_date,deaths,culled,notes,feed_pakan_starter_kg\n`
+    // row1: 20 ok (bal→10), row2: 50 > 10 → stock error
+    const csv = header + `${FLOCK_ID},2026-01-01,0,0,,20\n` + `${FLOCK_ID},2026-01-02,0,0,,50\n`
+    const { valid, errors } = await parseDailyRecordsCsv(csv, FARM)
+    expect(valid).toHaveLength(0)
+    expect(errors.length).toBeGreaterThan(0)
+    expect(errors.some(e => e.errors.some(msg => msg.includes('2026-01-02')))).toBe(true)
+    expect(errors.some(e => e.errors.some(msg => msg.includes('tersedia')))).toBe(true)
+  })
+
+  it('error message includes tanggal, tersedia, dan dibutuhkan', async () => {
+    vi.mocked(stockCatalog.getActiveFeedItems).mockResolvedValue([
+      { id: 'feed-1', name: 'Pakan Starter' } as any,
+    ])
+    vi.mocked(inventoryQueries.getStockBalance).mockResolvedValue(10)
+
+    const header = `flock_id,record_date,deaths,culled,notes,feed_pakan_starter_kg\n`
+    const csv = header + `${FLOCK_ID},2026-03-15,0,0,,99\n`
+    const { errors } = await parseDailyRecordsCsv(csv, FARM)
+    const msg = errors[0]!.errors[0]!
+    expect(msg).toContain('2026-03-15')
+    expect(msg).toContain('10')   // tersedia
+    expect(msg).toContain('99')   // dibutuhkan
+    expect(msg).toContain('Pakan Starter')
+  })
+
+  it('error message for vaccine includes item name, tersedia, dan dibutuhkan', async () => {
+    vi.mocked(stockCatalog.getActiveVaccineItems).mockResolvedValue([
+      { id: 'vaccine-1', name: 'Newcastle ND' } as any,
+    ])
+    vi.mocked(inventoryQueries.getStockBalance).mockResolvedValue(5)
+
+    const header = `flock_id,record_date,deaths,culled,notes,vaccine_newcastle_nd_dosis\n`
+    const csv = header + `${FLOCK_ID},2026-03-15,0,0,,20\n`
+    const { errors } = await parseDailyRecordsCsv(csv, FARM)
+    const msg = errors[0]!.errors[0]!
+    expect(msg).toContain('2026-03-15')
+    expect(msg).toContain('5')
+    expect(msg).toContain('20')
+    expect(msg).toContain('Newcastle ND')
+  })
+})
+
+describe('import.service -- commitImport inventory movements', () => {
+  const FARM = 'farm1'
+  const ADMIN_ID = 'admin-uuid-1'
+  const FLOCK_ID = '00000000-0000-0000-0000-000000000001'
+  const DR_ID = 'daily-record-uuid-1'
+
+  beforeEach(() => {
+    // INSERT daily_records returns the new record id
+    mockDb.values.mockImplementation((vals: unknown) => {
+      // First insert (daily_records) returns row with id
+      if (Array.isArray(vals) && (vals[0] as any)?.flockId) {
+        return { returning: () => Promise.resolve([{ id: DR_ID }]) }
+      }
+      return Promise.resolve([])
+    })
+    mockDb.insert.mockReturnValue(mockDb)
+    mockDb.returning = vi.fn().mockResolvedValue([{ id: DR_ID }])
+  })
+
+  it('inserts inventory_movements for egg (in), feed (out), vaccine (out)', async () => {
+    const insertSpy = vi.spyOn(mockDb, 'insert')
+    const valuesSpy = vi.spyOn(mockDb, 'values')
+
+    const rows = [{
+      rowNum: 2,
+      data: {
+        flockId: FLOCK_ID,
+        recordDate: '2026-01-01',
+        deaths: 0,
+        culled: 0,
+        notes: null,
+        eggEntries: [{ stockItemId: 'egg-1', qtyButir: 100, qtyKg: 1.2 }],
+        feedEntries: [{ stockItemId: 'feed-1', qtyUsed: 50 }],
+        vaccineEntries: [{ stockItemId: 'vax-1', qtyUsed: 10 }],
+      },
+    }]
+
+    await commitImport('daily_records', rows as any, ADMIN_ID, FARM)
+
+    // Should have: dailyRecords + egg + feed + vax + movements = 5 inserts
+    expect(insertSpy.mock.calls.length).toBe(5)
+
+    // Last values() call is the movements insert — verify movement types and source
+    const lastValuesArg = valuesSpy.mock.calls[valuesSpy.mock.calls.length - 1]![0] as any[]
+    expect(lastValuesArg).toHaveLength(3) // egg + feed + vaccine movements
+    const eggMovement = lastValuesArg.find((m: any) => m.stockItemId === 'egg-1')
+    const feedMovement = lastValuesArg.find((m: any) => m.stockItemId === 'feed-1')
+    const vaxMovement = lastValuesArg.find((m: any) => m.stockItemId === 'vax-1')
+    expect(eggMovement?.movementType).toBe('in')
+    expect(eggMovement?.source).toBe('import')
+    expect(eggMovement?.quantity).toBe(100)
+    expect(feedMovement?.movementType).toBe('out')
+    expect(feedMovement?.source).toBe('import')
+    expect(feedMovement?.quantity).toBe(50)
+    expect(vaxMovement?.movementType).toBe('out')
+    expect(vaxMovement?.source).toBe('import')
+    expect(vaxMovement?.quantity).toBe(10)
+  })
+
+  it('does not insert movements when all qty = 0', async () => {
+    const insertSpy = vi.spyOn(mockDb, 'insert')
+
+    const rows = [{
+      rowNum: 2,
+      data: {
+        flockId: FLOCK_ID,
+        recordDate: '2026-01-01',
+        deaths: 0,
+        culled: 0,
+        notes: null,
+        eggEntries: [{ stockItemId: 'egg-1', qtyButir: 0, qtyKg: 0 }],
+        feedEntries: [{ stockItemId: 'feed-1', qtyUsed: 0 }],
+        vaccineEntries: [],
+      },
+    }]
+
+    await commitImport('daily_records', rows as any, ADMIN_ID, FARM)
+
+    // movements array is empty → insert(inventoryMovements) not called
+    // Only dailyRecords insert should have happened (no egg/feed/vax child inserts either)
+    const insertCalls = insertSpy.mock.calls
+    // Should only be 1 insert: dailyRecords
+    expect(insertCalls).toHaveLength(1)
   })
 })
