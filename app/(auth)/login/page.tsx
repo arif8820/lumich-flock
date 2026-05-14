@@ -1,5 +1,5 @@
 import { LoginForm } from '@/components/forms/login-form'
-import { Bird } from 'lucide-react'
+import Image from 'next/image'
 
 export default async function LoginPage({
   searchParams,
@@ -12,23 +12,13 @@ export default async function LoginPage({
     <div className="w-full max-w-[400px] space-y-6">
       {/* Logo block */}
       <div className="flex flex-col items-center gap-3">
-        <div
-          className="w-16 h-16 rounded-[18px] flex items-center justify-center shadow-lf-logo"
-          style={{ background: 'linear-gradient(135deg, #7aadd4, #5090be)' }}
-        >
-          <Bird size={32} color="white" strokeWidth={1.8} />
-        </div>
-        <div className="text-center">
-          <h1
-            className="text-[22px] font-bold"
-            style={{ color: '#2d3a2e', letterSpacing: '-0.3px' }}
-          >
-            LumichFlock
-          </h1>
-          <p className="text-[13px] mt-1" style={{ color: '#8fa08f' }}>
-            ERP Peternakan Ayam Petelur
-          </p>
-        </div>
+        <Image
+          src="/logo.svg"
+          alt="LumichFlock"
+          width={200}
+          height={50}
+          priority
+        />
       </div>
 
       {/* Login card */}
