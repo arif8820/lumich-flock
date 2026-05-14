@@ -16,7 +16,7 @@ export default async function LoginPage({
           src="/logo.svg"
           alt="LumichFlock"
           width={200}
-          height={50}
+          height={100}
           priority
         />
       </div>

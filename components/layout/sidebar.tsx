@@ -170,7 +170,7 @@ export function Sidebar({
             src="/logo.svg"
             alt="LumichFlock"
             width={160}
-            height={40}
+            height={80}
             priority
           />
         </div>
