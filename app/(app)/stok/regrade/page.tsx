@@ -80,7 +80,7 @@ export default async function RegradePage({
               <div key={r.id} className="bg-white rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)] flex items-center justify-between">
                 <div className="text-sm">
                   <span className="font-medium text-[var(--lf-text-dark)]">{r.quantity.toLocaleString('id')} butir</span>
-                  <span className="ml-2 text-xs text-[var(--lf-text-soft)]">{r.requestDate instanceof Date ? r.requestDate.toLocaleDateString('id-ID') : String(r.requestDate)}</span>
+                  <span className="ml-2 text-xs text-[var(--lf-text-soft)]">{String(r.requestDate)}</span>
                 </div>
                 {session.isAdmin && (
                   <Link href={`/stok/regrade/${r.id}`} className="text-xs text-[var(--lf-blue-active)] hover:underline">

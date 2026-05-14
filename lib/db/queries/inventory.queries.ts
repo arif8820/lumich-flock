@@ -158,9 +158,7 @@ export async function getStockMovementReport(
 
   return rows.map((r) => ({
     id: r.id,
-    movementDate: r.movementDate instanceof Date
-      ? r.movementDate.toISOString().split('T')[0]!
-      : String(r.movementDate),
+    movementDate: String(r.movementDate),
     itemName: r.itemName,
     categoryName: r.categoryName,
     movementType: r.movementType,

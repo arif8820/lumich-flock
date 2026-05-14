@@ -53,9 +53,7 @@ export default async function ProduksiPage({
           coopId: f.coopId,
           coopName: f.coopName,
           isActive: f.retiredAt == null,
-          arrivalDate: f.arrivalDate instanceof Date
-            ? f.arrivalDate.toISOString()
-            : String(f.arrivalDate),
+          arrivalDate: String(f.arrivalDate),
         }))}
         selectedFlockId={flockId}
         selectedCoopId={coopId}

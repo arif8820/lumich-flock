@@ -9,8 +9,8 @@ export type AgingRow = {
   invoiceNumber: string
   customerId: string
   customerName: string
-  issueDate: Date
-  dueDate: Date
+  issueDate: string
+  dueDate: string
   totalAmount: number
   paidAmount: number
   outstanding: number

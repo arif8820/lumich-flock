@@ -195,9 +195,7 @@ export async function getSalesReport(
   return rows.map((r) => ({
     id: r.id,
     orderNumber: r.orderNumber,
-    orderDate: r.orderDate instanceof Date
-      ? r.orderDate.toISOString().split('T')[0]!
-      : String(r.orderDate),
+    orderDate: String(r.orderDate),
     customerName: r.customerName ?? '',
     itemCount: Number(r.itemCount),
     totalAmount: Number(r.totalAmount),
@@ -244,11 +242,7 @@ export async function getSalesPerCustomerReport(
   return rows.map((r) => {
     const totalRevenue = Number(r.totalRevenue ?? 0)
     const totalOrders = Number(r.totalOrders)
-    const lastDate = r.lastOrderDate instanceof Date
-      ? r.lastOrderDate.toISOString().split('T')[0]!
-      : r.lastOrderDate
-        ? String(r.lastOrderDate)
-        : ''
+    const lastDate = r.lastOrderDate ? String(r.lastOrderDate) : ''
     return {
       customerId: r.customerId ?? '',
       customerName: r.customerName ?? '',

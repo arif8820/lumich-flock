@@ -424,7 +424,7 @@ export async function commitImport(
             .insert(dailyRecords)
             .values([{
               flockId: rowData.flockId,
-              recordDate: new Date(rowData.recordDate),
+              recordDate: String(rowData.recordDate),
               deaths: rowData.deaths,
               culled: rowData.culled,
               notes: rowData.notes,
@@ -472,7 +472,7 @@ export async function commitImport(
             )
           }
 
-          const movementDate = new Date(rowData.recordDate)
+          const movementDate = String(rowData.recordDate)
           const eggMovementInserts = eggInserts.filter((e) => e.qtyButir > 0)
           const movements = [
             ...eggMovementInserts.map((e) => ({

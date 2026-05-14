@@ -367,7 +367,7 @@ export default async function AccountLedgerPage({
             ) : (
               <div className="divide-y divide-[#f0f4f0]" style={{ minWidth: '480px' }}>
                 {dailyReport.map((row) => (
-                  <div key={row.transactionDate.toISOString()} className="grid grid-cols-5 gap-2 px-4 py-2.5 items-center">
+                  <div key={row.transactionDate} className="grid grid-cols-5 gap-2 px-4 py-2.5 items-center">
                     <p className="text-[12px]" style={{ color: '#2d3a2e' }}>{formatDate(row.transactionDate)}</p>
                     <p className="text-[12px] text-right" style={{ color: '#5a6b5b' }}>{formatRupiah(row.beginningBalance)}</p>
                     <p className="text-[12px] text-right font-medium" style={{ color: '#3da88a' }}>

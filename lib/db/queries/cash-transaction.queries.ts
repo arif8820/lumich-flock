@@ -20,8 +20,8 @@ export async function listTransactions(farmSchema: string, filter: TransactionFi
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Drizzle enum type inference
     filter.type ? eq(cashTransactions.type, filter.type as any) : undefined,
     filter.categoryId ? eq(cashTransactions.categoryId, filter.categoryId) : undefined,
-    filter.dateFrom ? gte(cashTransactions.transactionDate, filter.dateFrom) : undefined,
-    filter.dateTo ? lte(cashTransactions.transactionDate, filter.dateTo) : undefined,
+    filter.dateFrom ? gte(cashTransactions.transactionDate, filter.dateFrom.toISOString().split('T')[0]!) : undefined,
+    filter.dateTo ? lte(cashTransactions.transactionDate, filter.dateTo.toISOString().split('T')[0]!) : undefined,
   ].filter(Boolean)
 
   const whereClause = conditions.length > 0 ? and(...(conditions as Parameters<typeof and>)) : sql`1=1`
@@ -60,7 +60,10 @@ export async function insertTransaction(
 ) {
   const { cashTransactions } = getFarmSchema(farmSchema)
   const executor = tx ?? db
-  const [row] = await executor.insert(cashTransactions).values(input).returning()
+  const [row] = await executor.insert(cashTransactions).values({
+    ...input,
+    transactionDate: input.transactionDate.toISOString().split('T')[0]!,
+  }).returning()
   return row!
 }
 
@@ -79,7 +82,7 @@ export async function updateTransferRefId(
 }
 
 export type DailyReportRow = {
-  transactionDate: Date
+  transactionDate: string
   beginningBalance: number
   totalIn: number
   totalOut: number
@@ -112,8 +115,8 @@ export async function getDailyReport(
     .where(
       and(
         eq(cashTransactions.accountId, accountId),
-        gte(cashTransactions.transactionDate, dateFrom),
-        lte(cashTransactions.transactionDate, dateTo)
+        gte(cashTransactions.transactionDate, dateFrom.toISOString().split('T')[0]!),
+        lte(cashTransactions.transactionDate, dateTo.toISOString().split('T')[0]!)
       )
     )
     .groupBy(cashTransactions.transactionDate)
@@ -130,7 +133,7 @@ export async function getDailyReport(
     .where(
       and(
         eq(cashTransactions.accountId, accountId),
-        lt(cashTransactions.transactionDate, dateFrom)
+        lt(cashTransactions.transactionDate, dateFrom.toISOString().split('T')[0]!)
       )
     )
 

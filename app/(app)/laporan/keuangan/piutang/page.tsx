@@ -9,7 +9,7 @@ function formatRupiah(n: number): string {
   return `Rp ${n.toLocaleString('id-ID')}`
 }
 
-function formatDate(d: Date): string {
+function formatDate(d: string): string {
   return new Date(d).toLocaleDateString('id-ID')
 }
 

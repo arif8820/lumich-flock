@@ -2,7 +2,7 @@
 import { changelog, CURRENT_VERSION } from '@/lib/changelog/data'
 import type { ChangeType } from '@/lib/changelog/types'
 import { ChangelogSeenMarker } from './ChangelogSeenMarker'
-import { Bird } from 'lucide-react'
+import Image from 'next/image'
 
 const CHANGE_TYPE_STYLES: Record<ChangeType, { bg: string; color: string; label: string }> = {
   feature:     { bg: '#dcfce7', color: '#16a34a', label: 'FITUR' },
@@ -19,13 +19,7 @@ export default function ChangelogPage() {
       <div className="max-w-2xl mx-auto px-4 py-12">
         {/* Header */}
         <div className="flex items-center gap-3 mb-2">
-          <div
-            className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #7aadd4, #5090be)' }}
-          >
-            <Bird size={18} color="white" strokeWidth={1.8} />
-          </div>
-          <span className="text-xl font-bold" style={{ color: '#2d3a2e' }}>LumichFlock</span>
+          <Image src="/logo.svg" alt="LumichFlock" width={160} height={80} priority />
           <span
             className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
             style={{ background: '#0ea5e9', color: 'white' }}
@@ -33,7 +27,7 @@ export default function ChangelogPage() {
             {CURRENT_VERSION}
           </span>
         </div>
-        <p className="text-sm mb-10 ml-12" style={{ color: '#8fa08f' }}>Catatan pembaruan aplikasi</p>
+        <p className="text-sm mb-10" style={{ color: '#8fa08f' }}>Catatan pembaruan aplikasi</p>
 
         {/* Entries */}
         <div className="flex flex-col gap-8">

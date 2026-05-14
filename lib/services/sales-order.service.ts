@@ -233,9 +233,11 @@ export async function fulfillSO(farmSchema: string, orderId: string, userId: str
     throw new Error('Total SO harus lebih dari Rp 0 sebelum dapat diproses')
   }
 
-  const today = new Date()
-  const dueDate = new Date(today)
-  dueDate.setDate(dueDate.getDate() + (customer.paymentTerms || 0))
+  const todayDate = new Date()
+  const dueDateObj = new Date(todayDate)
+  dueDateObj.setDate(dueDateObj.getDate() + (customer.paymentTerms || 0))
+  const today = todayDate.toISOString().split('T')[0]!
+  const dueDate = dueDateObj.toISOString().split('T')[0]!
 
   const invoice: NewInvoice = {
     invoiceNumber,

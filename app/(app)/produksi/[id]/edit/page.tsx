@@ -54,7 +54,7 @@ export default async function ProduksiEditPage({ params }: Props) {
       )}
 
       <DailyRecordEditForm
-        record={{ ...record, recordDate: record.recordDate instanceof Date ? record.recordDate.toISOString().split('T')[0]! : record.recordDate }}
+        record={{ ...record, recordDate: record.recordDate }}
         subRecords={subRecords}
         eggItems={eggItems}
         feedItems={feedItems.map((i) => ({ ...i, balance: balanceMap.get(i.id) ?? 0 }))}

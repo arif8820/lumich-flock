@@ -324,8 +324,7 @@ export async function getFlockPerformanceReport(
       initialCount > 0 ? Math.round((totalDeaths / initialCount) * 100 * 10) / 10 : 0
     const fcr =
       totalEggs > 0 ? Math.round((totalFeedKg / (totalEggs / 1000)) * 100) / 100 : 0
-    const arrivalDate =
-      r.arrivalDate instanceof Date ? r.arrivalDate : new Date(String(r.arrivalDate))
+    const arrivalDate = new Date(r.arrivalDate)
     const ageWeeks = Math.floor(
       (Date.now() - arrivalDate.getTime()) / (7 * 24 * 60 * 60 * 1000)
     )

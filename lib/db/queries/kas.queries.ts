@@ -49,9 +49,7 @@ export async function getCashFlowReport(
 
   const rows: CashFlowRow[] = rawRows.map((r) => ({
     id: r.id,
-    transactionDate: r.transactionDate instanceof Date
-      ? r.transactionDate.toISOString().split('T')[0]!
-      : String(r.transactionDate),
+    transactionDate: String(r.transactionDate),
     description: r.description ?? '',
     type: r.type,
     amount: Number(r.amount),

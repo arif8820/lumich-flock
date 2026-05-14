@@ -261,8 +261,7 @@ async function checkFcrAlerts(farmSchema: string, fcrThreshold: number): Promise
  */
 async function checkOverdueInvoiceAlerts(farmSchema: string, overdueDelayDays: number): Promise<void> {
   const { invoices } = getFarmSchema(farmSchema)
-  const today = new Date()
-  today.setUTCHours(0, 0, 0, 0)
+  const today = new Date().toISOString().split('T')[0]!
 
   const overdueInvoices = await db
     .select()
