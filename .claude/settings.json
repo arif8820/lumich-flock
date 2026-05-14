@@ -23,7 +23,8 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" -L http://localhost:3000)",
       "Bash(curl -sv http://localhost:3000/login)",
       "Bash(powershell -Command \"Get-Process chromium -ErrorAction SilentlyContinue | Stop-Process -Force\")",
-      "Read(//d/App/lumich-flock/lib/actions/**)"
+      "Read(//d/App/lumich-flock/lib/actions/**)",
+      "Bash(echo \"Dev server starting, PID: $!\")"
     ],
     "additionalDirectories": [
       "D:\\App\\lumich-flock",
