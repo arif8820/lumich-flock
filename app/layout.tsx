@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { DM_Sans } from "next/font/google"
 import { Suspense } from 'react'
 import "./globals.css"
@@ -15,6 +15,16 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: "LumichFlock",
   description: "ERP sistem peternakan ayam petelur",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico" },
+    ],
+  },
+}
+
+export const viewport: Viewport = {
+  themeColor: "#7aadd4",
 }
 
 export default function RootLayout({
