@@ -3,7 +3,9 @@ import {
   findCoopById,
   insertCoop,
   updateCoop as dbUpdateCoop,
+  findAllCoopsWithPopulation,
 } from '@/lib/db/queries/coop.queries'
+export type { CoopWithPopulation } from '@/lib/db/queries/coop.queries'
 import type { Coop } from '@/lib/db/schema'
 
 type CreateCoopInput = {
@@ -18,6 +20,10 @@ export async function createCoop(farmSchema: string, input: CreateCoopInput): Pr
 
 export async function getAllCoops(farmSchema: string): Promise<Coop[]> {
   return findAllCoops(farmSchema)
+}
+
+export async function getAllCoopsWithPopulation(farmSchema: string) {
+  return findAllCoopsWithPopulation(farmSchema)
 }
 
 export async function getCoopById(farmSchema: string, id: string): Promise<Coop | null> {

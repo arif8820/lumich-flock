@@ -33,7 +33,9 @@ export function FlockListClient({ flocks, canCreate, canDelete }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-[var(--lf-text-mid)]">{flocks.length} flock aktif</span>
+        <span className="text-sm text-[var(--lf-text-mid)]">
+          {flocks.filter(f => f.retiredAt == null).length} aktif · {flocks.length} total
+        </span>
         {canCreate && (
           <Link
             href="/flock/new"
@@ -54,12 +56,13 @@ export function FlockListClient({ flocks, canCreate, canDelete }: Props) {
       {/* Mobile card list */}
       <div className="md:hidden space-y-2">
         {flocks.length === 0 && (
-          <p className="text-center py-8 text-sm" style={{ color: 'var(--lf-text-soft)' }}>Belum ada flock aktif</p>
+          <p className="text-center py-8 text-sm" style={{ color: 'var(--lf-text-soft)' }}>Belum ada flock</p>
         )}
         {flocks.map((flock) => (
           <div
             key={flock.id}
-            className="bg-white rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)] cursor-pointer"
+            className="rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)] cursor-pointer"
+            style={{ background: flock.retiredAt != null ? '#f9f9f9' : 'white' }}
             onClick={() => router.push(`/flock/${flock.id}`)}
           >
             <div className="flex items-start justify-between mb-3">
@@ -68,14 +71,18 @@ export function FlockListClient({ flocks, canCreate, canDelete }: Props) {
                 <p className="text-xs mt-0.5" style={{ color: 'var(--lf-text-soft)' }}>{flock.coopName}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                {flock.phase && (
+                {flock.retiredAt != null ? (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: '#f0f0f0', color: '#999' }}>
+                    Nonaktif
+                  </span>
+                ) : flock.phase ? (
                   <span
                     className="text-[10px] px-2 py-0.5 rounded-full"
                     style={{ background: 'var(--lf-amber-light)', color: 'var(--lf-amber)' }}
                   >
                     {flock.phase.name}
                   </span>
-                )}
+                ) : null}
                 <Link
                   href={`/flock/${flock.id}`}
                   onClick={(e) => e.stopPropagation()}
@@ -98,10 +105,14 @@ export function FlockListClient({ flocks, canCreate, canDelete }: Props) {
                 <p className="text-[10px] uppercase font-medium" style={{ color: 'var(--lf-text-soft)' }}>Populasi</p>
               </div>
               <div className="bg-[var(--lf-bg-warm)] rounded-lg p-2 text-center">
-                <p className="text-lg font-bold" style={{ color: 'var(--lf-text-dark)' }}>
+                <p className="text-base font-bold tabular-nums leading-tight" style={{ color: 'var(--lf-text-dark)' }}>
                   {flock.totalCount.toLocaleString('id-ID')}
+                  <span className="opacity-30 mx-0.5">/</span>
+                  <span style={{ color: flock.currentPopulation > 0 ? '#3da88a' : 'var(--lf-text-soft)' }}>
+                    {flock.currentPopulation.toLocaleString('id-ID')}
+                  </span>
                 </p>
-                <p className="text-[10px] uppercase font-medium" style={{ color: 'var(--lf-text-soft)' }}>DOC Total</p>
+                <p className="text-[10px] uppercase font-medium" style={{ color: 'var(--lf-text-soft)' }}>DOC Awal / Hidup</p>
               </div>
             </div>
             {canDelete && flock.retiredAt == null && (
@@ -124,9 +135,10 @@ export function FlockListClient({ flocks, canCreate, canDelete }: Props) {
             <tr className="bg-[var(--lf-bg-warm)] text-left">
               <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Nama Flock</th>
               <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Kandang</th>
+              <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Status</th>
               <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Umur</th>
               <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Fase</th>
-              <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Total DOC</th>
+              <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">DOC Awal / Hidup</th>
               {canDelete && (
                 <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Aksi</th>
               )}
@@ -135,23 +147,36 @@ export function FlockListClient({ flocks, canCreate, canDelete }: Props) {
           <tbody className="divide-y divide-[var(--lf-border)]">
             {flocks.length === 0 && (
               <tr>
-                <td colSpan={canDelete ? 6 : 5} className="px-4 py-8 text-center text-[var(--lf-text-soft)]">
-                  Belum ada flock aktif
+                <td colSpan={canDelete ? 7 : 6} className="px-4 py-8 text-center text-[var(--lf-text-soft)]">
+                  Belum ada flock
                 </td>
               </tr>
             )}
             {flocks.map((flock) => (
               <tr
                 key={flock.id}
-                className="bg-white hover:bg-[var(--lf-bg)] cursor-pointer"
+                className="hover:bg-[var(--lf-bg)] cursor-pointer"
+                style={{ background: flock.retiredAt != null ? '#f9f9f9' : 'white' }}
                 onClick={() => router.push(`/flock/${flock.id}`)}
               >
-                <td className="px-4 py-3 text-[var(--lf-text-dark)] font-medium">{flock.name}</td>
+                <td className="px-4 py-3 font-medium" style={{ color: flock.retiredAt != null ? 'var(--lf-text-soft)' : 'var(--lf-text-dark)' }}>{flock.name}</td>
                 <td className="px-4 py-3 text-[var(--lf-text-mid)]">{flock.coopName}</td>
+                <td className="px-4 py-3">
+                  {flock.retiredAt == null ? (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: 'var(--lf-success-bg)', color: 'var(--lf-success-text)' }}>Aktif</span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: '#f0f0f0', color: '#999' }}>Nonaktif</span>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-[var(--lf-text-mid)]">{flock.ageWeeks} minggu</td>
                 <td className="px-4 py-3 text-[var(--lf-text-mid)]">{flock.phase?.name ?? '—'}</td>
-                <td className="px-4 py-3 text-[var(--lf-text-mid)]">
-                  {flock.totalCount.toLocaleString('id-ID')} ekor
+                <td className="px-4 py-3">
+                  <span style={{ color: 'var(--lf-text-mid)' }}>{flock.totalCount.toLocaleString('id-ID')}</span>
+                  <span className="mx-1 opacity-40">/</span>
+                  <span style={{ color: flock.currentPopulation > 0 ? '#3da88a' : 'var(--lf-text-soft)' }}>
+                    {flock.currentPopulation.toLocaleString('id-ID')}
+                  </span>
+                  <span className="ml-1 text-xs opacity-60">ekor</span>
                 </td>
                 {canDelete && (
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>

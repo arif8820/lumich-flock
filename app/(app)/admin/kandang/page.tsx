@@ -1,12 +1,12 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/get-session'
-import { getAllCoops } from '@/lib/services/coop.service'
+import { getAllCoopsWithPopulation } from '@/lib/services/coop.service'
 import { CoopManagementClient } from '@/components/forms/coop-management-client'
 
 export default async function KandangPage() {
   const session = await getSession()
   if (!session || !session.isAdmin) redirect('/dashboard')
-  const coops = await getAllCoops(session.farmSchema)
+  const coops = await getAllCoopsWithPopulation(session.farmSchema)
 
   return (
     <div className="p-6 space-y-5">

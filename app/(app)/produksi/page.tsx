@@ -1,6 +1,6 @@
 import { getSession } from '@/lib/auth/get-session'
 import { redirect } from 'next/navigation'
-import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
+import { findAllFlocks } from '@/lib/db/queries/flock.queries'
 import { findRecentDailyRecordsMultiFlocks } from '@/lib/db/queries/daily-record.queries'
 import Link from 'next/link'
 import FlockFilter from './flock-filter'
@@ -20,15 +20,15 @@ export default async function ProduksiPage({
   if (!session) redirect('/login')
 
   const { flockId, coopId } = await searchParams
-  const flocks = await findAllActiveFlocks(session.farmSchema)
+  const allFlocks = await findAllFlocks(session.farmSchema)
 
   let targetFlockIds: string[]
   if (flockId) {
-    targetFlockIds = flocks.filter(f => f.id === flockId).map(f => f.id)
+    targetFlockIds = allFlocks.filter(f => f.id === flockId).map(f => f.id)
   } else if (coopId) {
-    targetFlockIds = flocks.filter(f => f.coopId === coopId).map(f => f.id)
+    targetFlockIds = allFlocks.filter(f => f.coopId === coopId).map(f => f.id)
   } else {
-    targetFlockIds = flocks.map(f => f.id)
+    targetFlockIds = allFlocks.map(f => f.id)
   }
 
   const records = await findRecentDailyRecordsMultiFlocks(session.farmSchema, targetFlockIds, 50)
@@ -47,7 +47,16 @@ export default async function ProduksiPage({
       </div>
 
       <FlockFilter
-        flocks={flocks.map(f => ({ id: f.id, name: f.name, coopId: f.coopId, coopName: f.coopName }))}
+        flocks={allFlocks.map(f => ({
+          id: f.id,
+          name: f.name,
+          coopId: f.coopId,
+          coopName: f.coopName,
+          isActive: f.retiredAt == null,
+          arrivalDate: f.arrivalDate instanceof Date
+            ? f.arrivalDate.toISOString()
+            : String(f.arrivalDate),
+        }))}
         selectedFlockId={flockId}
         selectedCoopId={coopId}
       />
@@ -106,17 +115,17 @@ export default async function ProduksiPage({
                     )}
                   </div>
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="bg-[var(--lf-bg-warm)] rounded-lg p-2 text-center">
-                      <p className="text-lg font-bold" style={{ color: 'var(--lf-text-dark)' }}>{r.deaths}</p>
-                      <p className="text-[10px] uppercase font-medium" style={{ color: 'var(--lf-text-soft)' }}>Mati</p>
+                    <div className="rounded-lg p-2 text-center" style={{ background: '#fef2f2' }}>
+                      <p className="text-lg font-bold tabular-nums" style={{ color: '#e05252' }}>-{r.deaths + r.culled}</p>
+                      <p className="text-[10px] uppercase font-medium" style={{ color: '#e05252' }}>Flock</p>
                     </div>
-                    <div className="bg-[var(--lf-bg-warm)] rounded-lg p-2 text-center">
-                      <p className="text-lg font-bold" style={{ color: 'var(--lf-text-dark)' }}>{r.culled}</p>
-                      <p className="text-[10px] uppercase font-medium" style={{ color: 'var(--lf-text-soft)' }}>Afkir</p>
+                    <div className="rounded-lg p-2 text-center" style={{ background: '#e8f7f3' }}>
+                      <p className="text-lg font-bold tabular-nums" style={{ color: '#3da88a' }}>+{r.totalEggsButir.toLocaleString('id-ID')}</p>
+                      <p className="text-[10px] uppercase font-medium" style={{ color: '#3da88a' }}>Telur</p>
                     </div>
-                    <div className="rounded-lg p-2 text-center" style={{ background: 'var(--lf-teal-light, #e8f7f3)' }}>
-                      <p className="text-lg font-bold" style={{ color: '#3da88a' }}>{r.totalEggsButir.toLocaleString('id-ID')}</p>
-                      <p className="text-[10px] uppercase font-medium" style={{ color: '#3da88a' }}>Butir</p>
+                    <div className="rounded-lg p-2 text-center" style={{ background: '#fef2f2' }}>
+                      <p className="text-lg font-bold tabular-nums" style={{ color: '#e05252' }}>-{r.totalFeedKg.toLocaleString('id-ID')}</p>
+                      <p className="text-[10px] uppercase font-medium" style={{ color: '#e05252' }}>Pakan kg</p>
                     </div>
                   </div>
                 </div>
@@ -124,15 +133,16 @@ export default async function ProduksiPage({
             })}
           </div>
 
-          {/* Desktop table — unchanged */}
+          {/* Desktop table */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm border-separate border-spacing-y-1">
               <thead>
                 <tr className="text-xs text-[var(--lf-text-soft)] uppercase tracking-wide text-left">
                   <th className="px-3 py-2">Tanggal</th>
-                  <th className="px-3 py-2">Kandang</th>
-                  <th className="px-3 py-2 text-right">Kematian</th>
-                  <th className="px-3 py-2 text-right">Afkir</th>
+                  <th className="px-3 py-2">Kandang · Flock</th>
+                  <th className="px-3 py-2 text-right">Flock (-)</th>
+                  <th className="px-3 py-2 text-right">Telur</th>
+                  <th className="px-3 py-2 text-right">Pakan (kg)</th>
                   <th className="px-3 py-2"></th>
                 </tr>
               </thead>
@@ -153,9 +163,20 @@ export default async function ProduksiPage({
                           <span className="ml-2 text-[10px] bg-[var(--lf-danger-bg)] rounded px-1.5 py-0.5" style={{ color: 'var(--lf-danger-text)' }}>Terlambat</span>
                         )}
                       </td>
-                      <td className="px-3 py-3 text-[var(--lf-text-soft)] text-xs">{r.coopName}</td>
-                      <td className="px-3 py-3 text-right text-[var(--lf-text-mid)]">{r.deaths}</td>
-                      <td className="px-3 py-3 text-right text-[var(--lf-text-mid)]">{r.culled}</td>
+                      <td className="px-3 py-3 text-xs" style={{ color: 'var(--lf-text-soft)' }}>
+                        <span>{r.coopName}</span>
+                        <span className="mx-1 opacity-40">·</span>
+                        <span>{r.flockName}</span>
+                      </td>
+                      <td className="px-3 py-3 text-right font-medium tabular-nums" style={{ color: '#e05252' }}>
+                        -{r.deaths + r.culled}
+                      </td>
+                      <td className="px-3 py-3 text-right font-medium tabular-nums" style={{ color: '#3da88a' }}>
+                        +{r.totalEggsButir.toLocaleString('id-ID')}
+                      </td>
+                      <td className="px-3 py-3 text-right font-medium tabular-nums" style={{ color: '#e05252' }}>
+                        -{r.totalFeedKg.toLocaleString('id-ID')}
+                      </td>
                       <td className="px-3 py-3 text-right rounded-r-xl">
                         {editable ? (
                           <Link

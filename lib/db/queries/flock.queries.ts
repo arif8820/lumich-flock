@@ -14,6 +14,17 @@ export async function findAllActiveFlocks(farmSchema: string) {
   return result.map(({ flock, coopName }) => ({ ...flock, coopName }))
 }
 
+export async function findAllFlocks(farmSchema: string) {
+  const { flocks, coops } = getFarmSchema(farmSchema)
+  const result = await db
+    .select({ flock: flocks, coopName: coops.name })
+    .from(flocks)
+    .innerJoin(coops, eq(flocks.coopId, coops.id))
+    .orderBy(flocks.arrivalDate)
+
+  return result.map(({ flock, coopName }) => ({ ...flock, coopName }))
+}
+
 export async function findFlockById(farmSchema: string, id: string) {
   const { flocks } = getFarmSchema(farmSchema)
   const [flock] = await db.select().from(flocks).where(eq(flocks.id, id)).limit(1)

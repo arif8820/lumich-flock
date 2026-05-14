@@ -1,8 +1,25 @@
 import type { VersionEntry } from './types'
 
-export const CURRENT_VERSION = 'v0.5.0' as const
+export const CURRENT_VERSION = 'v0.6.0' as const
 
 export const changelog: VersionEntry[] = [
+  {
+    version: 'v0.6.0',
+    date: '2026-05-14',
+    title: 'Produksi & Manajemen Kandang/Flock',
+    changes: [
+      { type: 'feature',     text: 'Halaman Produksi: kolom baru Flock (−), Telur (+), Pakan (−) menggantikan Kematian/Afkir — lengkap dengan warna merah/hijau' },
+      { type: 'feature',     text: 'Halaman Produksi: record dari flock yang sudah nonaktif kini tetap muncul' },
+      { type: 'feature',     text: 'Filter dropdown Produksi kini menampilkan semua kandang & flock (aktif + nonaktif) dengan label [Nonaktif]' },
+      { type: 'feature',     text: 'Filter dropdown Produksi diurutkan: aktif dahulu → nonaktif, masing-masing sort by arrivalDate terbaru' },
+      { type: 'feature',     text: 'Manajemen Kandang: kolom Kapasitas menampilkan kapasitas / populasi hidup saat ini' },
+      { type: 'feature',     text: 'Manajemen Kandang: kolom Flock Aktif baru — nama flock dan umur detail (contoh: 5 minggu 3 hari)' },
+      { type: 'feature',     text: 'Manajemen Flock: kolom Total DOC diganti DOC Awal / Hidup — angka hidup berwarna hijau' },
+      { type: 'feature',     text: 'Manajemen Flock: semua flock ditampilkan (aktif + nonaktif) dengan kolom Status dan row nonaktif di-dim' },
+      { type: 'improvement', text: 'Manajemen Flock: counter header menampilkan jumlah aktif dan total flock' },
+      { type: 'improvement', text: 'Manajemen Flock: urutan tabel — aktif dahulu, lalu nonaktif, masing-masing sort by createdAt terbaru' },
+    ],
+  },
   {
     version: 'v0.5.0',
     date: '2026-05-14',

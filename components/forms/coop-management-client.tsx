@@ -6,10 +6,19 @@ import { useRouter } from 'next/navigation'
 import { CreateCoopForm } from './create-coop-form'
 import { EditCoopForm } from './edit-coop-form'
 import { activateCoopAction, deactivateCoopAction } from '@/lib/actions/coop.actions'
-import type { Coop } from '@/lib/db/schema'
+import type { CoopWithPopulation } from '@/lib/services/coop.service'
 
 interface Props {
-  coops: Coop[]
+  coops: CoopWithPopulation[]
+}
+
+function flockAge(docDate: Date): string {
+  const totalDays = Math.floor((Date.now() - new Date(docDate).getTime()) / 86_400_000)
+  const weeks = Math.floor(totalDays / 7)
+  const days = totalDays % 7
+  if (weeks === 0) return `${days} hari`
+  if (days === 0) return `${weeks} minggu`
+  return `${weeks} minggu ${days} hari`
 }
 
 export function CoopManagementClient({ coops }: Props) {
@@ -19,7 +28,7 @@ export function CoopManagementClient({ coops }: Props) {
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  async function handleToggleActive(coop: Coop) {
+  async function handleToggleActive(coop: CoopWithPopulation) {
     setError(null)
     setLoadingId(coop.id)
     try {
@@ -64,7 +73,8 @@ export function CoopManagementClient({ coops }: Props) {
           <thead>
             <tr className="bg-[var(--lf-bg-warm)] text-left">
               <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Nama</th>
-              <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Kapasitas</th>
+              <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Kapasitas / Populasi</th>
+              <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Flock Aktif</th>
               <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Status</th>
               <th className="px-4 py-3 font-medium text-[var(--lf-text-mid)]">Aksi</th>
             </tr>
@@ -75,7 +85,28 @@ export function CoopManagementClient({ coops }: Props) {
                 <tr className="bg-white hover:bg-[var(--lf-bg)]">
                   <td className="px-4 py-3 text-[var(--lf-text-dark)] font-medium">{coop.name}</td>
                   <td className="px-4 py-3 text-[var(--lf-text-mid)]">
-                    {coop.capacity != null ? `${coop.capacity.toLocaleString('id-ID')} ekor` : '—'}
+                    {coop.capacity != null ? (
+                      <span>
+                        <span>{coop.capacity.toLocaleString('id-ID')}</span>
+                        <span className="mx-0.5 opacity-40">/</span>
+                        <span style={{ color: coop.livePopulation > 0 ? '#3da88a' : 'var(--lf-text-soft)' }}>
+                          {coop.livePopulation.toLocaleString('id-ID')}
+                        </span>
+                        <span className="ml-1 text-xs opacity-60">ekor</span>
+                      </span>
+                    ) : '—'}
+                  </td>
+                  <td className="px-4 py-3">
+                    {coop.activeFlock ? (
+                      <div>
+                        <p className="text-xs font-medium text-[var(--lf-text-dark)]">{coop.activeFlock.name}</p>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--lf-text-soft)' }}>
+                          {flockAge(coop.activeFlock.docDate)}
+                        </p>
+                      </div>
+                    ) : (
+                      <span className="text-xs" style={{ color: 'var(--lf-text-soft)' }}>—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span
@@ -108,7 +139,7 @@ export function CoopManagementClient({ coops }: Props) {
                 </tr>
                 {editingCoopId === coop.id && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-3 bg-[var(--lf-bg)]">
+                    <td colSpan={5} className="px-4 py-3 bg-[var(--lf-bg)]">
                       <EditCoopForm
                         coop={coop}
                         onSuccess={() => setEditingCoopId(null)}

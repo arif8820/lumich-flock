@@ -1,5 +1,6 @@
 import {
   findAllActiveFlocks,
+  findAllFlocks,
   updateFlock,
   findActiveFlockByCoopId,
 } from '@/lib/db/queries/flock.queries'
@@ -27,8 +28,7 @@ export function getFlockAgeWeeks(docDate: Date, today: Date = new Date()): numbe
   return Math.floor(getFlockAgeDays(docDate, today) / 7)
 }
 
-export async function getAllActiveFlocks(farmSchema: string): Promise<FlockWithMeta[]> {
-  const rawFlocks = await findAllActiveFlocks(farmSchema)
+async function enrichFlocks(farmSchema: string, rawFlocks: Awaited<ReturnType<typeof findAllActiveFlocks>>): Promise<FlockWithMeta[]> {
   return Promise.all(
     rawFlocks.map(async (flock) => {
       const ageWeeks = getFlockAgeWeeks(new Date(flock.docDate))
@@ -41,6 +41,21 @@ export async function getAllActiveFlocks(farmSchema: string): Promise<FlockWithM
       return { ...flock, ageWeeks, phase, totalCount, currentPopulation }
     })
   )
+}
+
+export async function getAllActiveFlocks(farmSchema: string): Promise<FlockWithMeta[]> {
+  return enrichFlocks(farmSchema, await findAllActiveFlocks(farmSchema))
+}
+
+export async function getAllFlocks(farmSchema: string): Promise<FlockWithMeta[]> {
+  const raw = await findAllFlocks(farmSchema)
+  const enriched = await enrichFlocks(farmSchema, raw)
+  return enriched.sort((a, b) => {
+    const aActive = a.retiredAt == null ? 1 : 0
+    const bActive = b.retiredAt == null ? 1 : 0
+    if (aActive !== bActive) return bActive - aActive
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  })
 }
 
 type CreateFlockInput = {

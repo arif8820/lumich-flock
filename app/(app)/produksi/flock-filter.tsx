@@ -9,6 +9,8 @@ interface FlockOption {
   name: string
   coopId: string
   coopName: string
+  isActive: boolean
+  arrivalDate: string
 }
 
 interface Props {
@@ -17,16 +19,31 @@ interface Props {
   selectedCoopId?: string
 }
 
+function sortFlocks(list: FlockOption[]) {
+  return [...list].sort((a, b) => {
+    if (a.isActive !== b.isActive) return a.isActive ? -1 : 1
+    return b.arrivalDate.localeCompare(a.arrivalDate)
+  })
+}
+
 export default function FlockFilter({ flocks, selectedFlockId, selectedCoopId }: Props) {
   const router = useRouter()
   const pathname = usePathname()
 
-  const coops = Array.from(
-    new Map(flocks.map(f => [f.coopId, f.coopName])).entries()
-  ).map(([id, name]) => ({ id, name }))
+  const coopMap = new Map<string, { name: string; hasActive: boolean }>()
+  for (const f of flocks) {
+    const existing = coopMap.get(f.coopId)
+    coopMap.set(f.coopId, {
+      name: f.coopName,
+      hasActive: (existing?.hasActive ?? false) || f.isActive,
+    })
+  }
+  const coops = [...coopMap.entries()]
+    .map(([id, v]) => ({ id, name: v.name, hasActive: v.hasActive }))
+    .sort((a, b) => (a.hasActive === b.hasActive ? 0 : a.hasActive ? -1 : 1))
 
   const [coopId, setCoopId] = useState(selectedCoopId ?? '')
-  const flocksBySelectedCoop = coopId ? flocks.filter(f => f.coopId === coopId) : flocks
+  const flocksBySelectedCoop = sortFlocks(coopId ? flocks.filter(f => f.coopId === coopId) : flocks)
 
   function navigate(newCoopId: string, newFlockId: string) {
     const params = new URLSearchParams()
@@ -56,7 +73,9 @@ export default function FlockFilter({ flocks, selectedFlockId, selectedCoopId }:
       >
         <option value="">Semua Kandang</option>
         {coops.map(c => (
-          <option key={c.id} value={c.id}>{c.name}</option>
+          <option key={c.id} value={c.id}>
+            {c.name}{c.hasActive ? '' : ' [Nonaktif]'}
+          </option>
         ))}
       </select>
 
@@ -67,7 +86,9 @@ export default function FlockFilter({ flocks, selectedFlockId, selectedCoopId }:
       >
         <option value="">Semua Flock</option>
         {flocksBySelectedCoop.map(f => (
-          <option key={f.id} value={f.id}>{f.name}</option>
+          <option key={f.id} value={f.id}>
+            {f.name}{f.isActive ? '' : ' [Nonaktif]'}
+          </option>
         ))}
       </select>
     </div>

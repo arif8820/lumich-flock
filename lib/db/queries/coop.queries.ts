@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { getFarmSchema } from '@/lib/db/schema-factory'
-import { eq } from 'drizzle-orm'
+import { eq, sql, isNull, sum } from 'drizzle-orm'
 
 export async function findAllCoops(farmSchema: string) {
   const { coops } = getFarmSchema(farmSchema)
@@ -32,4 +32,53 @@ export async function updateCoop(farmSchema: string, id: string, data: any) {
 export async function deleteCoop(farmSchema: string, id: string): Promise<void> {
   const { coops } = getFarmSchema(farmSchema)
   await db.delete(coops).where(eq(coops.id, id))
+}
+
+export type CoopWithPopulation = {
+  id: string
+  name: string
+  capacity: number | null
+  status: 'active' | 'inactive'
+  notes: string | null
+  createdAt: Date
+  updatedAt: Date | null
+  livePopulation: number
+  activeFlock: { name: string; docDate: Date } | null
+}
+
+export async function findAllCoopsWithPopulation(farmSchema: string): Promise<CoopWithPopulation[]> {
+  const { coops, flocks, flockDeliveries, dailyRecords } = getFarmSchema(farmSchema)
+
+  const [coopRows, deliveryAgg, depletionAgg, activeFlocks] = await Promise.all([
+    db.select().from(coops).orderBy(coops.name),
+
+    db
+      .select({ coopId: flocks.coopId, total: sum(flockDeliveries.quantity) })
+      .from(flockDeliveries)
+      .innerJoin(flocks, eq(flocks.id, flockDeliveries.flockId))
+      .where(isNull(flocks.retiredAt))
+      .groupBy(flocks.coopId),
+
+    db
+      .select({ coopId: flocks.coopId, total: sql<number>`SUM(${dailyRecords.deaths} + ${dailyRecords.culled})` })
+      .from(dailyRecords)
+      .innerJoin(flocks, eq(flocks.id, dailyRecords.flockId))
+      .where(isNull(flocks.retiredAt))
+      .groupBy(flocks.coopId),
+
+    db
+      .select({ coopId: flocks.coopId, name: flocks.name, docDate: flocks.docDate })
+      .from(flocks)
+      .where(isNull(flocks.retiredAt)),
+  ])
+
+  const deliveryMap = new Map(deliveryAgg.map(r => [r.coopId, Number(r.total ?? 0)]))
+  const depletionMap = new Map(depletionAgg.map(r => [r.coopId, Number(r.total ?? 0)]))
+  const flockMap = new Map(activeFlocks.map(f => [f.coopId, { name: f.name, docDate: f.docDate as unknown as Date }]))
+
+  return coopRows.map(c => ({
+    ...c,
+    livePopulation: (deliveryMap.get(c.id) ?? 0) - (depletionMap.get(c.id) ?? 0),
+    activeFlock: flockMap.get(c.id) ?? null,
+  })) as CoopWithPopulation[]
 }
