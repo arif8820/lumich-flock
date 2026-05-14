@@ -2,8 +2,9 @@
 // client: needs useState for accordion open/close state
 
 import { useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
-import { LayoutDashboard, Egg, Package, DollarSign, Bird, Settings, LogOut, BarChart2, ChevronDown, Wallet } from 'lucide-react'
+import { LayoutDashboard, Egg, Package, DollarSign, Settings, LogOut, BarChart2, ChevronDown, Wallet } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ClientUser } from './app-shell'
 import type { PermissionKey } from '@/lib/auth/permissions'
@@ -164,15 +165,14 @@ export function Sidebar({
     <aside className="hidden md:flex w-[220px] flex-shrink-0 flex-col bg-white h-screen sticky top-0" style={{ borderRight: '1px solid #e0e8df' }}>
       {/* Brand */}
       <div className="flex items-center gap-3 px-4 pt-5 pb-4">
-        <div
-          className="w-[38px] h-[38px] rounded-[10px] flex items-center justify-center flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg, #7aadd4, #5090be)' }}
-        >
-          <Bird size={20} color="white" strokeWidth={1.8} />
-        </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-bold leading-tight" style={{ color: '#2d3a2e' }}>LumichFlock</p>
-          <p className="text-[11px]" style={{ color: '#8fa08f' }}>ERP Peternakan</p>
+          <Image
+            src="/logo.svg"
+            alt="LumichFlock"
+            width={160}
+            height={40}
+            priority
+          />
         </div>
         <NotificationBell
           initialNotifications={notifications}
