@@ -12,6 +12,6 @@ CREATE TABLE "daily_egg_bundles" (
 	"updated_at" timestamp with time zone
 );
 --> statement-breakpoint
-ALTER TABLE "daily_egg_bundles" ADD CONSTRAINT "daily_egg_bundles_daily_egg_record_id_daily_egg_records_id_fk" FOREIGN KEY ("daily_egg_record_id") REFERENCES "public"."daily_egg_records"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "daily_egg_bundles" ADD CONSTRAINT "daily_egg_bundles_daily_egg_record_id_daily_egg_records_id_fk" FOREIGN KEY ("daily_egg_record_id") REFERENCES "daily_egg_records"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 CREATE UNIQUE INDEX "daily_egg_bundles_record_index_unique" ON "daily_egg_bundles" USING btree ("daily_egg_record_id","bundle_index");

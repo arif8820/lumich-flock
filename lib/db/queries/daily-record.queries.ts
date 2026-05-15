@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { getFarmSchema } from '@/lib/db/schema-factory'
-import { eq, and, desc, sum, asc, inArray, sql, count } from 'drizzle-orm'
+import { eq, and, desc, sum, asc, inArray, sql, count, max } from 'drizzle-orm'
 import { DailyEggBundle, NewDailyEggBundle } from '@/lib/db/schema'
 
 export type DailySubRecords = {
@@ -155,6 +155,9 @@ export async function upsertDailyRecordTx(farmSchema: string, input: any) {
     inventoryMovements,
   } = getFarmSchema(farmSchema)
 
+  // bundleStockItemIds: egg records for these items are managed by bundle flow, skip delete
+  const bundleStockItemIds: string[] = input.bundleStockItemIds ?? []
+
   return db.transaction(async (tx) => {
     const [inserted] = await tx
       .insert(dailyRecords)
@@ -172,7 +175,17 @@ export async function upsertDailyRecordTx(farmSchema: string, input: any) {
       .returning()
     const recordId = inserted!.id
 
-    await tx.delete(dailyEggRecords).where(eq(dailyEggRecords.dailyRecordId, recordId))
+    // Delete only non-bundle egg records; bundle items are managed separately via saveSingleBundle
+    if (bundleStockItemIds.length > 0) {
+      await tx.delete(dailyEggRecords).where(
+        and(
+          eq(dailyEggRecords.dailyRecordId, recordId),
+          sql`${dailyEggRecords.stockItemId} NOT IN (${sql.join(bundleStockItemIds.map((id) => sql`${id}::uuid`), sql`, `)})`
+        )
+      )
+    } else {
+      await tx.delete(dailyEggRecords).where(eq(dailyEggRecords.dailyRecordId, recordId))
+    }
     await tx.delete(dailyFeedRecords).where(eq(dailyFeedRecords.dailyRecordId, recordId))
     await tx.delete(dailyVaccineRecords).where(eq(dailyVaccineRecords.dailyRecordId, recordId))
 
@@ -405,12 +418,12 @@ export async function getNextBundleSequence(
 ): Promise<number> {
   const { dailyRecords, dailyEggRecords, dailyEggBundles: bundlesTable } = getFarmSchema(farmSchema)
   const [row] = await db
-    .select({ total: count(bundlesTable.id) })
+    .select({ maxIndex: max(bundlesTable.bundleIndex) })
     .from(bundlesTable)
     .innerJoin(dailyEggRecords, eq(bundlesTable.dailyEggRecordId, dailyEggRecords.id))
     .innerJoin(dailyRecords, eq(dailyEggRecords.dailyRecordId, dailyRecords.id))
     .where(and(eq(dailyRecords.flockId, flockId), eq(dailyRecords.recordDate, recordDate)))
-  return (row?.total ?? 0) + 1
+  return (row?.maxIndex ?? 0) + 1
 }
 
 export async function insertSingleBundle(

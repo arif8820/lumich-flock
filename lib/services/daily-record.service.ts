@@ -21,6 +21,12 @@ import { findAssignedCoopIds } from '@/lib/db/queries/user-coop-assignment.queri
 import { db } from '@/lib/db'
 import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq, and, sql } from 'drizzle-orm'
+
+async function getBundleStockItemIds(farmSchema: string): Promise<string[]> {
+  const { stockItems } = getFarmSchema(farmSchema)
+  const rows = await db.select({ id: stockItems.id }).from(stockItems).where(eq(stockItems.useBundleMethod, true))
+  return rows.map((r) => r.id)
+}
 import { assertCanEdit } from '@/lib/services/lock-period.service'
 import type { DailyRecord, DailyEggBundle } from '@/lib/db/schema'
 
@@ -122,9 +128,11 @@ export async function saveDailyRecord(
   const isLateInput = computeIsLateInput(recordDate, now)
 
   const validEggEntries = input.eggEntries.filter((e) => e.qtyButir > 0 || e.qtyKg > 0)
+  const bundleStockItemIds = await getBundleStockItemIds(farmSchema)
 
   // any: farm schema returns recordDate as Date; cast to public DailyRecord (string) expected by callers
   return upsertDailyRecordTx(farmSchema, {
+    bundleStockItemIds,
     record: {
       flockId: input.flockId,
       recordDate: input.recordDate,

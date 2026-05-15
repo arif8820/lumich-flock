@@ -144,6 +144,7 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
         qtyKg: draft.qtyKg,
       })
       if (!result.success) { setError(result.error ?? null); return }
+      setError(null)
       setDraftBundle((prev) => ({ ...prev, [stockItemId]: emptyDraft() }))
       setBundleToast(`Ikatan tersimpan: ${result.data.bundleCode}`)
       setTimeout(() => setBundleToast(null), 4000)
