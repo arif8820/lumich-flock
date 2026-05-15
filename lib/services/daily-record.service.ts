@@ -298,7 +298,7 @@ export async function saveSingleBundle(
         movementType: 'in',
         source: 'production',
         sourceType: 'daily_egg_records',
-        sourceId: recordId,
+        sourceId: bundle!.id,
         quantity: qtyButir,
         movementDate: input.recordDate,
         createdBy: userId,
@@ -351,6 +351,7 @@ export async function deleteBundle(
           eq(inventoryMovements.quantity, ctx.bundle.qtyButir),
           eq(inventoryMovements.movementDate, ctx.recordDate),
           eq(inventoryMovements.sourceType, 'daily_egg_records'),
+          eq(inventoryMovements.sourceId, bundleId),
         )
       )
   })
