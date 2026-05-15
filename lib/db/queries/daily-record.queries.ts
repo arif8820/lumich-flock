@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq, and, desc, sum, asc, inArray, sql } from 'drizzle-orm'
+import { DailyEggBundle, NewDailyEggBundle } from '@/lib/db/schema'
 
 export type DailySubRecords = {
   eggRecords: { stockItemId: string; qtyButir: number; qtyKg: number }[]
@@ -348,4 +349,33 @@ export async function getFlockPerformanceReport(
       fcr,
     }
   })
+}
+
+export async function insertEggBundles(
+  farmSchema: string,
+  bundles: Omit<NewDailyEggBundle, 'id' | 'createdAt' | 'updatedAt'>[]
+): Promise<void> {
+  if (bundles.length === 0) return
+  const { dailyEggBundles: bundlesTable } = getFarmSchema(farmSchema)
+  await db.insert(bundlesTable).values(bundles)
+}
+
+export async function deleteBundlesByEggRecordId(
+  farmSchema: string,
+  dailyEggRecordId: string
+): Promise<void> {
+  const { dailyEggBundles: bundlesTable } = getFarmSchema(farmSchema)
+  await db.delete(bundlesTable).where(eq(bundlesTable.dailyEggRecordId, dailyEggRecordId))
+}
+
+export async function getBundlesByEggRecordId(
+  farmSchema: string,
+  dailyEggRecordId: string
+): Promise<DailyEggBundle[]> {
+  const { dailyEggBundles: bundlesTable } = getFarmSchema(farmSchema)
+  return db
+    .select()
+    .from(bundlesTable)
+    .where(eq(bundlesTable.dailyEggRecordId, dailyEggRecordId))
+    .orderBy(bundlesTable.bundleIndex)
 }
