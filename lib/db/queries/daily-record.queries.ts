@@ -203,7 +203,6 @@ export async function upsertDailyRecordTx(farmSchema: string, input: any) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const eggRecord = insertedEggRecords.find((r: any) => r.stockItemId === bd.eggStockItemId)
         if (!eggRecord) continue
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { dailyEggBundles: bundlesTable } = getFarmSchema(farmSchema)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await tx.delete(bundlesTable).where(eq(bundlesTable.dailyEggRecordId, (eggRecord as any).id))
