@@ -1,4 +1,4 @@
-import { integer, numeric, pgTable, timestamp, uuid, uniqueIndex } from 'drizzle-orm/pg-core'
+import { integer, numeric, pgTable, timestamp, uuid, uniqueIndex, varchar } from 'drizzle-orm/pg-core'
 import { dailyEggRecords } from './daily-egg-records'
 
 export const dailyEggBundles = pgTable(
@@ -13,6 +13,7 @@ export const dailyEggBundles = pgTable(
     topTrayCount: integer('top_tray_count').notNull(),
     qtyButir: integer('qty_butir').notNull(),
     qtyKg: numeric('qty_kg', { precision: 8, scale: 2 }).notNull(),
+    bundleCode: varchar('bundle_code', { length: 12 }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdateFn(() => new Date()),
   },

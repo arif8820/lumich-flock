@@ -9,6 +9,7 @@ import {
   numeric,
   uniqueIndex,
   primaryKey,
+  varchar,
 } from 'drizzle-orm/pg-core'
 
 export function getFarmSchema(schema: string) {
@@ -198,6 +199,7 @@ export function getFarmSchema(schema: string) {
       topTrayCount: integer('top_tray_count').notNull(),
       qtyButir: integer('qty_butir').notNull(),
       qtyKg: numeric('qty_kg', { precision: 8, scale: 2 }).notNull(),
+      bundleCode: varchar('bundle_code', { length: 12 }),
       createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
       updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdateFn(() => new Date()),
     },

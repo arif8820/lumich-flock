@@ -177,6 +177,7 @@ CREATE TABLE IF NOT EXISTS "daily_egg_bundles" (
   "top_tray_count" integer NOT NULL,
   "qty_butir" integer NOT NULL,
   "qty_kg" numeric(8, 2) NOT NULL,
+  "bundle_code" varchar(12),
   "created_at" timestamptz DEFAULT now() NOT NULL,
   "updated_at" timestamptz
 );
