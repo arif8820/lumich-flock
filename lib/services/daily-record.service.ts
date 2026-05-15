@@ -5,6 +5,8 @@ import {
   getCumulativeDepletionByFlockUpTo,
   getProductionReport,
   getFlockPerformanceReport,
+  getDailyEggRecordsByRecordId,
+  getBundlesByEggRecordId,
   type FlockPerformanceRow,
 } from '@/lib/db/queries/daily-record.queries'
 import { getStockBalance } from '@/lib/db/queries/inventory.queries'
@@ -15,7 +17,7 @@ import { db } from '@/lib/db'
 import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq } from 'drizzle-orm'
 import { assertCanEdit } from '@/lib/services/lock-period.service'
-import type { DailyRecord } from '@/lib/db/schema'
+import type { DailyRecord, DailyEggBundle } from '@/lib/db/schema'
 
 export type Role = 'operator' | 'supervisor' | 'admin'
 
@@ -372,4 +374,16 @@ export async function getFlockPerformanceData(
   flockId?: string
 ): Promise<FlockPerformanceRow[]> {
   return getFlockPerformanceReport(farmSchema, from, to, flockId)
+}
+
+export async function getExistingBundlesForRecord(
+  farmSchema: string,
+  dailyRecordId: string
+): Promise<Record<string, DailyEggBundle[]>> {
+  const eggRecords = await getDailyEggRecordsByRecordId(farmSchema, dailyRecordId)
+  const result: Record<string, DailyEggBundle[]> = {}
+  for (const er of eggRecords) {
+    result[er.stockItemId] = await getBundlesByEggRecordId(farmSchema, er.id)
+  }
+  return result
 }

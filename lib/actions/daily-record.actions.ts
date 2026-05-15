@@ -74,7 +74,9 @@ export async function saveDailyRecordAction(
   if (coopGuard) return coopGuard
 
   try {
-    const record = await saveDailyRecord(session.farmSchema, parsed.data, session.id, session.roleSlug as Role)
+    // any: Zod infers flat optional union; runtime .refine() guarantees EggEntry discriminated union is valid
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const record = await saveDailyRecord(session.farmSchema, parsed.data as any, session.id, session.roleSlug as Role)
     return { success: true, data: { id: record.id } }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal menyimpan data produksi' }

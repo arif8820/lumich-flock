@@ -380,6 +380,22 @@ export async function getFlockPerformanceReport(
   })
 }
 
+export async function getDailyEggRecordsByRecordId(
+  farmSchema: string,
+  dailyRecordId: string
+): Promise<{ id: string; stockItemId: string; qtyButir: number; qtyKg: string }[]> {
+  const { dailyEggRecords } = getFarmSchema(farmSchema)
+  return db
+    .select({
+      id: dailyEggRecords.id,
+      stockItemId: dailyEggRecords.stockItemId,
+      qtyButir: dailyEggRecords.qtyButir,
+      qtyKg: dailyEggRecords.qtyKg,
+    })
+    .from(dailyEggRecords)
+    .where(eq(dailyEggRecords.dailyRecordId, dailyRecordId))
+}
+
 export async function insertEggBundles(
   farmSchema: string,
   bundles: Omit<NewDailyEggBundle, 'id' | 'createdAt' | 'updatedAt'>[]
