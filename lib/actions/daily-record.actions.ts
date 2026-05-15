@@ -21,11 +21,25 @@ async function assertCoopAccess(farmSchema: string, userId: string, role: string
   return null
 }
 
-const eggEntrySchema = z.object({
-  stockItemId: z.string().uuid(),
-  qtyButir: z.coerce.number().int().min(0),
+const bundleEntrySchema = z.object({
+  trayCount: z.coerce.number().int().min(1),
+  topTrayCount: z.coerce.number().int().min(0).max(30),
   qtyKg: z.coerce.number().min(0),
 })
+
+const eggEntrySchema = z.object({
+  stockItemId: z.string().uuid(),
+  useBundleMethod: z.coerce.boolean().default(false),
+  qtyButir: z.coerce.number().int().min(0).optional(),
+  qtyKg: z.coerce.number().min(0).optional(),
+  bundles: z.array(bundleEntrySchema).optional(),
+}).refine(
+  (v) => {
+    if (v.useBundleMethod) return v.bundles && v.bundles.length > 0
+    return v.qtyButir !== undefined
+  },
+  { message: 'Item tray wajib ada minimal 1 ikatan; item biasa wajib ada qtyButir' }
+)
 
 const feedEntrySchema = z.object({
   stockItemId: z.string().uuid(),
