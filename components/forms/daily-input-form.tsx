@@ -156,8 +156,8 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
   }
 
   // bundle delete handler
-  async function handleDeleteBundle(bundleId: string, bundleCode: string | null) {
-    const label = bundleCode ?? bundleId.slice(0, 8)
+  async function handleDeleteBundle(bundleId: string, bundleCode: string | null, bundleIndex?: number) {
+    const label = bundleCode ?? (bundleIndex !== undefined ? `#${bundleIndex}` : bundleId.slice(0, 8))
     if (!confirm(`Hapus ikatan ${label}? Kode ini sudah tidak bisa dipakai lagi.`)) return
     try {
       const result = await deleteBundleAction(bundleId)
@@ -270,6 +270,14 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
         </div>
       </div>
 
+      {/* Bundle success toast */}
+      {bundleToast && (
+        <div className="rounded-xl px-4 py-3 text-sm font-medium"
+          style={{ background: 'var(--lf-teal)', color: 'white' }}>
+          {bundleToast}
+        </div>
+      )}
+
       {/* Tab strip */}
       <div className="grid grid-cols-4 gap-2">
         {TABS.map((t) => (
@@ -324,14 +332,6 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
 
         {activeTab === 'telur' && (
           <div>
-            {/* Bundle success toast */}
-            {bundleToast && (
-              <div className="mb-3 rounded-xl px-4 py-3 text-sm font-medium"
-                style={{ background: 'var(--lf-teal)', color: 'white' }}>
-                {bundleToast}
-              </div>
-            )}
-
             {eggItems.length === 0 && <p className="text-sm text-[var(--lf-text-soft)] py-4">Tidak ada SKU telur aktif.</p>}
 
             {eggItems.map((item) => {
@@ -431,7 +431,7 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
                             </div>
                             <button
                               type="button"
-                              onClick={() => void handleDeleteBundle(b.id, b.bundleCode ?? null)}
+                              onClick={() => void handleDeleteBundle(b.id, b.bundleCode ?? null, b.bundleIndex)}
                               className="w-6 h-6 flex items-center justify-center rounded text-sm font-bold"
                               style={{ color: 'var(--lf-danger-text)' }}
                             >
