@@ -1,8 +1,20 @@
 import type { VersionEntry } from './types'
 
-export const CURRENT_VERSION = 'v0.8.2' as const
+export const CURRENT_VERSION = 'v0.9.0' as const
 
 export const changelog: VersionEntry[] = [
+  {
+    version: 'v0.9.0',
+    date: '2026-05-15',
+    title: 'Input Telur — Metode Tray (Ikatan)',
+    changes: [
+      { type: 'feature', text: 'Admin dapat mengaktifkan "Metode Tray" per SKU Telur di Stok Katalog — toggle Tray ON/OFF muncul khusus untuk kategori Telur' },
+      { type: 'feature', text: 'Form Input Produksi: SKU dengan metode tray menampilkan baris per ikatan (nampan, telur atas, kg). Butir dihitung otomatis: (nampan−1)×30 + atas' },
+      { type: 'feature', text: 'Tambah / hapus ikatan dinamis — audit trail disimpan per ikatan di tabel daily_egg_bundles' },
+      { type: 'feature', text: 'SKU tanpa metode tray (telur pecah, retak, dll.) tetap menggunakan input butir+kg sederhana' },
+      { type: 'improvement', text: 'Total butir & kg diakumulasi dari semua SKU (tray + simple) dan ditampilkan di bagian bawah tab Telur' },
+    ],
+  },
   {
     version: 'v0.8.2',
     date: '2026-05-15',
