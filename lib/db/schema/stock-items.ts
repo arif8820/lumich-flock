@@ -6,6 +6,7 @@ export const stockItems = pgTable('stock_items', {
   categoryId: uuid('category_id').notNull().references(() => stockCategories.id),
   name: text('name').notNull(),
   isActive: boolean('is_active').notNull().default(true),
+  useBundleMethod: boolean('use_bundle_method').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdateFn(() => new Date()),
 }, (t) => [uniqueIndex('stock_items_category_name_unique').on(t.categoryId, t.name)])
