@@ -191,9 +191,38 @@ export async function upsertDailyRecordTx(farmSchema: string, input: any) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const vaccineEntriesWithId = input.vaccineEntries.map((e: any) => ({ ...e, dailyRecordId: recordId }))
 
-    if (eggEntriesWithId.length > 0) await tx.insert(dailyEggRecords).values(eggEntriesWithId)
+    const insertedEggRecords = eggEntriesWithId.length > 0
+      ? await tx.insert(dailyEggRecords).values(eggEntriesWithId).returning()
+      : []
     if (feedEntriesWithId.length > 0) await tx.insert(dailyFeedRecords).values(feedEntriesWithId)
     if (vaccineEntriesWithId.length > 0) await tx.insert(dailyVaccineRecords).values(vaccineEntriesWithId)
+
+    if (input.bundleData && input.bundleData.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const bd of input.bundleData as Array<{ eggStockItemId: string; bundles: any[] }>) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const eggRecord = insertedEggRecords.find((r: any) => r.stockItemId === bd.eggStockItemId)
+        if (!eggRecord) continue
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { dailyEggBundles: bundlesTable } = getFarmSchema(farmSchema)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await tx.delete(bundlesTable).where(eq(bundlesTable.dailyEggRecordId, (eggRecord as any).id))
+        if (bd.bundles.length > 0) {
+          await tx.insert(bundlesTable).values(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            bd.bundles.map((b: any) => ({
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              dailyEggRecordId: (eggRecord as any).id,
+              bundleIndex: b.bundleIndex,
+              trayCount: b.trayCount,
+              topTrayCount: b.topTrayCount,
+              qtyButir: b.qtyButir,
+              qtyKg: b.qtyKg,
+            }))
+          )
+        }
+      }
+    }
 
     const allMovements = [
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -45,7 +45,16 @@ export function computeActivePopulation(
   return Math.max(0, initialCount - depletion)
 }
 
-type EggEntry = { stockItemId: string; qtyButir: number; qtyKg: number }
+type BundleInput = {
+  trayCount: number
+  topTrayCount: number
+  qtyKg: number
+}
+
+type EggEntry =
+  | { stockItemId: string; useBundleMethod: false; qtyButir: number; qtyKg: number }
+  | { stockItemId: string; useBundleMethod: true; bundles: BundleInput[] }
+
 type FeedEntry = { stockItemId: string; qtyUsed: number }
 type VaccineEntry = { stockItemId: string; qtyUsed: number }
 
@@ -60,6 +69,10 @@ type SaveDailyRecordInput = {
   eggEntries: EggEntry[]
   feedEntries: FeedEntry[]
   vaccineEntries: VaccineEntry[]
+}
+
+function computeBundleButir(trayCount: number, topTrayCount: number): number {
+  return (trayCount - 1) * 30 + topTrayCount
 }
 
 export async function saveDailyRecord(
@@ -106,6 +119,47 @@ export async function saveDailyRecord(
 
   const isLateInput = computeIsLateInput(recordDate, now)
 
+  type BundleInsertData = {
+    eggStockItemId: string
+    bundles: Array<{
+      bundleIndex: number
+      trayCount: number
+      topTrayCount: number
+      qtyButir: number
+      qtyKg: string
+    }>
+  }
+
+  const normalizedEggEntries: Array<{ stockItemId: string; qtyButir: number; qtyKg: number }> = []
+  const bundleInsertData: BundleInsertData[] = []
+
+  for (const entry of input.eggEntries) {
+    if (entry.useBundleMethod) {
+      const totalButir = entry.bundles.reduce(
+        (sum, b) => sum + computeBundleButir(b.trayCount, b.topTrayCount),
+        0
+      )
+      const totalKg = entry.bundles.reduce((sum, b) => sum + b.qtyKg, 0)
+      if (totalButir > 0 || totalKg > 0) {
+        normalizedEggEntries.push({ stockItemId: entry.stockItemId, qtyButir: totalButir, qtyKg: totalKg })
+        bundleInsertData.push({
+          eggStockItemId: entry.stockItemId,
+          bundles: entry.bundles.map((b, idx) => ({
+            bundleIndex: idx + 1,
+            trayCount: b.trayCount,
+            topTrayCount: b.topTrayCount,
+            qtyButir: computeBundleButir(b.trayCount, b.topTrayCount),
+            qtyKg: b.qtyKg.toFixed(2),
+          })),
+        })
+      }
+    } else {
+      if (entry.qtyButir > 0 || entry.qtyKg > 0) {
+        normalizedEggEntries.push({ stockItemId: entry.stockItemId, qtyButir: entry.qtyButir, qtyKg: entry.qtyKg })
+      }
+    }
+  }
+
   // any: farm schema returns recordDate as Date; cast to public DailyRecord (string) expected by callers
   return upsertDailyRecordTx(farmSchema, {
     record: {
@@ -119,14 +173,12 @@ export async function saveDailyRecord(
       isLateInput,
       createdBy: userId,
     },
-    eggEntries: input.eggEntries
-      .filter((e) => e.qtyButir > 0 || e.qtyKg > 0)
-      .map((e) => ({
-        dailyRecordId: '', // will be set in tx
-        stockItemId: e.stockItemId,
-        qtyButir: e.qtyButir,
-        qtyKg: String(e.qtyKg),
-      })),
+    eggEntries: normalizedEggEntries.map((e) => ({
+      dailyRecordId: '', // will be set in tx
+      stockItemId: e.stockItemId,
+      qtyButir: e.qtyButir,
+      qtyKg: String(e.qtyKg),
+    })),
     feedEntries: input.feedEntries
       .filter((e) => e.qtyUsed > 0)
       .map((e) => ({
@@ -141,7 +193,7 @@ export async function saveDailyRecord(
         stockItemId: e.stockItemId,
         qtyUsed: String(e.qtyUsed),
       })),
-    eggMovements: input.eggEntries
+    eggMovements: normalizedEggEntries
       .filter((e) => e.qtyButir > 0)
       .map((e) => ({
         stockItemId: e.stockItemId,
@@ -180,6 +232,7 @@ export async function saveDailyRecord(
         movementDate: input.recordDate,
         createdBy: userId,
       })),
+    bundleData: bundleInsertData,
   // any: farm schema date fields (recordDate: Date) differ from public DailyRecord type (recordDate: string)
   }) as unknown as DailyRecord
 }
