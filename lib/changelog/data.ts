@@ -1,8 +1,20 @@
 import type { VersionEntry } from './types'
 
-export const CURRENT_VERSION = 'v0.9.0' as const
+export const CURRENT_VERSION = 'v0.9.1' as const
 
 export const changelog: VersionEntry[] = [
+  {
+    version: 'v0.9.1',
+    date: '2026-05-15',
+    title: 'Input Telur — Kode Ikatan & Simpan Per-Ikatan',
+    changes: [
+      { type: 'feature', text: 'Setiap ikatan tray yang disimpan mendapat kode unik (format DDMMYY-NNN) — ditulis ke label fisik ikatan' },
+      { type: 'feature', text: 'Input per-ikatan: operator simpan satu ikatan, dapat kode langsung, lanjut ke ikatan berikutnya' },
+      { type: 'feature', text: 'Daftar ikatan tersimpan hari ini tampil di bawah form — dengan kode, butir, dan kg per ikatan' },
+      { type: 'feature', text: 'Hapus ikatan individual (kode tidak di-reuse)' },
+      { type: 'improvement', text: 'Multiple sesi panen dalam satu hari didukung — sequence kode berlanjut otomatis' },
+    ],
+  },
   {
     version: 'v0.9.0',
     date: '2026-05-15',
