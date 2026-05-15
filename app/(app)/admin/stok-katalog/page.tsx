@@ -2,7 +2,7 @@ import { getSession } from '@/lib/auth/get-session'
 import { redirect } from 'next/navigation'
 import { getCategories } from '@/lib/services/stock-catalog.service'
 import { findItemsByCategory } from '@/lib/db/queries/stock-catalog.queries'
-import { createCategoryAction, createStockItemAction, toggleStockItemActiveAction } from '@/lib/actions/stock-catalog.actions'
+import { createCategoryAction, createStockItemAction, toggleStockItemActiveAction, toggleBundleMethodAction } from '@/lib/actions/stock-catalog.actions'
 
 export default async function StokKatalogPage({
   searchParams,
@@ -81,6 +81,13 @@ export default async function StokKatalogPage({
                   await toggleStockItemActiveAction(item.id)
                   redirect('/admin/stok-katalog')
                 }
+
+                async function handleBundleToggle() {
+                  'use server'
+                  await toggleBundleMethodAction(item.id)
+                  redirect('/admin/stok-katalog')
+                }
+
                 return (
                   <div key={item.id} className="px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -90,15 +97,30 @@ export default async function StokKatalogPage({
                       {!item.isActive && (
                         <span className="text-xs text-[var(--lf-text-soft)]">(nonaktif)</span>
                       )}
+                      {item.useBundleMethod && cat.name === 'Telur' && (
+                        <span className="text-xs bg-[var(--lf-badge-bg,#e8f0fe)] text-[var(--lf-blue)] px-1.5 py-0.5 rounded">tray</span>
+                      )}
                     </div>
-                    <form action={handleToggle}>
-                      <button
-                        type="submit"
-                        className="text-xs px-2 py-1 border border-[var(--lf-border)] rounded-lg text-[var(--lf-text-mid)] hover:bg-[var(--lf-surface)]"
-                      >
-                        {item.isActive ? 'Nonaktifkan' : 'Aktifkan'}
-                      </button>
-                    </form>
+                    <div className="flex items-center gap-2">
+                      {cat.name === 'Telur' && (
+                        <form action={handleBundleToggle}>
+                          <button
+                            type="submit"
+                            className="text-xs px-2 py-1 border border-[var(--lf-border)] rounded-lg text-[var(--lf-text-mid)] hover:bg-[var(--lf-surface)]"
+                          >
+                            {item.useBundleMethod ? 'Tray: ON' : 'Tray: OFF'}
+                          </button>
+                        </form>
+                      )}
+                      <form action={handleToggle}>
+                        <button
+                          type="submit"
+                          className="text-xs px-2 py-1 border border-[var(--lf-border)] rounded-lg text-[var(--lf-text-mid)] hover:bg-[var(--lf-surface)]"
+                        >
+                          {item.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+                        </button>
+                      </form>
+                    </div>
                   </div>
                 )
               })}
