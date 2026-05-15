@@ -28,7 +28,6 @@ type DraftBundle = { trayCount: number; topTrayCount: number; qtyKg: number }
 type SimpleEggEntry = { stockItemId: string; qtyButir: number; qtyKg: number }
 type FeedEntry = { stockItemId: string; qtyUsed: number }
 
-const SESSION_KEY = 'daily-input-form-v2'
 
 function todayUTC(): string {
   return new Date().toISOString().split('T')[0]!
@@ -108,10 +107,12 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
   // Fetch existing saved bundles when flockId or recordDate changes
   useEffect(() => {
     if (!flockId || !recordDate) return
+    let cancelled = false
     void getExistingBundlesForInputAction(flockId, recordDate).then((r) => {
-      if (r.success) setSavedBundles(r.data)
-      else setSavedBundles({})
+      if (cancelled) return
+      setSavedBundles(r.success ? r.data : {})
     })
+    return () => { cancelled = true }
   }, [flockId, recordDate])
 
   const flock = flocks.find((f) => f.id === flockId)
@@ -128,25 +129,25 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
 
   // bundle save handler — per stockItemId
   async function handleSaveBundle(stockItemId: string) {
-    if (!flockId || !recordDate) return
+    const currentFlockId = flockId
+    const currentRecordDate = recordDate
+    if (!currentFlockId || !currentRecordDate) return
     setBundlePending((prev) => ({ ...prev, [stockItemId]: true }))
     try {
       const draft = draftBundle[stockItemId] ?? emptyDraft()
       const result = await saveBundleAction({
-        flockId,
-        recordDate,
+        flockId: currentFlockId,
+        recordDate: currentRecordDate,
         stockItemId,
         trayCount: draft.trayCount,
         topTrayCount: draft.topTrayCount,
         qtyKg: draft.qtyKg,
       })
       if (!result.success) { setError(result.error ?? null); return }
-      // Reset draft
       setDraftBundle((prev) => ({ ...prev, [stockItemId]: emptyDraft() }))
       setBundleToast(`Ikatan tersimpan: ${result.data.bundleCode}`)
       setTimeout(() => setBundleToast(null), 4000)
-      // Refresh saved list
-      const bundlesResult = await getExistingBundlesForInputAction(flockId, recordDate)
+      const bundlesResult = await getExistingBundlesForInputAction(currentFlockId, currentRecordDate)
       if (bundlesResult.success) setSavedBundles(bundlesResult.data)
     } catch {
       setError('Gagal menyimpan ikatan')
@@ -159,11 +160,13 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
   async function handleDeleteBundle(bundleId: string, bundleCode: string | null, bundleIndex?: number) {
     const label = bundleCode ?? (bundleIndex !== undefined ? `#${bundleIndex}` : bundleId.slice(0, 8))
     if (!confirm(`Hapus ikatan ${label}? Kode ini sudah tidak bisa dipakai lagi.`)) return
+    const currentFlockId = flockId
+    const currentRecordDate = recordDate
     try {
       const result = await deleteBundleAction(bundleId)
       if (!result.success) { setError(result.error ?? null); return }
-      if (flockId && recordDate) {
-        const bundlesResult = await getExistingBundlesForInputAction(flockId, recordDate)
+      if (currentFlockId && currentRecordDate) {
+        const bundlesResult = await getExistingBundlesForInputAction(currentFlockId, currentRecordDate)
         if (bundlesResult.success) setSavedBundles(bundlesResult.data)
       }
     } catch {
@@ -219,9 +222,8 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
         vaccineEntries,
       })
       if (!result.success) {
-        setError(result.error)
+        setError(result.error ?? null)
       } else {
-        sessionStorage.removeItem(SESSION_KEY)
         router.push('/produksi')
         router.refresh()
       }
