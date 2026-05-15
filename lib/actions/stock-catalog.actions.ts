@@ -7,6 +7,7 @@ import {
   createCategory,
   createStockItem,
   toggleStockItemActive,
+  toggleBundleMethod,
 } from '@/lib/services/stock-catalog.service'
 
 type ActionResult<T = void> =
@@ -87,5 +88,22 @@ export async function toggleStockItemActiveAction(
     return { success: true, data: undefined }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal mengubah status item' }
+  }
+}
+
+export async function toggleBundleMethodAction(itemId: string): Promise<ActionResult> {
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  const denied = requirePermission(session, PERMISSIONS.STOK.CREATE)
+  if (denied) return denied
+
+  const parsed = z.string().uuid().safeParse(itemId)
+  if (!parsed.success) return { success: false, error: 'ID tidak valid' }
+
+  try {
+    await toggleBundleMethod(session.farmSchema, parsed.data)
+    return { success: true, data: undefined }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Gagal mengubah metode bundle' }
   }
 }

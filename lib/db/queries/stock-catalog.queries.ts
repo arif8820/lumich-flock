@@ -58,3 +58,12 @@ export async function updateStockItemActive(farmSchema: string, id: string, isAc
   const { stockItems } = getFarmSchema(farmSchema)
   await db.update(stockItems).set({ isActive }).where(eq(stockItems.id, id))
 }
+
+export async function updateStockItemBundleMethod(
+  farmSchema: string,
+  id: string,
+  useBundleMethod: boolean
+): Promise<void> {
+  const { stockItems } = getFarmSchema(farmSchema)
+  await db.update(stockItems).set({ useBundleMethod }).where(eq(stockItems.id, id))
+}
