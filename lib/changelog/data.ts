@@ -1,8 +1,16 @@
 import type { VersionEntry } from './types'
 
-export const CURRENT_VERSION = 'v0.8.1' as const
+export const CURRENT_VERSION = 'v0.8.2' as const
 
 export const changelog: VersionEntry[] = [
+  {
+    version: 'v0.8.2',
+    date: '2026-05-15',
+    title: 'Produksi — Kolom Vaksin di Tabel Harian',
+    changes: [
+      { type: 'feature', text: 'Tabel Produksi Harian: kolom Vaksin ditambahkan (desktop & mobile) — menampilkan total pemakaian vaksin per record, sejajar dengan kolom Pakan' },
+    ],
+  },
   {
     version: 'v0.8.1',
     date: '2026-05-15',

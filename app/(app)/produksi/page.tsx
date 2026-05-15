@@ -112,7 +112,7 @@ export default async function ProduksiPage({
                       </span>
                     )}
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     <div className="rounded-lg p-2 text-center" style={{ background: '#fef2f2' }}>
                       <p className="text-lg font-bold tabular-nums" style={{ color: '#e05252' }}>-{r.deaths + r.culled}</p>
                       <p className="text-[10px] uppercase font-medium" style={{ color: '#e05252' }}>Flock</p>
@@ -124,6 +124,10 @@ export default async function ProduksiPage({
                     <div className="rounded-lg p-2 text-center" style={{ background: '#fef2f2' }}>
                       <p className="text-lg font-bold tabular-nums" style={{ color: '#e05252' }}>-{r.totalFeedKg.toLocaleString('id-ID')}</p>
                       <p className="text-[10px] uppercase font-medium" style={{ color: '#e05252' }}>Pakan kg</p>
+                    </div>
+                    <div className="rounded-lg p-2 text-center" style={{ background: '#fff8e1' }}>
+                      <p className="text-lg font-bold tabular-nums" style={{ color: '#b07c1a' }}>{r.totalVaccineQty > 0 ? `-${r.totalVaccineQty.toLocaleString('id-ID')}` : '—'}</p>
+                      <p className="text-[10px] uppercase font-medium" style={{ color: '#b07c1a' }}>Vaksin</p>
                     </div>
                   </div>
                 </div>
@@ -141,6 +145,7 @@ export default async function ProduksiPage({
                   <th className="px-3 py-2 text-right">Flock (-)</th>
                   <th className="px-3 py-2 text-right">Telur</th>
                   <th className="px-3 py-2 text-right">Pakan (kg)</th>
+                  <th className="px-3 py-2 text-right">Vaksin</th>
                   <th className="px-3 py-2"></th>
                 </tr>
               </thead>
@@ -174,6 +179,9 @@ export default async function ProduksiPage({
                       </td>
                       <td className="px-3 py-3 text-right font-medium tabular-nums" style={{ color: '#e05252' }}>
                         -{r.totalFeedKg.toLocaleString('id-ID')}
+                      </td>
+                      <td className="px-3 py-3 text-right font-medium tabular-nums" style={{ color: '#b07c1a' }}>
+                        {r.totalVaccineQty > 0 ? `-${r.totalVaccineQty.toLocaleString('id-ID')}` : '—'}
                       </td>
                       <td className="px-3 py-3 text-right rounded-r-xl">
                         {editable ? (

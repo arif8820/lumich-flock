@@ -70,6 +70,7 @@ export type DailyRecordWithFlock = {
   coopId: string
   totalEggsButir: number
   totalFeedKg: number
+  totalVaccineQty: number
 }
 
 export async function findRecentDailyRecordsMultiFlocks(
@@ -78,7 +79,7 @@ export async function findRecentDailyRecordsMultiFlocks(
   limit: number,
 ): Promise<DailyRecordWithFlock[]> {
   if (flockIds.length === 0) return []
-  const { dailyRecords, dailyEggRecords, dailyFeedRecords, flocks, coops } = getFarmSchema(farmSchema)
+  const { dailyRecords, dailyEggRecords, dailyFeedRecords, dailyVaccineRecords, flocks, coops } = getFarmSchema(farmSchema)
   const rows = await db
     .select({
       id: dailyRecords.id,
@@ -99,6 +100,7 @@ export async function findRecentDailyRecordsMultiFlocks(
       coopId: coops.id,
       totalEggsButir: sql<number>`COALESCE((SELECT SUM(${dailyEggRecords.qtyButir}) FROM ${dailyEggRecords} WHERE ${dailyEggRecords.dailyRecordId} = ${dailyRecords.id}), 0)`,
       totalFeedKg: sql<number>`COALESCE((SELECT SUM(${dailyFeedRecords.qtyUsed}) FROM ${dailyFeedRecords} WHERE ${dailyFeedRecords.dailyRecordId} = ${dailyRecords.id}), 0)`,
+      totalVaccineQty: sql<number>`COALESCE((SELECT SUM(${dailyVaccineRecords.qtyUsed}) FROM ${dailyVaccineRecords} WHERE ${dailyVaccineRecords.dailyRecordId} = ${dailyRecords.id}), 0)`,
     })
     .from(dailyRecords)
     .innerJoin(flocks, eq(flocks.id, dailyRecords.flockId))
@@ -107,7 +109,7 @@ export async function findRecentDailyRecordsMultiFlocks(
     .orderBy(desc(dailyRecords.recordDate))
     .limit(limit)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return rows.map(r => ({ ...r, totalEggsButir: Number(r.totalEggsButir), totalFeedKg: Number(r.totalFeedKg) })) as any
+  return rows.map(r => ({ ...r, totalEggsButir: Number(r.totalEggsButir), totalFeedKg: Number(r.totalFeedKg), totalVaccineQty: Number(r.totalVaccineQty) })) as any
 }
 
 export async function getTotalDepletionByFlock(
