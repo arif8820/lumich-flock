@@ -317,6 +317,7 @@ export async function saveSingleBundle(
 export async function deleteBundle(
   farmSchema: string,
   bundleId: string,
+  _userId: string,
   role: Role,
   now: Date = new Date()
 ): Promise<void> {
