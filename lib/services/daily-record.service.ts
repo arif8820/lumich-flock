@@ -7,7 +7,12 @@ import {
   getFlockPerformanceReport,
   getDailyEggRecordsByRecordId,
   getBundlesByEggRecordId,
+  getNextBundleSequence,
+  deleteBundleById,
+  getBundlesByFlockDate,
+  getBundleWithContext,
   type FlockPerformanceRow,
+  type BundleWithStockItem,
 } from '@/lib/db/queries/daily-record.queries'
 import { getStockBalance } from '@/lib/db/queries/inventory.queries'
 import { findAllActiveFlocks, findFlockById } from '@/lib/db/queries/flock.queries'
@@ -15,7 +20,7 @@ import { sumDeliveriesQuantityByFlockId } from '@/lib/db/queries/flock-delivery.
 import { findAssignedCoopIds } from '@/lib/db/queries/user-coop-assignment.queries'
 import { db } from '@/lib/db'
 import { getFarmSchema } from '@/lib/db/schema-factory'
-import { eq } from 'drizzle-orm'
+import { eq, and, sql } from 'drizzle-orm'
 import { assertCanEdit } from '@/lib/services/lock-period.service'
 import type { DailyRecord, DailyEggBundle } from '@/lib/db/schema'
 
@@ -47,16 +52,6 @@ export function computeActivePopulation(
   return Math.max(0, initialCount - depletion)
 }
 
-type BundleInput = {
-  trayCount: number
-  topTrayCount: number
-  qtyKg: number
-}
-
-type EggEntry =
-  | { stockItemId: string; useBundleMethod: false; qtyButir: number; qtyKg: number }
-  | { stockItemId: string; useBundleMethod: true; bundles: BundleInput[] }
-
 type FeedEntry = { stockItemId: string; qtyUsed: number }
 type VaccineEntry = { stockItemId: string; qtyUsed: number }
 
@@ -68,13 +63,18 @@ type SaveDailyRecordInput = {
   eggsCracked: number
   eggsAbnormal: number
   notes?: string
-  eggEntries: EggEntry[]
+  eggEntries: Array<{ stockItemId: string; qtyButir: number; qtyKg: number }>
   feedEntries: FeedEntry[]
   vaccineEntries: VaccineEntry[]
 }
 
 function computeBundleButir(trayCount: number, topTrayCount: number): number {
   return (trayCount - 1) * 30 + topTrayCount
+}
+
+function formatBundleCode(recordDate: string, seq: number): string {
+  const [y, m, d] = recordDate.split('-') as [string, string, string]
+  return `${d}${m}${y.slice(2)}-${String(seq).padStart(3, '0')}`
 }
 
 export async function saveDailyRecord(
@@ -121,46 +121,7 @@ export async function saveDailyRecord(
 
   const isLateInput = computeIsLateInput(recordDate, now)
 
-  type BundleInsertData = {
-    eggStockItemId: string
-    bundles: Array<{
-      bundleIndex: number
-      trayCount: number
-      topTrayCount: number
-      qtyButir: number
-      qtyKg: string
-    }>
-  }
-
-  const normalizedEggEntries: Array<{ stockItemId: string; qtyButir: number; qtyKg: number }> = []
-  const bundleInsertData: BundleInsertData[] = []
-
-  for (const entry of input.eggEntries) {
-    if (entry.useBundleMethod) {
-      const totalButir = entry.bundles.reduce(
-        (sum, b) => sum + computeBundleButir(b.trayCount, b.topTrayCount),
-        0
-      )
-      const totalKg = entry.bundles.reduce((sum, b) => sum + b.qtyKg, 0)
-      if (totalButir > 0 || totalKg > 0) {
-        normalizedEggEntries.push({ stockItemId: entry.stockItemId, qtyButir: totalButir, qtyKg: totalKg })
-        bundleInsertData.push({
-          eggStockItemId: entry.stockItemId,
-          bundles: entry.bundles.map((b, idx) => ({
-            bundleIndex: idx + 1,
-            trayCount: b.trayCount,
-            topTrayCount: b.topTrayCount,
-            qtyButir: computeBundleButir(b.trayCount, b.topTrayCount),
-            qtyKg: b.qtyKg.toFixed(2),
-          })),
-        })
-      }
-    } else {
-      if (entry.qtyButir > 0 || entry.qtyKg > 0) {
-        normalizedEggEntries.push({ stockItemId: entry.stockItemId, qtyButir: entry.qtyButir, qtyKg: entry.qtyKg })
-      }
-    }
-  }
+  const validEggEntries = input.eggEntries.filter((e) => e.qtyButir > 0 || e.qtyKg > 0)
 
   // any: farm schema returns recordDate as Date; cast to public DailyRecord (string) expected by callers
   return upsertDailyRecordTx(farmSchema, {
@@ -175,7 +136,7 @@ export async function saveDailyRecord(
       isLateInput,
       createdBy: userId,
     },
-    eggEntries: normalizedEggEntries.map((e) => ({
+    eggEntries: validEggEntries.map((e) => ({
       dailyRecordId: '', // will be set in tx
       stockItemId: e.stockItemId,
       qtyButir: e.qtyButir,
@@ -195,7 +156,7 @@ export async function saveDailyRecord(
         stockItemId: e.stockItemId,
         qtyUsed: String(e.qtyUsed),
       })),
-    eggMovements: normalizedEggEntries
+    eggMovements: validEggEntries
       .filter((e) => e.qtyButir > 0)
       .map((e) => ({
         stockItemId: e.stockItemId,
@@ -234,10 +195,182 @@ export async function saveDailyRecord(
         movementDate: input.recordDate,
         createdBy: userId,
       })),
-    bundleData: bundleInsertData,
   // any: farm schema date fields (recordDate: Date) differ from public DailyRecord type (recordDate: string)
   }) as unknown as DailyRecord
 }
+
+export type SavedBundle = {
+  bundleCode: string
+  bundleIndex: number
+  qtyButir: number
+  qtyKg: string
+}
+
+export async function saveSingleBundle(
+  farmSchema: string,
+  input: {
+    flockId: string
+    recordDate: string
+    stockItemId: string
+    trayCount: number
+    topTrayCount: number
+    qtyKg: number
+  },
+  userId: string,
+  role: Role,
+  now: Date = new Date()
+): Promise<SavedBundle> {
+  const recordDate = new Date(input.recordDate)
+  validateBackdate(recordDate, now, role)
+
+  const flock = await findFlockById(farmSchema, input.flockId)
+  if (!flock) throw new Error('Flock tidak ditemukan')
+
+  const qtyButir = computeBundleButir(input.trayCount, input.topTrayCount)
+  const qtyKgStr = input.qtyKg.toFixed(2)
+  const isLateInput = computeIsLateInput(recordDate, now)
+
+  const { dailyRecords, dailyEggRecords, dailyEggBundles: bundlesTable, inventoryMovements } = getFarmSchema(farmSchema)
+
+  return db.transaction(async (tx) => {
+    // Upsert daily_records header
+    const [record] = await tx
+      .insert(dailyRecords)
+      .values({
+        flockId: input.flockId,
+        recordDate: input.recordDate,
+        deaths: 0,
+        culled: 0,
+        eggsCracked: 0,
+        eggsAbnormal: 0,
+        notes: null,
+        isLateInput,
+        createdBy: userId,
+      })
+      .onConflictDoUpdate({
+        target: [dailyRecords.flockId, dailyRecords.recordDate],
+        set: { isLateInput },
+      })
+      .returning()
+    const recordId = record!.id
+
+    // Get next sequence
+    const seq = await getNextBundleSequence(farmSchema, input.flockId, input.recordDate)
+    const bundleCode = formatBundleCode(input.recordDate, seq)
+
+    // Upsert daily_egg_records (add to running total)
+    const [eggRecord] = await tx
+      .insert(dailyEggRecords)
+      .values({
+        dailyRecordId: recordId,
+        stockItemId: input.stockItemId,
+        qtyButir,
+        qtyKg: qtyKgStr,
+      })
+      .onConflictDoUpdate({
+        target: [dailyEggRecords.dailyRecordId, dailyEggRecords.stockItemId],
+        set: {
+          qtyButir: sql`${dailyEggRecords.qtyButir} + ${qtyButir}`,
+          qtyKg: sql`${dailyEggRecords.qtyKg} + ${qtyKgStr}::numeric`,
+        },
+      })
+      .returning()
+
+    // Insert bundle row
+    const [bundle] = await tx
+      .insert(bundlesTable)
+      .values({
+        dailyEggRecordId: eggRecord!.id,
+        bundleIndex: seq,
+        trayCount: input.trayCount,
+        topTrayCount: input.topTrayCount,
+        qtyButir,
+        qtyKg: qtyKgStr,
+        bundleCode,
+      })
+      .returning()
+
+    // Insert inventory movement
+    if (qtyButir > 0) {
+      await tx.insert(inventoryMovements).values({
+        stockItemId: input.stockItemId,
+        flockId: input.flockId,
+        movementType: 'in',
+        source: 'production',
+        sourceType: 'daily_egg_records',
+        sourceId: recordId,
+        quantity: qtyButir,
+        movementDate: input.recordDate,
+        createdBy: userId,
+      })
+    }
+
+    return {
+      bundleCode: bundle!.bundleCode!,
+      bundleIndex: bundle!.bundleIndex,
+      qtyButir,
+      qtyKg: qtyKgStr,
+    }
+  })
+}
+
+export async function deleteBundle(
+  farmSchema: string,
+  bundleId: string,
+  role: Role,
+  now: Date = new Date()
+): Promise<void> {
+  const ctx = await getBundleWithContext(farmSchema, bundleId)
+  if (!ctx) throw new Error('Ikatan tidak ditemukan')
+
+  assertCanEdit(new Date(ctx.recordDate), role, now)
+
+  const { dailyEggRecords, inventoryMovements } = getFarmSchema(farmSchema)
+
+  await db.transaction(async (tx) => {
+    // Subtract from daily_egg_records total
+    await tx
+      .update(dailyEggRecords)
+      .set({
+        qtyButir: sql`${dailyEggRecords.qtyButir} - ${ctx.bundle.qtyButir}`,
+        qtyKg: sql`${dailyEggRecords.qtyKg} - ${ctx.bundle.qtyKg}::numeric`,
+      })
+      .where(eq(dailyEggRecords.id, ctx.bundle.dailyEggRecordId))
+
+    // Delete bundle
+    const { dailyEggBundles: bundlesTable } = getFarmSchema(farmSchema)
+    await tx.delete(bundlesTable).where(eq(bundlesTable.id, bundleId))
+
+    // Delete matching inventory movement
+    await tx
+      .delete(inventoryMovements)
+      .where(
+        and(
+          eq(inventoryMovements.stockItemId, ctx.stockItemId),
+          eq(inventoryMovements.flockId, ctx.flockId),
+          eq(inventoryMovements.quantity, ctx.bundle.qtyButir),
+          eq(inventoryMovements.movementDate, ctx.recordDate),
+          eq(inventoryMovements.sourceType, 'daily_egg_records'),
+        )
+      )
+  })
+}
+
+export async function getExistingBundlesForInput(
+  farmSchema: string,
+  flockId: string,
+  recordDate: string
+): Promise<Record<string, BundleWithStockItem[]>> {
+  const bundles = await getBundlesByFlockDate(farmSchema, flockId, recordDate)
+  const result: Record<string, BundleWithStockItem[]> = {}
+  for (const b of bundles) {
+    if (!result[b.stockItemId]) result[b.stockItemId] = []
+    result[b.stockItemId]!.push(b)
+  }
+  return result
+}
+
+export type { BundleWithStockItem }
 
 export type FlockOption = {
   id: string
