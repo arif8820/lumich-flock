@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { getFarmSchema } from '@/lib/db/schema-factory'
-import { eq, and, desc, sum, asc, inArray, sql } from 'drizzle-orm'
+import { eq, and, desc, sum, asc, inArray, sql, count } from 'drizzle-orm'
 import { DailyEggBundle, NewDailyEggBundle } from '@/lib/db/schema'
 
 export type DailySubRecords = {
@@ -196,32 +196,6 @@ export async function upsertDailyRecordTx(farmSchema: string, input: any) {
       : []
     if (feedEntriesWithId.length > 0) await tx.insert(dailyFeedRecords).values(feedEntriesWithId)
     if (vaccineEntriesWithId.length > 0) await tx.insert(dailyVaccineRecords).values(vaccineEntriesWithId)
-
-    if (input.bundleData && input.bundleData.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      for (const bd of input.bundleData as Array<{ eggStockItemId: string; bundles: any[] }>) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const eggRecord = insertedEggRecords.find((r: any) => r.stockItemId === bd.eggStockItemId)
-        if (!eggRecord) continue
-        const { dailyEggBundles: bundlesTable } = getFarmSchema(farmSchema)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await tx.delete(bundlesTable).where(eq(bundlesTable.dailyEggRecordId, (eggRecord as any).id))
-        if (bd.bundles.length > 0) {
-          await tx.insert(bundlesTable).values(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            bd.bundles.map((b: any) => ({
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              dailyEggRecordId: (eggRecord as any).id,
-              bundleIndex: b.bundleIndex,
-              trayCount: b.trayCount,
-              topTrayCount: b.topTrayCount,
-              qtyButir: b.qtyButir,
-              qtyKg: b.qtyKg,
-            }))
-          )
-        }
-      }
-    }
 
     const allMovements = [
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -422,4 +396,116 @@ export async function getBundlesByEggRecordId(
     .from(bundlesTable)
     .where(eq(bundlesTable.dailyEggRecordId, dailyEggRecordId))
     .orderBy(bundlesTable.bundleIndex)
+}
+
+export async function getNextBundleSequence(
+  farmSchema: string,
+  flockId: string,
+  recordDate: string
+): Promise<number> {
+  const { dailyRecords, dailyEggRecords, dailyEggBundles: bundlesTable } = getFarmSchema(farmSchema)
+  const [row] = await db
+    .select({ total: count(bundlesTable.id) })
+    .from(bundlesTable)
+    .innerJoin(dailyEggRecords, eq(bundlesTable.dailyEggRecordId, dailyEggRecords.id))
+    .innerJoin(dailyRecords, eq(dailyEggRecords.dailyRecordId, dailyRecords.id))
+    .where(and(eq(dailyRecords.flockId, flockId), eq(dailyRecords.recordDate, recordDate)))
+  return (row?.total ?? 0) + 1
+}
+
+export async function insertSingleBundle(
+  farmSchema: string,
+  data: {
+    dailyEggRecordId: string
+    bundleIndex: number
+    trayCount: number
+    topTrayCount: number
+    qtyButir: number
+    qtyKg: string
+    bundleCode: string
+  }
+): Promise<DailyEggBundle> {
+  const { dailyEggBundles: bundlesTable } = getFarmSchema(farmSchema)
+  const [inserted] = await db.insert(bundlesTable).values(data).returning()
+  return inserted!
+}
+
+export async function deleteBundleById(farmSchema: string, bundleId: string): Promise<void> {
+  const { dailyEggBundles: bundlesTable } = getFarmSchema(farmSchema)
+  await db.delete(bundlesTable).where(eq(bundlesTable.id, bundleId))
+}
+
+export type BundleWithStockItem = DailyEggBundle & { stockItemId: string }
+
+export async function getBundlesByFlockDate(
+  farmSchema: string,
+  flockId: string,
+  recordDate: string
+): Promise<BundleWithStockItem[]> {
+  const { dailyRecords, dailyEggRecords, dailyEggBundles: bundlesTable } = getFarmSchema(farmSchema)
+  return db
+    .select({
+      id: bundlesTable.id,
+      dailyEggRecordId: bundlesTable.dailyEggRecordId,
+      bundleIndex: bundlesTable.bundleIndex,
+      trayCount: bundlesTable.trayCount,
+      topTrayCount: bundlesTable.topTrayCount,
+      qtyButir: bundlesTable.qtyButir,
+      qtyKg: bundlesTable.qtyKg,
+      bundleCode: bundlesTable.bundleCode,
+      createdAt: bundlesTable.createdAt,
+      updatedAt: bundlesTable.updatedAt,
+      stockItemId: dailyEggRecords.stockItemId,
+    })
+    .from(bundlesTable)
+    .innerJoin(dailyEggRecords, eq(bundlesTable.dailyEggRecordId, dailyEggRecords.id))
+    .innerJoin(dailyRecords, eq(dailyEggRecords.dailyRecordId, dailyRecords.id))
+    .where(and(eq(dailyRecords.flockId, flockId), eq(dailyRecords.recordDate, recordDate)))
+    .orderBy(asc(bundlesTable.bundleIndex))
+}
+
+export async function getBundleWithContext(
+  farmSchema: string,
+  bundleId: string
+): Promise<{ bundle: DailyEggBundle; stockItemId: string; flockId: string; recordDate: string } | null> {
+  const { dailyRecords, dailyEggRecords, dailyEggBundles: bundlesTable } = getFarmSchema(farmSchema)
+  const [row] = await db
+    .select({
+      id: bundlesTable.id,
+      dailyEggRecordId: bundlesTable.dailyEggRecordId,
+      bundleIndex: bundlesTable.bundleIndex,
+      trayCount: bundlesTable.trayCount,
+      topTrayCount: bundlesTable.topTrayCount,
+      qtyButir: bundlesTable.qtyButir,
+      qtyKg: bundlesTable.qtyKg,
+      bundleCode: bundlesTable.bundleCode,
+      createdAt: bundlesTable.createdAt,
+      updatedAt: bundlesTable.updatedAt,
+      stockItemId: dailyEggRecords.stockItemId,
+      flockId: dailyRecords.flockId,
+      recordDate: dailyRecords.recordDate,
+    })
+    .from(bundlesTable)
+    .innerJoin(dailyEggRecords, eq(bundlesTable.dailyEggRecordId, dailyEggRecords.id))
+    .innerJoin(dailyRecords, eq(dailyEggRecords.dailyRecordId, dailyRecords.id))
+    .where(eq(bundlesTable.id, bundleId))
+    .limit(1)
+  if (!row) return null
+  return {
+    bundle: {
+      id: row.id,
+      dailyEggRecordId: row.dailyEggRecordId,
+      bundleIndex: row.bundleIndex,
+      trayCount: row.trayCount,
+      topTrayCount: row.topTrayCount,
+      qtyButir: row.qtyButir,
+      qtyKg: row.qtyKg,
+      bundleCode: row.bundleCode,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    },
+    stockItemId: row.stockItemId,
+    flockId: row.flockId,
+    recordDate: row.recordDate as string,
+  }
 }
