@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { getFarmSchema } from '@/lib/db/schema-factory'
-import { eq, and, desc, sum, asc, inArray, sql, count, max } from 'drizzle-orm'
+import { eq, and, desc, sum, asc, inArray, sql, max } from 'drizzle-orm'
 import { DailyEggBundle, NewDailyEggBundle } from '@/lib/db/schema'
 
 export type DailySubRecords = {
@@ -204,9 +204,7 @@ export async function upsertDailyRecordTx(farmSchema: string, input: any) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const vaccineEntriesWithId = input.vaccineEntries.map((e: any) => ({ ...e, dailyRecordId: recordId }))
 
-    const insertedEggRecords = eggEntriesWithId.length > 0
-      ? await tx.insert(dailyEggRecords).values(eggEntriesWithId).returning()
-      : []
+    if (eggEntriesWithId.length > 0) await tx.insert(dailyEggRecords).values(eggEntriesWithId)
     if (feedEntriesWithId.length > 0) await tx.insert(dailyFeedRecords).values(feedEntriesWithId)
     if (vaccineEntriesWithId.length > 0) await tx.insert(dailyVaccineRecords).values(vaccineEntriesWithId)
 

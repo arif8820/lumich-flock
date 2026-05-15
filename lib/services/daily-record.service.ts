@@ -8,7 +8,6 @@ import {
   getDailyEggRecordsByRecordId,
   getBundlesByEggRecordId,
   getNextBundleSequence,
-  deleteBundleById,
   getBundlesByFlockDate,
   getBundleWithContext,
   type FlockPerformanceRow,
