@@ -1,8 +1,16 @@
 import type { VersionEntry } from './types'
 
-export const CURRENT_VERSION = 'v0.8.0' as const
+export const CURRENT_VERSION = 'v0.8.1' as const
 
 export const changelog: VersionEntry[] = [
+  {
+    version: 'v0.8.1',
+    date: '2026-05-15',
+    title: 'Role Management — Sembunyikan Role Bawaan',
+    changes: [
+      { type: 'improvement', text: 'Role bawaan (Operator, Supervisor) disembunyikan dari halaman Manajemen Role — hanya Admin (sistem) dan role custom yang ditampilkan' },
+    ],
+  },
   {
     version: 'v0.8.0',
     date: '2026-05-14',

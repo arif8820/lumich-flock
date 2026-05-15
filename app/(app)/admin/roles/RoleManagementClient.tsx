@@ -100,8 +100,9 @@ function isProtectedRole(role: Role) {
 
 export function RoleManagementClient({ roles }: Props) {
   const router = useRouter()
+  const visibleRoles = roles.filter((r) => !PROTECTED_SLUGS.includes(r.name) || r.isSystem)
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(
-    roles.find((r) => !r.isSystem)?.id ?? roles[0]?.id ?? null
+    visibleRoles.find((r) => !r.isSystem)?.id ?? visibleRoles[0]?.id ?? null
   )
   const [rolePermissions, setRolePermissions] = useState<Set<string>>(new Set())
   const [loadingPerms, setLoadingPerms] = useState(false)
@@ -186,12 +187,12 @@ export function RoleManagementClient({ roles }: Props) {
           <div className="bg-white rounded-2xl shadow-lf-sm border border-[var(--lf-border)] p-3 space-y-2">
             <div className="flex items-center justify-between px-1 pb-1">
               <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#8fa08f' }}>
-                Role ({roles.length})
+                Role ({visibleRoles.length})
               </span>
             </div>
 
             <div className="space-y-1">
-              {roles.map((role) => {
+              {visibleRoles.map((role) => {
                 const isSelected = role.id === selectedRoleId
                 return (
                   <div
