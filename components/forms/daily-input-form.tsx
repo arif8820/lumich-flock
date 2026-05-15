@@ -1,10 +1,16 @@
 'use client'
 // client: tabs, dynamic state, sessionStorage persistence
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { saveDailyRecordAction } from '@/lib/actions/daily-record.actions'
+import {
+  saveDailyRecordAction,
+  saveBundleAction,
+  deleteBundleAction,
+  getExistingBundlesForInputAction,
+} from '@/lib/actions/daily-record.actions'
 import type { FlockOption } from '@/lib/services/daily-record.service'
+import type { BundleWithStockItem } from '@/lib/services/daily-record.service'
 import type { StockItem } from '@/lib/db/schema'
 import { StepperInput } from '@/components/ui/stepper-input'
 
@@ -18,7 +24,7 @@ type Props = {
   vaccineItems: StockItemWithBalance[]
 }
 
-type BundleEntry = { trayCount: number; topTrayCount: number; qtyKg: number }
+type DraftBundle = { trayCount: number; topTrayCount: number; qtyKg: number }
 type SimpleEggEntry = { stockItemId: string; qtyButir: number; qtyKg: number }
 type FeedEntry = { stockItemId: string; qtyUsed: number }
 
@@ -40,7 +46,7 @@ function computeButir(trayCount: number, topTrayCount: number): number {
   return (trayCount - 1) * 30 + topTrayCount
 }
 
-function emptyBundle(): BundleEntry {
+function emptyDraft(): DraftBundle {
   return { trayCount: 1, topTrayCount: 0, qtyKg: 0 }
 }
 
@@ -73,10 +79,20 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
   const [simpleEggEntries, setSimpleEggEntries] = useState<SimpleEggEntry[]>(
     eggItems.filter((i) => !i.useBundleMethod).map((i) => ({ stockItemId: i.id, qtyButir: 0, qtyKg: 0 }))
   )
-  // bundle entries per stockItemId for bundle-method egg items
-  const [eggBundles, setEggBundles] = useState<Record<string, BundleEntry[]>>(
-    Object.fromEntries(eggItems.filter((i) => i.useBundleMethod).map((i) => [i.id, [emptyBundle()]]))
+
+  // draft bundle: one draft per stockItemId (not yet saved)
+  const [draftBundle, setDraftBundle] = useState<Record<string, DraftBundle>>(
+    Object.fromEntries(eggItems.filter((i) => i.useBundleMethod).map((i) => [i.id, emptyDraft()]))
   )
+
+  // saved bundles: server-persisted bundles per stockItemId
+  const [savedBundles, setSavedBundles] = useState<Record<string, BundleWithStockItem[]>>({})
+
+  // per-item loading state for save bundle
+  const [bundlePending, setBundlePending] = useState<Record<string, boolean>>({})
+
+  // success toast message
+  const [bundleToast, setBundleToast] = useState<string | null>(null)
 
   const [feedEntries, setFeedEntries] = useState<FeedEntry[]>(
     feedItems.map((i) => ({ stockItemId: i.id, qtyUsed: 0 }))
@@ -88,6 +104,15 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
   const [activeTab, setActiveTab] = useState<TabKey>('ayam')
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+
+  // Fetch existing saved bundles when flockId or recordDate changes
+  useEffect(() => {
+    if (!flockId || !recordDate) return
+    void getExistingBundlesForInputAction(flockId, recordDate).then((r) => {
+      if (r.success) setSavedBundles(r.data)
+      else setSavedBundles({})
+    })
+  }, [flockId, recordDate])
 
   const flock = flocks.find((f) => f.id === flockId)
   const totalDepletion = deaths + culled
@@ -101,38 +126,63 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
     setSimpleEggEntries((prev) => prev.map((e, i) => i === idx ? { ...e, qtyKg: val } : e))
   }
 
-  // bundle helpers
-  function addBundle(stockItemId: string) {
-    setEggBundles((prev) => ({ ...prev, [stockItemId]: [...(prev[stockItemId] ?? []), emptyBundle()] }))
-  }
-  function removeBundle(stockItemId: string, bundleIdx: number) {
-    setEggBundles((prev) => ({
-      ...prev,
-      [stockItemId]: (prev[stockItemId] ?? []).filter((_, i) => i !== bundleIdx),
-    }))
-  }
-  function updateBundle(stockItemId: string, bundleIdx: number, field: keyof BundleEntry, val: number) {
-    setEggBundles((prev) => ({
-      ...prev,
-      [stockItemId]: (prev[stockItemId] ?? []).map((b, i) =>
-        i === bundleIdx ? { ...b, [field]: val } : b
-      ),
-    }))
-  }
-  function getBundleTotals(stockItemId: string): { totalButir: number; totalKg: number } {
-    const bundles = eggBundles[stockItemId] ?? []
-    return {
-      totalButir: bundles.reduce((s, b) => s + computeButir(b.trayCount, b.topTrayCount), 0),
-      totalKg: bundles.reduce((s, b) => s + b.qtyKg, 0),
+  // bundle save handler — per stockItemId
+  async function handleSaveBundle(stockItemId: string) {
+    if (!flockId || !recordDate) return
+    setBundlePending((prev) => ({ ...prev, [stockItemId]: true }))
+    try {
+      const draft = draftBundle[stockItemId] ?? emptyDraft()
+      const result = await saveBundleAction({
+        flockId,
+        recordDate,
+        stockItemId,
+        trayCount: draft.trayCount,
+        topTrayCount: draft.topTrayCount,
+        qtyKg: draft.qtyKg,
+      })
+      if (!result.success) { setError(result.error ?? null); return }
+      // Reset draft
+      setDraftBundle((prev) => ({ ...prev, [stockItemId]: emptyDraft() }))
+      setBundleToast(`Ikatan tersimpan: ${result.data.bundleCode}`)
+      setTimeout(() => setBundleToast(null), 4000)
+      // Refresh saved list
+      const bundlesResult = await getExistingBundlesForInputAction(flockId, recordDate)
+      if (bundlesResult.success) setSavedBundles(bundlesResult.data)
+    } catch {
+      setError('Gagal menyimpan ikatan')
+    } finally {
+      setBundlePending((prev) => ({ ...prev, [stockItemId]: false }))
     }
   }
 
-  // totals across all egg items
+  // bundle delete handler
+  async function handleDeleteBundle(bundleId: string, bundleCode: string | null) {
+    const label = bundleCode ?? bundleId.slice(0, 8)
+    if (!confirm(`Hapus ikatan ${label}? Kode ini sudah tidak bisa dipakai lagi.`)) return
+    try {
+      const result = await deleteBundleAction(bundleId)
+      if (!result.success) { setError(result.error ?? null); return }
+      if (flockId && recordDate) {
+        const bundlesResult = await getExistingBundlesForInputAction(flockId, recordDate)
+        if (bundlesResult.success) setSavedBundles(bundlesResult.data)
+      }
+    } catch {
+      setError('Gagal menghapus ikatan')
+    }
+  }
+
+  // totals across all egg items — bundle totals come from savedBundles
   const allEggTotals = (() => {
     const simpleButir = simpleEggEntries.reduce((s, e) => s + e.qtyButir, 0)
     const simpleKg = simpleEggEntries.reduce((s, e) => s + e.qtyKg, 0)
-    const bundleButir = eggItems.filter((i) => i.useBundleMethod).reduce((s, i) => s + getBundleTotals(i.id).totalButir, 0)
-    const bundleKg = eggItems.filter((i) => i.useBundleMethod).reduce((s, i) => s + getBundleTotals(i.id).totalKg, 0)
+    const bundleButir = eggItems
+      .filter((i) => i.useBundleMethod)
+      .flatMap((i) => savedBundles[i.id] ?? [])
+      .reduce((s, b) => s + b.qtyButir, 0)
+    const bundleKg = eggItems
+      .filter((i) => i.useBundleMethod)
+      .flatMap((i) => savedBundles[i.id] ?? [])
+      .reduce((s, b) => s + parseFloat(b.qtyKg), 0)
     return { totalButir: simpleButir + bundleButir, totalKg: simpleKg + bundleKg }
   })()
 
@@ -148,24 +198,13 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
     setError(null)
     setPending(true)
     try {
-      // build eggEntries discriminated union for server action
-      const eggEntries = [
-        ...eggItems.filter((i) => i.useBundleMethod).map((item) => ({
-          stockItemId: item.id,
-          useBundleMethod: true,
-          bundles: (eggBundles[item.id] ?? []).map((b) => ({
-            trayCount: b.trayCount,
-            topTrayCount: b.topTrayCount,
-            qtyKg: b.qtyKg,
-          })),
-        })),
-        ...simpleEggEntries.map((e) => ({
-          stockItemId: e.stockItemId,
-          useBundleMethod: false,
-          qtyButir: e.qtyButir,
-          qtyKg: e.qtyKg,
-        })),
-      ]
+      // build eggEntries — bundle items are saved separately, only simple items go here
+      const eggEntries = simpleEggEntries.map((e) => ({
+        stockItemId: e.stockItemId,
+        useBundleMethod: false as const,
+        qtyButir: e.qtyButir,
+        qtyKg: e.qtyKg,
+      }))
 
       const result = await saveDailyRecordAction({
         flockId,
@@ -285,13 +324,22 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
 
         {activeTab === 'telur' && (
           <div>
+            {/* Bundle success toast */}
+            {bundleToast && (
+              <div className="mb-3 rounded-xl px-4 py-3 text-sm font-medium"
+                style={{ background: 'var(--lf-teal)', color: 'white' }}>
+                {bundleToast}
+              </div>
+            )}
+
             {eggItems.length === 0 && <p className="text-sm text-[var(--lf-text-soft)] py-4">Tidak ada SKU telur aktif.</p>}
 
             {eggItems.map((item) => {
               if (item.useBundleMethod) {
-                // Bundle-method item
-                const bundles = eggBundles[item.id] ?? []
-                const { totalButir, totalKg } = getBundleTotals(item.id)
+                const draft = draftBundle[item.id] ?? emptyDraft()
+                const isPending = bundlePending[item.id] ?? false
+                const saved = savedBundles[item.id] ?? []
+
                 return (
                   <div key={item.id} className="py-3 border-b border-[var(--lf-border)] last:border-0 space-y-3">
                     <div className="flex items-center justify-between">
@@ -301,73 +349,104 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
                       </span>
                     </div>
 
-                    {/* Bundle rows */}
-                    <div className="space-y-2">
-                      {/* Header row */}
-                      <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--lf-text-mid)]">
-                        <span>Nampan</span>
-                        <span>Atas</span>
-                        <span>Kg</span>
-                        <span className="w-6" />
-                      </div>
-
-                      {bundles.map((bundle, bundleIdx) => (
-                        <div key={bundleIdx} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center">
+                    {/* Zona A: Draft ikatan baru */}
+                    <div className="mt-3 space-y-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--lf-text-mid)' }}>Ikatan Baru</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-[10px] font-medium uppercase block mb-1" style={{ color: 'var(--lf-text-mid)' }}>Nampan</label>
                           <input
                             type="number"
-                            value={bundle.trayCount}
+                            value={draft.trayCount}
                             min={1}
-                            onChange={(e) => updateBundle(item.id, bundleIdx, 'trayCount', Math.max(1, parseInt(e.target.value) || 1))}
+                            onChange={(e) => setDraftBundle((prev) => ({
+                              ...prev,
+                              [item.id]: { ...(prev[item.id] ?? emptyDraft()), trayCount: Math.max(1, parseInt(e.target.value) || 1) },
+                            }))}
                             className={numInputClass}
                           />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-medium uppercase block mb-1" style={{ color: 'var(--lf-text-mid)' }}>Atas</label>
                           <input
                             type="number"
-                            value={bundle.topTrayCount}
+                            value={draft.topTrayCount}
                             min={0}
                             max={30}
-                            onChange={(e) => updateBundle(item.id, bundleIdx, 'topTrayCount', Math.min(30, Math.max(0, parseInt(e.target.value) || 0)))}
+                            onChange={(e) => setDraftBundle((prev) => ({
+                              ...prev,
+                              [item.id]: { ...(prev[item.id] ?? emptyDraft()), topTrayCount: Math.min(30, Math.max(0, parseInt(e.target.value) || 0)) },
+                            }))}
                             className={numInputClass}
                           />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-medium uppercase block mb-1" style={{ color: 'var(--lf-text-mid)' }}>Kg</label>
                           <input
                             type="number"
-                            value={bundle.qtyKg}
+                            value={draft.qtyKg}
                             min={0}
                             step={0.01}
-                            onChange={(e) => updateBundle(item.id, bundleIdx, 'qtyKg', Math.max(0, parseFloat(e.target.value) || 0))}
+                            onChange={(e) => setDraftBundle((prev) => ({
+                              ...prev,
+                              [item.id]: { ...(prev[item.id] ?? emptyDraft()), qtyKg: Math.max(0, parseFloat(e.target.value) || 0) },
+                            }))}
                             className={numInputClass}
                           />
-                          <button
-                            type="button"
-                            onClick={() => removeBundle(item.id, bundleIdx)}
-                            disabled={bundles.length <= 1}
-                            className="w-6 h-6 flex items-center justify-center rounded text-sm disabled:opacity-30"
-                            style={{ color: 'var(--lf-danger-text)' }}
-                          >
-                            ×
-                          </button>
                         </div>
-                      ))}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs" style={{ color: 'var(--lf-text-soft)' }}>
+                          {computeButir(draft.trayCount, draft.topTrayCount)} butir
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => void handleSaveBundle(item.id)}
+                          disabled={isPending || !flockId || !recordDate}
+                          className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
+                          style={{ background: 'var(--lf-blue-active)', color: 'white' }}
+                        >
+                          {isPending ? 'Menyimpan...' : '+ Simpan Ikatan'}
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Computed totals */}
-                    <div className="grid grid-cols-3 gap-2 text-xs text-center">
-                      <div className="bg-[var(--lf-blue-pale)] rounded-lg py-1.5">
-                        <div className="font-semibold" style={{ color: 'var(--lf-blue-active)' }}>{totalButir.toLocaleString('id')}</div>
-                        <div style={{ color: 'var(--lf-text-soft)' }}>butir</div>
+                    {/* Zona B: List tersimpan */}
+                    {saved.length > 0 && (
+                      <div className="mt-3 space-y-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--lf-text-mid)' }}>Tersimpan hari ini</p>
+                        {saved.map((b) => (
+                          <div
+                            key={b.id}
+                            className="flex items-center justify-between py-1.5 px-2 rounded-lg"
+                            style={{ background: 'var(--lf-blue-pale)' }}
+                          >
+                            <div className="flex flex-col">
+                              <span className="text-xs font-mono font-semibold" style={{ color: 'var(--lf-blue-active)' }}>
+                                {b.bundleCode ?? `#${b.bundleIndex}`}
+                              </span>
+                              <span className="text-[10px]" style={{ color: 'var(--lf-text-soft)' }}>
+                                {b.qtyButir} butir · {parseFloat(b.qtyKg).toFixed(2)} kg
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => void handleDeleteBundle(b.id, b.bundleCode ?? null)}
+                              className="w-6 h-6 flex items-center justify-center rounded text-sm font-bold"
+                              style={{ color: 'var(--lf-danger-text)' }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                        <div className="flex justify-between pt-1 text-xs font-semibold">
+                          <span style={{ color: 'var(--lf-text-mid)' }}>Total</span>
+                          <span style={{ color: 'var(--lf-blue-active)' }}>
+                            {saved.reduce((s, b) => s + b.qtyButir, 0).toLocaleString('id')} butir · {saved.reduce((s, b) => s + parseFloat(b.qtyKg), 0).toFixed(2)} kg
+                          </span>
+                        </div>
                       </div>
-                      <div className="bg-[var(--lf-blue-pale)] rounded-lg py-1.5">
-                        <div className="font-semibold" style={{ color: 'var(--lf-blue-active)' }}>{totalKg.toFixed(2)}</div>
-                        <div style={{ color: 'var(--lf-text-soft)' }}>kg</div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => addBundle(item.id)}
-                        className="rounded-lg py-1.5 text-xs font-semibold transition-opacity"
-                        style={{ background: 'var(--lf-blue-active)', color: 'white' }}
-                      >
-                        + Ikatan
-                      </button>
-                    </div>
+                    )}
                   </div>
                 )
               }
