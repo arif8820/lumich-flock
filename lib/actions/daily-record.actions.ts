@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 import { getRequiredSession } from '@/lib/auth/guards'
-import { saveDailyRecord, getFlockOptionsForInput, type Role } from '@/lib/services/daily-record.service'
+import { saveDailyRecord, saveSingleBundle, deleteBundle, getExistingBundlesForInput, getFlockOptionsForInput, type Role } from '@/lib/services/daily-record.service'
 import { findAssignedCoopIds } from '@/lib/db/queries/user-coop-assignment.queries'
 import { findFlockById } from '@/lib/db/queries/flock.queries'
 
@@ -64,6 +64,69 @@ export async function saveDailyRecordAction(
     return { success: true, data: { id: record.id } }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal menyimpan data produksi' }
+  }
+}
+
+const saveBundleSchema = z.object({
+  flockId: z.string().uuid(),
+  recordDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  stockItemId: z.string().uuid(),
+  trayCount: z.coerce.number().int().min(1),
+  topTrayCount: z.coerce.number().int().min(0).max(30),
+  qtyKg: z.coerce.number().min(0),
+})
+
+export async function saveBundleAction(
+  data: unknown
+): Promise<ActionResult<{ bundleCode: string; bundleIndex: number; qtyButir: number; qtyKg: string }>> {
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+
+  const parsed = saveBundleSchema.safeParse(data)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
+  }
+
+  const coopGuard = await assertCoopAccess(session.farmSchema, session.id, session.roleSlug as Role, parsed.data.flockId)
+  if (coopGuard) return coopGuard
+
+  try {
+    const result = await saveSingleBundle(session.farmSchema, parsed.data, session.id, session.roleSlug as Role)
+    return { success: true, data: result }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Gagal menyimpan ikatan' }
+  }
+}
+
+export async function deleteBundleAction(
+  bundleId: string
+): Promise<ActionResult<void>> {
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+
+  try {
+    await deleteBundle(session.farmSchema, bundleId, session.id, session.roleSlug as Role)
+    return { success: true, data: undefined }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Gagal menghapus ikatan' }
+  }
+}
+
+export async function getExistingBundlesForInputAction(
+  flockId: string,
+  recordDate: string
+): Promise<ActionResult<Record<string, import('@/lib/services/daily-record.service').BundleWithStockItem[]>>> {
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+
+  const coopGuard = await assertCoopAccess(session.farmSchema, session.id, session.roleSlug as Role, flockId)
+  if (coopGuard) return coopGuard
+
+  try {
+    const data = await getExistingBundlesForInput(session.farmSchema, flockId, recordDate)
+    return { success: true, data }
+  } catch {
+    return { success: false, error: 'Gagal memuat daftar ikatan' }
   }
 }
 

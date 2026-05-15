@@ -9,6 +9,7 @@ import {
   numeric,
   uniqueIndex,
   primaryKey,
+  varchar,
 } from 'drizzle-orm/pg-core'
 
 export function getFarmSchema(schema: string) {
@@ -149,6 +150,7 @@ export function getFarmSchema(schema: string) {
     categoryId: uuid('category_id').notNull().references(() => stockCategories.id),
     name: text('name').notNull(),
     isActive: boolean('is_active').notNull().default(true),
+    useBundleMethod: boolean('use_bundle_method').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdateFn(() => new Date()),
   }, (t) => [
@@ -184,6 +186,27 @@ export function getFarmSchema(schema: string) {
   }, (t) => [
     uniqueIndex('daily_egg_records_record_item_idx').on(t.dailyRecordId, t.stockItemId),
   ])
+
+  const dailyEggBundles = s.table(
+    'daily_egg_bundles',
+    {
+      id: uuid('id').primaryKey().defaultRandom(),
+      dailyEggRecordId: uuid('daily_egg_record_id')
+        .notNull()
+        .references(() => dailyEggRecords.id, { onDelete: 'cascade' }),
+      bundleIndex: integer('bundle_index').notNull(),
+      trayCount: integer('tray_count').notNull(),
+      topTrayCount: integer('top_tray_count').notNull(),
+      qtyButir: integer('qty_butir').notNull(),
+      qtyKg: numeric('qty_kg', { precision: 8, scale: 2 }).notNull(),
+      bundleCode: varchar('bundle_code', { length: 12 }),
+      createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+      updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdateFn(() => new Date()),
+    },
+    (t) => [
+      uniqueIndex('daily_egg_bundles_record_index_unique').on(t.dailyEggRecordId, t.bundleIndex),
+    ]
+  )
 
   const dailyFeedRecords = s.table('daily_feed_records', {
     id: uuid('id').primaryKey().defaultRandom(),
@@ -465,6 +488,7 @@ export function getFarmSchema(schema: string) {
     stockItems,
     dailyRecords,
     dailyEggRecords,
+    dailyEggBundles,
     dailyFeedRecords,
     dailyVaccineRecords,
     inventoryMovements,
