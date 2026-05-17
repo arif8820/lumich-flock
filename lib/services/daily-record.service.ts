@@ -10,6 +10,8 @@ import {
   getNextBundleSequence,
   getBundlesByFlockDate,
   getBundleWithContext,
+  getBundleById,
+  getOpenBundlesForCarryOver as getOpenBundlesQuery,
   type FlockPerformanceRow,
   type BundleWithStockItem,
 } from '@/lib/db/queries/daily-record.queries'
@@ -211,6 +213,7 @@ export type SavedBundle = {
   bundleIndex: number
   qtyButir: number
   qtyKg: string
+  isOpen: boolean
 }
 
 export async function saveSingleBundle(
@@ -237,7 +240,15 @@ export async function saveSingleBundle(
   const qtyKgStr = input.qtyKg.toFixed(2)
   const isLateInput = computeIsLateInput(recordDate, now)
 
-  const { dailyRecords, dailyEggRecords, dailyEggBundles: bundlesTable, inventoryMovements } = getFarmSchema(farmSchema)
+  // Fetch bundle_target_kg to determine if this bundle is partial (open)
+  const { dailyRecords, dailyEggRecords, dailyEggBundles: bundlesTable, inventoryMovements, stockItems } = getFarmSchema(farmSchema)
+  const [stockItemRow] = await db
+    .select({ bundleTargetKg: stockItems.bundleTargetKg })
+    .from(stockItems)
+    .where(eq(stockItems.id, input.stockItemId))
+    .limit(1)
+  const targetKg = stockItemRow?.bundleTargetKg ?? null
+  const isOpen = targetKg != null ? Number(qtyKgStr) < Number(targetKg) : false
 
   return db.transaction(async (tx) => {
     // Upsert daily_records header
@@ -294,6 +305,7 @@ export async function saveSingleBundle(
         qtyButir,
         qtyKg: qtyKgStr,
         bundleCode,
+        isOpen,
       })
       .returning()
 
@@ -317,6 +329,7 @@ export async function saveSingleBundle(
       bundleIndex: bundle!.bundleIndex,
       qtyButir,
       qtyKg: qtyKgStr,
+      isOpen,
     }
   })
 }
@@ -328,6 +341,11 @@ export async function deleteBundle(
   role: Role,
   now: Date = new Date()
 ): Promise<void> {
+  // Check is_open before allowing delete
+  const bundleInfo = await getBundleById(farmSchema, bundleId)
+  if (!bundleInfo) throw new Error('Ikatan tidak ditemukan')
+  if (!bundleInfo.isOpen) throw new Error('Ikatan sudah dilengkapi, tidak bisa dihapus')
+
   const ctx = await getBundleWithContext(farmSchema, bundleId)
   if (!ctx) throw new Error('Ikatan tidak ditemukan')
 
@@ -363,6 +381,179 @@ export async function deleteBundle(
         )
       )
   })
+}
+
+export type BundleContributionResult = {
+  bundleId: string
+  bundleCode: string | null
+  totalQtyButir: number
+  totalQtyKg: string
+  isOpen: boolean
+}
+
+export type OpenBundleGroup = {
+  bundleId: string
+  bundleCode: string | null
+  bundleIndex: number
+  qtyKg: number
+  qtyButir: number
+  recordDate: string
+  stockItemId: string
+  stockItemName: string
+}
+
+export async function addBundleContribution(
+  farmSchema: string,
+  input: {
+    bundleId: string
+    recordDate: string        // YYYY-MM-DD (day 2)
+    originalRecordDate: string // YYYY-MM-DD (day 1, from the carry-over list)
+    stockItemId: string
+    trayCount: number
+    topTrayCount: number
+    qtyKg: number
+    flockId: string
+  },
+  userId: string,
+  role: Role,
+  now: Date = new Date()
+): Promise<{ success: boolean; data?: BundleContributionResult; error?: string }> {
+  try {
+    // 1. Validate backdate lock period
+    validateBackdate(new Date(input.recordDate), now, role)
+
+    // 2. Fetch bundle and verify is_open = true
+    const bundle = await getBundleById(farmSchema, input.bundleId)
+    if (!bundle) return { success: false, error: 'Ikatan tidak ditemukan' }
+    if (!bundle.isOpen) return { success: false, error: 'Ikatan sudah ditutup, tidak bisa ditambah kontribusi' }
+
+    // 3. Verify max carry-over: bundle's recordDate must be H-1 from input.recordDate
+    const day1 = new Date(input.originalRecordDate)
+    const day2 = new Date(input.recordDate)
+    const dayDiffMs = day2.getTime() - day1.getTime()
+    const dayDiff = Math.round(dayDiffMs / 86_400_000)
+    if (dayDiff !== 1) {
+      return { success: false, error: 'Kontribusi hanya diizinkan untuk H-1 (carry-over maksimum 1 hari)' }
+    }
+
+    // 4. Compute qtyButir (standard egg count formula)
+    const qtyButir = input.trayCount * 30 + input.topTrayCount
+    const qtyKgStr = input.qtyKg.toFixed(2)
+    const isLateInput = computeIsLateInput(new Date(input.recordDate), now)
+
+    const { dailyRecords, dailyEggRecords, inventoryMovements, bundleContributions: contributionsTable, dailyEggBundles: bundlesTableTx } = getFarmSchema(farmSchema)
+
+    const result = await db.transaction(async (tx) => {
+      // 5. Upsert daily_records for input.recordDate
+      const [record] = await tx
+        .insert(dailyRecords)
+        .values({
+          flockId: input.flockId,
+          recordDate: input.recordDate,
+          deaths: 0,
+          culled: 0,
+          eggsCracked: 0,
+          eggsAbnormal: 0,
+          notes: null,
+          isLateInput,
+          createdBy: userId,
+        })
+        .onConflictDoUpdate({
+          target: [dailyRecords.flockId, dailyRecords.recordDate],
+          set: { isLateInput },
+        })
+        .returning()
+      const recordId = record!.id
+
+      // 6. Upsert daily_egg_records for input.recordDate + stockItemId (additive)
+      const [eggRecord] = await tx
+        .insert(dailyEggRecords)
+        .values({
+          dailyRecordId: recordId,
+          stockItemId: input.stockItemId,
+          qtyButir,
+          qtyKg: qtyKgStr,
+        })
+        .onConflictDoUpdate({
+          target: [dailyEggRecords.dailyRecordId, dailyEggRecords.stockItemId],
+          set: {
+            qtyButir: sql`${dailyEggRecords.qtyButir} + ${qtyButir}`,
+            qtyKg: sql`${dailyEggRecords.qtyKg} + ${qtyKgStr}::numeric`,
+          },
+        })
+        .returning()
+      const dailyEggRecordId = eggRecord!.id
+
+      // 7. Insert bundle_contributions row (inline in tx for atomicity)
+      const [contribution] = await tx
+        .insert(contributionsTable)
+        .values({
+          bundleId: input.bundleId,
+          dailyEggRecordId,
+          qtyButir,
+          qtyKg: qtyKgStr,
+          createdBy: userId,
+        })
+        .returning()
+
+      // 8. Insert inventory_movements
+      if (qtyButir > 0) {
+        await tx.insert(inventoryMovements).values({
+          stockItemId: input.stockItemId,
+          flockId: input.flockId,
+          movementType: 'in',
+          source: 'production',
+          sourceType: 'bundle_contributions',
+          sourceId: contribution!.id,
+          quantity: qtyButir,
+          movementDate: input.recordDate,
+          createdBy: userId,
+        })
+      }
+
+      // 9. Update bundle: add qty and close (isOpen = false) — inline in tx for atomicity
+      await tx
+        .update(bundlesTableTx)
+        .set({
+          qtyButir: sql`${bundlesTableTx.qtyButir} + ${qtyButir}`,
+          qtyKg: sql`${bundlesTableTx.qtyKg} + ${qtyKgStr}`,
+          isOpen: false,
+          updatedAt: new Date(),
+        })
+        .where(eq(bundlesTableTx.id, input.bundleId))
+
+      return {
+        bundleId: input.bundleId,
+        bundleCode: bundle.bundleCode,
+        totalQtyButir: bundle.qtyButir + qtyButir,
+        totalQtyKg: (Number(bundle.qtyKg) + Number(qtyKgStr)).toFixed(2),
+        isOpen: false,
+      }
+    })
+
+    return { success: true, data: result }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Terjadi kesalahan' }
+  }
+}
+
+export async function getOpenBundlesForCarryOver(
+  farmSchema: string,
+  flockId: string
+): Promise<{ success: boolean; data?: Record<string, OpenBundleGroup>; error?: string }> {
+  try {
+    const rows = await getOpenBundlesQuery(farmSchema, flockId)
+    const grouped: Record<string, OpenBundleGroup> = {}
+    for (const row of rows) {
+      // Only keep the first open bundle per stockItem (carry-over max 1)
+      if (!grouped[row.stockItemId]) {
+        grouped[row.stockItemId] = row
+      }
+    }
+    return { success: true, data: grouped }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Terjadi kesalahan' }
+  }
 }
 
 export async function getExistingBundlesForInput(

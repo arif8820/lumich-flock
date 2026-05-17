@@ -6,6 +6,8 @@ vi.mock('@/lib/db/queries/daily-record.queries', () => ({
   getTotalDepletionByFlock: vi.fn(),
   getCumulativeDepletionByFlockUpTo: vi.fn(),
   getProductionReport: vi.fn(),
+  getBundleById: vi.fn(),
+  getOpenBundlesForCarryOver: vi.fn(),
 }))
 
 vi.mock('@/lib/db/queries/flock.queries', () => ({
@@ -28,8 +30,18 @@ vi.mock('@/lib/services/lock-period.service', () => ({
 vi.mock('@/lib/db/schema-factory', () => ({
   getFarmSchema: vi.fn().mockReturnValue({
     dailyRecords: {},
+    dailyEggRecords: {},
+    inventoryMovements: {},
+    bundleContributions: {},
+    dailyEggBundles: {},
+    stockItems: {},
+    flockDeliveries: { quantity: {}, flockId: {} },
   }),
 }))
+
+// Shared transaction mock — records resolved so we can assert on calls
+const mockTxInsert = vi.fn()
+const mockTxUpdate = vi.fn()
 
 vi.mock('@/lib/db', () => ({
   db: {
@@ -40,17 +52,20 @@ vi.mock('@/lib/db', () => ({
     update: vi.fn().mockReturnThis(),
     set: vi.fn().mockReturnThis(),
     returning: vi.fn().mockResolvedValue([{ id: 'dr-1' }]),
+    transaction: vi.fn(),
   },
 }))
 
 import * as queries from '@/lib/db/queries/daily-record.queries'
 import * as flockQueries from '@/lib/db/queries/flock.queries'
+import { db } from '@/lib/db'
 import {
   validateBackdate,
   computeIsLateInput,
   computeActivePopulation,
   saveDailyRecord,
   getProductionReportData,
+  addBundleContribution,
 } from './daily-record.service'
 
 const FARM = 'test-farm'
@@ -158,6 +173,131 @@ describe('daily-record.service — pure functions', () => {
       expect(result.rows).toHaveLength(0)
       expect(result.kpi.totalDeaths).toBe(0)
       expect(result.kpi.totalCulled).toBe(0)
+    })
+  })
+
+  describe('addBundleContribution', () => {
+    const FARM = 'test-farm'
+    const NOW = new Date('2026-05-17T10:00:00Z')
+
+    const BASE_INPUT = {
+      bundleId: 'bundle-1',
+      recordDate: '2026-05-17',
+      originalRecordDate: '2026-05-16',
+      stockItemId: 'stock-1',
+      trayCount: 6,
+      topTrayCount: 0,
+      qtyKg: 9,
+      flockId: 'flock-1',
+    }
+
+    const OPEN_BUNDLE = {
+      id: 'bundle-1',
+      dailyEggRecordId: 'egg-rec-1',
+      isOpen: true,
+      qtyButir: 270,
+      qtyKg: '9.00',
+      bundleCode: '160526-001',
+    }
+
+    function setupTxMock() {
+      // Simulates a transaction that calls the callback with a tx object
+      // any: mock tx object — no strong type needed in test
+      vi.mocked(db.transaction).mockImplementation(async (fn: any) => { // any: mock callback
+        const tx = {
+          insert: vi.fn().mockReturnValue({
+            values: vi.fn().mockReturnValue({
+              onConflictDoUpdate: vi.fn().mockReturnValue({
+                returning: vi.fn().mockResolvedValue([{ id: 'new-id' }]),
+              }),
+              returning: vi.fn().mockResolvedValue([{ id: 'contrib-1' }]),
+            }),
+          }),
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnValue({
+              where: vi.fn().mockResolvedValue([]),
+            }),
+          }),
+        }
+        return fn(tx)
+      })
+    }
+
+    beforeEach(() => {
+      vi.clearAllMocks()
+      // Also need to clear the top-level db mock
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([{ bundleTargetKg: '15.00' }]),
+          }),
+        }),
+      } as any) // any: partial mock of Drizzle select chain
+    })
+
+    it('happy path: 9kg day-1 bundle gets 6kg contribution on day-2, bundle closes', async () => {
+      vi.mocked(queries.getBundleById).mockResolvedValue(OPEN_BUNDLE)
+      setupTxMock()
+
+      const result = await addBundleContribution(FARM, BASE_INPUT, 'user-1', 'admin', NOW)
+
+      expect(result.success).toBe(true)
+      expect(result.data).toMatchObject({
+        bundleId: 'bundle-1',
+        bundleCode: '160526-001',
+        isOpen: false,
+        totalQtyButir: 270 + 6 * 30 + 0, // 270 + 180 = 450
+        totalQtyKg: (9 + 9).toFixed(2),
+      })
+    })
+
+    it('error: bundle not found', async () => {
+      vi.mocked(queries.getBundleById).mockResolvedValue(null)
+
+      const result = await addBundleContribution(FARM, BASE_INPUT, 'user-1', 'admin', NOW)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toMatch(/tidak ditemukan/)
+    })
+
+    it('error: bundle already closed (is_open = false)', async () => {
+      vi.mocked(queries.getBundleById).mockResolvedValue({ ...OPEN_BUNDLE, isOpen: false })
+
+      const result = await addBundleContribution(FARM, BASE_INPUT, 'user-1', 'admin', NOW)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toMatch(/sudah ditutup/)
+    })
+
+    it('error: gap > 1 day (not H-1)', async () => {
+      vi.mocked(queries.getBundleById).mockResolvedValue(OPEN_BUNDLE)
+
+      // originalRecordDate is 2 days before recordDate
+      const result = await addBundleContribution(
+        FARM,
+        { ...BASE_INPUT, recordDate: '2026-05-18', originalRecordDate: '2026-05-16' },
+        'user-1',
+        'admin',
+        new Date('2026-05-18T10:00:00Z')
+      )
+
+      expect(result.success).toBe(false)
+      expect(result.error).toMatch(/carry-over/)
+    })
+
+    it('error: future date rejected by validateBackdate', async () => {
+      vi.mocked(queries.getBundleById).mockResolvedValue(OPEN_BUNDLE)
+
+      const result = await addBundleContribution(
+        FARM,
+        { ...BASE_INPUT, recordDate: '2026-05-20' },
+        'user-1',
+        'admin',
+        NOW // now is 2026-05-17, recordDate 2026-05-20 is future
+      )
+
+      expect(result.success).toBe(false)
+      expect(result.error).toMatch(/masa depan/)
     })
   })
 
