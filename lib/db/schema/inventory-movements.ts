@@ -10,7 +10,7 @@ export const movementSourceEnum = pgEnum('movement_source', [
 export const movementSourceTypeEnum = pgEnum('movement_source_type', [
   'daily_egg_records', 'daily_feed_records', 'daily_vaccine_records',
   'sales_order_items', 'stock_adjustments', 'regrade_requests',
-  'sales_returns', 'import',
+  'sales_returns', 'import', 'bundle_contributions',
 ])
 
 export const inventoryMovements = pgTable('inventory_movements', {
