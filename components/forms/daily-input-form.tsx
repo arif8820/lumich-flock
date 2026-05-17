@@ -8,6 +8,8 @@ import {
   saveBundleAction,
   deleteBundleAction,
   getExistingBundlesForInputAction,
+  getOpenBundlesForCarryOverAction,
+  addBundleContributionAction,
 } from '@/lib/actions/daily-record.actions'
 import type { FlockOption } from '@/lib/services/daily-record.service'
 import type { BundleWithStockItem } from '@/lib/services/daily-record.service'
@@ -15,6 +17,17 @@ import type { StockItem } from '@/lib/db/schema'
 import { StepperInput } from '@/components/ui/stepper-input'
 
 type StockItemWithBalance = StockItem & { balance: number }
+
+type CarryOverBundle = {
+  bundleId: string
+  bundleCode: string | null
+  bundleIndex: number
+  qtyKg: number
+  qtyButir: number
+  recordDate: string
+  stockItemId: string
+  stockItemName: string
+}
 
 type Props = {
   flocks: FlockOption[]
@@ -93,6 +106,15 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
   // success toast message
   const [bundleToast, setBundleToast] = useState<string | null>(null)
 
+  // carry-over bundles from previous day(s)
+  const [carryOverBundles, setCarryOverBundles] = useState<Record<string, CarryOverBundle[]>>({})
+  const [expandedCarryOver, setExpandedCarryOver] = useState<string | null>(null)
+  const [contributionPending, setContributionPending] = useState<Record<string, boolean>>({})
+
+  // carry-over contribution draft state
+  const [carryDraft, setCarryDraft] = useState<Record<string, { trayCount: number; topTrayCount: number; qtyKg: number }>>({})
+  const [carryError, setCarryError] = useState<Record<string, string>>({})
+
   const [feedEntries, setFeedEntries] = useState<FeedEntry[]>(
     feedItems.map((i) => ({ stockItemId: i.id, qtyUsed: 0 }))
   )
@@ -114,6 +136,18 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
     })
     return () => { cancelled = true }
   }, [flockId, recordDate])
+
+  // Fetch open carry-over bundles when flockId changes
+  useEffect(() => {
+    if (!flockId) return
+    let cancelled = false
+    void getOpenBundlesForCarryOverAction(flockId).then((result) => {
+      if (!cancelled && result.success) {
+        setCarryOverBundles((result.data as Record<string, CarryOverBundle[]>) ?? {})
+      }
+    })
+    return () => { cancelled = true }
+  }, [flockId])
 
   const flock = flocks.find((f) => f.id === flockId)
   const totalDepletion = deaths + culled
@@ -424,10 +458,17 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
                             className="flex items-center justify-between py-1.5 px-2 rounded-lg"
                             style={{ background: 'var(--lf-blue-pale)' }}
                           >
-                            <div className="flex flex-col">
-                              <span className="text-xs font-mono font-semibold" style={{ color: 'var(--lf-blue-active)' }}>
-                                {b.bundleCode ?? `#${b.bundleIndex}`}
-                              </span>
+                            <div className="flex flex-col gap-0.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-mono font-semibold" style={{ color: 'var(--lf-blue-active)' }}>
+                                  {b.bundleCode ?? `#${b.bundleIndex}`}
+                                </span>
+                                {b.isOpen === true ? (
+                                  <span style={{ background: '#fff3cd', color: '#856404', borderRadius: '6px', padding: '1px 8px', fontSize: '11px' }}>Partial</span>
+                                ) : (
+                                  <span style={{ background: '#d4edda', color: '#155724', borderRadius: '6px', padding: '1px 8px', fontSize: '11px' }}>Selesai</span>
+                                )}
+                              </div>
                               <span className="text-[10px]" style={{ color: 'var(--lf-text-soft)' }}>
                                 {b.qtyButir} butir · {parseFloat(b.qtyKg).toFixed(2)} kg
                               </span>
@@ -435,7 +476,8 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
                             <button
                               type="button"
                               onClick={() => void handleDeleteBundle(b.id, b.bundleCode ?? null, b.bundleIndex)}
-                              className="w-6 h-6 flex items-center justify-center rounded text-sm font-bold"
+                              disabled={b.isOpen === false}
+                              className="w-6 h-6 flex items-center justify-center rounded text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed"
                               style={{ color: 'var(--lf-danger-text)' }}
                             >
                               ×
@@ -448,6 +490,167 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
                             {saved.reduce((s, b) => s + b.qtyButir, 0).toLocaleString('id')} butir · {saved.reduce((s, b) => s + parseFloat(b.qtyKg), 0).toFixed(2)} kg
                           </span>
                         </div>
+                      </div>
+                    )}
+
+                    {/* Zona C: Carry-over bundles from previous day */}
+                    {Object.values(carryOverBundles).flat().some((b) => b.stockItemId === item.id) && (
+                      <div className="mt-3 space-y-2 rounded-xl p-3" style={{ background: '#f8f4ff', border: '1px solid #e0d4f5' }}>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: '#6b4fa0' }}>Ikatan Belum Selesai dari Hari Sebelumnya</p>
+                        {(carryOverBundles[item.id] ?? []).map((bundle) => {
+                          const isExpanded = expandedCarryOver === bundle.bundleId
+                          const isPendingContrib = contributionPending[bundle.bundleId] ?? false
+                          const draft = carryDraft[bundle.bundleId] ?? { trayCount: 1, topTrayCount: 0, qtyKg: 0 }
+                          const errMsg = carryError[bundle.bundleId] ?? null
+
+                          // Format recordDate DD/MM/YYYY
+                          const [cy, cm, cd] = bundle.recordDate.split('-')
+                          const formattedDate = `${cd}/${cm}/${cy}`
+
+                          return (
+                            <div key={bundle.bundleId} className="rounded-lg p-2 space-y-2" style={{ background: 'white', border: '1px solid #e0d4f5' }}>
+                              <div className="flex items-center justify-between">
+                                <div className="flex flex-col">
+                                  <span className="text-xs font-mono font-semibold" style={{ color: '#6b4fa0' }}>
+                                    {bundle.bundleCode ?? `Ikatan #${bundle.bundleIndex}`}
+                                  </span>
+                                  <span className="text-[10px]" style={{ color: 'var(--lf-text-soft)' }}>
+                                    {formattedDate} · {bundle.qtyKg.toFixed(2)} kg
+                                  </span>
+                                </div>
+                                {!isExpanded && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setExpandedCarryOver(bundle.bundleId)
+                                      setCarryDraft((prev) => ({ ...prev, [bundle.bundleId]: { trayCount: 1, topTrayCount: 0, qtyKg: 0 } }))
+                                      setCarryError((prev) => ({ ...prev, [bundle.bundleId]: '' }))
+                                    }}
+                                    className="px-3 py-1 rounded-lg text-xs font-semibold"
+                                    style={{ background: '#6b4fa0', color: 'white' }}
+                                  >
+                                    Lengkapi
+                                  </button>
+                                )}
+                              </div>
+
+                              {isExpanded && (
+                                <div className="space-y-2 pt-1">
+                                  <div className="grid grid-cols-3 gap-2">
+                                    <div>
+                                      <label className="text-[10px] font-medium uppercase block mb-1" style={{ color: 'var(--lf-text-mid)' }}>Nampan</label>
+                                      <input
+                                        type="number"
+                                        value={draft.trayCount}
+                                        min={1}
+                                        onChange={(e) => setCarryDraft((prev) => ({
+                                          ...prev,
+                                          [bundle.bundleId]: { ...(prev[bundle.bundleId] ?? { trayCount: 1, topTrayCount: 0, qtyKg: 0 }), trayCount: Math.max(1, parseInt(e.target.value) || 1) },
+                                        }))}
+                                        style={{ borderRadius: '10px', border: '1px solid var(--lf-border)' }}
+                                        className={numInputClass}
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] font-medium uppercase block mb-1" style={{ color: 'var(--lf-text-mid)' }}>Atas</label>
+                                      <input
+                                        type="number"
+                                        value={draft.topTrayCount}
+                                        min={0}
+                                        max={30}
+                                        onChange={(e) => setCarryDraft((prev) => ({
+                                          ...prev,
+                                          [bundle.bundleId]: { ...(prev[bundle.bundleId] ?? { trayCount: 1, topTrayCount: 0, qtyKg: 0 }), topTrayCount: Math.min(30, Math.max(0, parseInt(e.target.value) || 0)) },
+                                        }))}
+                                        style={{ borderRadius: '10px', border: '1px solid var(--lf-border)' }}
+                                        className={numInputClass}
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] font-medium uppercase block mb-1" style={{ color: 'var(--lf-text-mid)' }}>Kg</label>
+                                      <input
+                                        type="number"
+                                        value={draft.qtyKg}
+                                        min={0}
+                                        step={0.01}
+                                        onChange={(e) => setCarryDraft((prev) => ({
+                                          ...prev,
+                                          [bundle.bundleId]: { ...(prev[bundle.bundleId] ?? { trayCount: 1, topTrayCount: 0, qtyKg: 0 }), qtyKg: Math.max(0, parseFloat(e.target.value) || 0) },
+                                        }))}
+                                        style={{ borderRadius: '10px', border: '1px solid var(--lf-border)' }}
+                                        className={numInputClass}
+                                      />
+                                    </div>
+                                  </div>
+                                  {errMsg && (
+                                    <p className="text-xs px-2 py-1 rounded-lg" style={{ color: 'var(--lf-danger-text)', background: 'var(--lf-danger-bg)' }}>
+                                      {errMsg}
+                                    </p>
+                                  )}
+                                  <div className="flex gap-2 justify-end">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setExpandedCarryOver(null)
+                                        setCarryError((prev) => ({ ...prev, [bundle.bundleId]: '' }))
+                                      }}
+                                      className="px-3 py-1 rounded-lg text-xs font-medium"
+                                      style={{ background: 'var(--lf-border)', color: 'var(--lf-text-mid)' }}
+                                    >
+                                      Batal
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={isPendingContrib}
+                                      onClick={async () => {
+                                        setContributionPending((prev) => ({ ...prev, [bundle.bundleId]: true }))
+                                        setCarryError((prev) => ({ ...prev, [bundle.bundleId]: '' }))
+                                        try {
+                                          const result = await addBundleContributionAction({
+                                            bundleId: bundle.bundleId,
+                                            recordDate,
+                                            originalRecordDate: bundle.recordDate,
+                                            stockItemId: bundle.stockItemId,
+                                            flockId,
+                                            trayCount: draft.trayCount,
+                                            topTrayCount: draft.topTrayCount,
+                                            qtyKg: draft.qtyKg,
+                                          })
+                                          if (!result.success) {
+                                            setCarryError((prev) => ({ ...prev, [bundle.bundleId]: result.error ?? 'Gagal menyimpan kontribusi' }))
+                                          } else {
+                                            // Remove from carry-over list
+                                            setCarryOverBundles((prev) => {
+                                              const updated = { ...prev }
+                                              if (updated[bundle.stockItemId]) {
+                                                updated[bundle.stockItemId] = updated[bundle.stockItemId]!.filter((b) => b.bundleId !== bundle.bundleId)
+                                              }
+                                              return updated
+                                            })
+                                            setExpandedCarryOver(null)
+                                            // Reload saved bundles to show closed bundle in Zona B
+                                            if (flockId && recordDate) {
+                                              const bundlesResult = await getExistingBundlesForInputAction(flockId, recordDate)
+                                              if (bundlesResult.success) setSavedBundles(bundlesResult.data)
+                                            }
+                                          }
+                                        } catch {
+                                          setCarryError((prev) => ({ ...prev, [bundle.bundleId]: 'Gagal terhubung ke server' }))
+                                        } finally {
+                                          setContributionPending((prev) => ({ ...prev, [bundle.bundleId]: false }))
+                                        }
+                                      }}
+                                      className="px-3 py-1 rounded-lg text-xs font-semibold disabled:opacity-50"
+                                      style={{ background: '#6b4fa0', color: 'white' }}
+                                    >
+                                      {isPendingContrib ? 'Menyimpan...' : 'Simpan Kontribusi'}
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
                     )}
                   </div>
