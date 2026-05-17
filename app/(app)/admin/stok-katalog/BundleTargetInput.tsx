@@ -28,7 +28,7 @@ export function BundleTargetInput({ itemId, initialValue }: BundleTargetInputPro
 
   return (
     <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--lf-text-mid)' }}>
-      <span>Target:</span>
+      <span>Target Ikatan:</span>
       <input
         type="number"
         step="0.1"
