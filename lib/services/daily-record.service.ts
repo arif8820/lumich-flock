@@ -19,17 +19,17 @@ import { getStockBalance } from '@/lib/db/queries/inventory.queries'
 import { findAllActiveFlocks, findFlockById } from '@/lib/db/queries/flock.queries'
 import { sumDeliveriesQuantityByFlockId } from '@/lib/db/queries/flock-delivery.queries'
 import { findAssignedCoopIds } from '@/lib/db/queries/user-coop-assignment.queries'
+import { assertCanEdit } from '@/lib/services/lock-period.service'
 import { db } from '@/lib/db'
 import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq, and, sql } from 'drizzle-orm'
+import type { DailyRecord, DailyEggBundle } from '@/lib/db/schema'
 
 async function getBundleStockItemIds(farmSchema: string): Promise<string[]> {
   const { stockItems } = getFarmSchema(farmSchema)
   const rows = await db.select({ id: stockItems.id }).from(stockItems).where(eq(stockItems.useBundleMethod, true))
   return rows.map((r) => r.id)
 }
-import { assertCanEdit } from '@/lib/services/lock-period.service'
-import type { DailyRecord, DailyEggBundle } from '@/lib/db/schema'
 
 export type Role = 'operator' | 'supervisor' | 'admin'
 
@@ -240,17 +240,19 @@ export async function saveSingleBundle(
   const qtyKgStr = input.qtyKg.toFixed(2)
   const isLateInput = computeIsLateInput(recordDate, now)
 
-  // Fetch bundle_target_kg to determine if this bundle is partial (open)
   const { dailyRecords, dailyEggRecords, dailyEggBundles: bundlesTable, inventoryMovements, stockItems } = getFarmSchema(farmSchema)
-  const [stockItemRow] = await db
-    .select({ bundleTargetKg: stockItems.bundleTargetKg })
-    .from(stockItems)
-    .where(eq(stockItems.id, input.stockItemId))
-    .limit(1)
-  const targetKg = stockItemRow?.bundleTargetKg ?? null
-  const isOpen = targetKg != null ? Number(qtyKgStr) < Number(targetKg) : false
 
   return db.transaction(async (tx) => {
+    // Fetch bundle_target_kg inside the transaction to avoid TOCTOU race — read
+    // must be consistent with the bundle insert that follows in the same tx.
+    const [stockItemRow] = await tx
+      .select({ bundleTargetKg: stockItems.bundleTargetKg })
+      .from(stockItems)
+      .where(eq(stockItems.id, input.stockItemId))
+      .limit(1)
+    const targetKg = stockItemRow?.bundleTargetKg ?? null
+    const isOpen = targetKg != null ? Number(qtyKgStr) < Number(targetKg) : false
+
     // Upsert daily_records header
     const [record] = await tx
       .insert(dailyRecords)
@@ -417,6 +419,7 @@ export async function addBundleContribution(
   userId: string,
   role: Role,
   now: Date = new Date()
+// catches errors to return result envelope — called from server action
 ): Promise<{ success: boolean; data?: BundleContributionResult; error?: string }> {
   try {
     // 1. Validate backdate lock period
@@ -516,7 +519,7 @@ export async function addBundleContribution(
         .update(bundlesTableTx)
         .set({
           qtyButir: sql`${bundlesTableTx.qtyButir} + ${qtyButir}`,
-          qtyKg: sql`${bundlesTableTx.qtyKg} + ${qtyKgStr}`,
+          qtyKg: sql`${bundlesTableTx.qtyKg} + ${qtyKgStr}::numeric`,
           isOpen: false,
           updatedAt: new Date(),
         })
@@ -545,7 +548,9 @@ export async function getOpenBundlesForCarryOver(
     const rows = await getOpenBundlesQuery(farmSchema, flockId)
     const grouped: Record<string, OpenBundleGroup> = {}
     for (const row of rows) {
-      // Only keep the first open bundle per stockItem (carry-over max 1)
+      // Only the oldest open bundle per stock item is surfaced — carry-over max is 1x,
+      // so at most one open bundle per stock item should exist. Taking only the first
+      // ensures we don't surface multiple partials if data is somehow inconsistent.
       if (!grouped[row.stockItemId]) {
         grouped[row.stockItemId] = row
       }

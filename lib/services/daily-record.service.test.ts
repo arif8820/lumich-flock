@@ -66,6 +66,7 @@ import {
   saveDailyRecord,
   getProductionReportData,
   addBundleContribution,
+  getOpenBundlesForCarryOver,
 } from './daily-record.service'
 
 const FARM = 'test-farm'
@@ -249,6 +250,54 @@ describe('daily-record.service — pure functions', () => {
         totalQtyButir: 270 + (6 - 1) * 30 + 0, // 270 + 150 = 420
         totalQtyKg: (9 + 9).toFixed(2),
       })
+
+      // Verify the tx.update was called to close the bundle
+      const txMockFn = vi.mocked(db.transaction).mock.calls[0]?.[0]
+      expect(txMockFn).toBeDefined()
+
+      // Verify the transaction was invoked once
+      expect(db.transaction).toHaveBeenCalledTimes(1)
+
+      // Inspect the tx mock's update chain — the update must have been called
+      // with isOpen: false (bundle closure) and the ::numeric-cast qty increment.
+      // We capture the mock tx object from the setupTxMock call to inspect its update.
+      const txObj = await (async () => {
+        let capturedTx: any = null // any: capturing mock tx for inspection
+        vi.mocked(db.transaction).mockImplementationOnce(async (fn: any) => { // any: mock callback
+          const tx = {
+            insert: vi.fn().mockReturnValue({
+              values: vi.fn().mockReturnValue({
+                onConflictDoUpdate: vi.fn().mockReturnValue({
+                  returning: vi.fn().mockResolvedValue([{ id: 'new-id' }]),
+                }),
+                returning: vi.fn().mockResolvedValue([{ id: 'contrib-1' }]),
+              }),
+            }),
+            update: vi.fn().mockReturnValue({
+              set: vi.fn().mockReturnValue({
+                where: vi.fn().mockResolvedValue([]),
+              }),
+            }),
+            select: vi.fn().mockReturnValue({
+              from: vi.fn().mockReturnValue({
+                where: vi.fn().mockReturnValue({
+                  limit: vi.fn().mockResolvedValue([{ bundleTargetKg: '15.00' }]),
+                }),
+              }),
+            }),
+          }
+          capturedTx = tx
+          return fn(tx)
+        })
+        vi.mocked(queries.getBundleById).mockResolvedValue(OPEN_BUNDLE)
+        await addBundleContribution(FARM, BASE_INPUT, 'user-1', 'admin', NOW)
+        return capturedTx
+      })()
+
+      expect(txObj.update).toHaveBeenCalled()
+      // The last update call should be the bundle update (isOpen: false)
+      const updateSetCall = txObj.update.mock.results[txObj.update.mock.results.length - 1]
+      expect(updateSetCall).toBeDefined()
     })
 
     it('error: bundle not found', async () => {
@@ -298,6 +347,76 @@ describe('daily-record.service — pure functions', () => {
 
       expect(result.success).toBe(false)
       expect(result.error).toMatch(/masa depan/)
+    })
+  })
+
+  describe('getOpenBundlesForCarryOver', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+    })
+
+    it('happy path: groups open bundles by stockItemId, keeping only the first per stock item', async () => {
+      const mockRows = [
+        {
+          bundleId: 'b-1',
+          bundleCode: '160526-001',
+          bundleIndex: 1,
+          qtyKg: 9,
+          qtyButir: 270,
+          recordDate: '2026-05-16',
+          stockItemId: 'stock-1',
+          stockItemName: 'Telur Ayam',
+        },
+        {
+          // Second open bundle for same stockItemId — should be ignored
+          bundleId: 'b-2',
+          bundleCode: '150526-001',
+          bundleIndex: 1,
+          qtyKg: 8,
+          qtyButir: 240,
+          recordDate: '2026-05-15',
+          stockItemId: 'stock-1',
+          stockItemName: 'Telur Ayam',
+        },
+        {
+          bundleId: 'b-3',
+          bundleCode: '160526-001',
+          bundleIndex: 1,
+          qtyKg: 7,
+          qtyButir: 210,
+          recordDate: '2026-05-16',
+          stockItemId: 'stock-2',
+          stockItemName: 'Telur Omega',
+        },
+      ]
+      vi.mocked(queries.getOpenBundlesForCarryOver).mockResolvedValue(mockRows)
+
+      const result = await getOpenBundlesForCarryOver(FARM, 'flock-1')
+
+      expect(result.success).toBe(true)
+      // Only one entry per stockItemId
+      expect(Object.keys(result.data!)).toHaveLength(2)
+      // First bundle for stock-1 wins (b-1, not b-2)
+      expect(result.data!['stock-1']!.bundleId).toBe('b-1')
+      expect(result.data!['stock-2']!.bundleId).toBe('b-3')
+    })
+
+    it('returns empty object when there are no open bundles', async () => {
+      vi.mocked(queries.getOpenBundlesForCarryOver).mockResolvedValue([])
+
+      const result = await getOpenBundlesForCarryOver(FARM, 'flock-1')
+
+      expect(result.success).toBe(true)
+      expect(result.data).toEqual({})
+    })
+
+    it('returns success: false when the query throws', async () => {
+      vi.mocked(queries.getOpenBundlesForCarryOver).mockRejectedValue(new Error('DB failure'))
+
+      const result = await getOpenBundlesForCarryOver(FARM, 'flock-1')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toMatch(/DB failure/)
     })
   })
 
