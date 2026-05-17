@@ -169,7 +169,7 @@ CREATE TABLE "daily_egg_records" (
     "updated_at" timestamp with time zone
 );
 
-CREATE TABLE IF NOT EXISTS "daily_egg_bundles" (
+CREATE TABLE "daily_egg_bundles" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   "daily_egg_record_id" uuid NOT NULL,
   "bundle_index" integer NOT NULL,
@@ -179,13 +179,9 @@ CREATE TABLE IF NOT EXISTS "daily_egg_bundles" (
   "qty_kg" numeric(8, 2) NOT NULL,
   "bundle_code" varchar(12),
   "is_open" boolean NOT NULL DEFAULT false,
-  "created_at" timestamptz DEFAULT now() NOT NULL,
-  "updated_at" timestamptz
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "updated_at" timestamp with time zone
 );
-ALTER TABLE "daily_egg_bundles" ADD CONSTRAINT "daily_egg_bundles_daily_egg_record_id_fk"
-  FOREIGN KEY ("daily_egg_record_id") REFERENCES "daily_egg_records"("id") ON DELETE cascade ON UPDATE no action;
-CREATE UNIQUE INDEX "daily_egg_bundles_record_index_unique"
-  ON "daily_egg_bundles" USING btree ("daily_egg_record_id", "bundle_index");
 
 CREATE TABLE "bundle_contributions" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -194,14 +190,8 @@ CREATE TABLE "bundle_contributions" (
   "qty_butir" integer NOT NULL,
   "qty_kg" numeric(8, 2) NOT NULL,
   "created_by" uuid,
-  "created_at" timestamptz DEFAULT now() NOT NULL
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
-ALTER TABLE "bundle_contributions" ADD CONSTRAINT "bundle_contributions_bundle_id_fk"
-  FOREIGN KEY ("bundle_id") REFERENCES "daily_egg_bundles"("id") ON DELETE cascade ON UPDATE no action;
-ALTER TABLE "bundle_contributions" ADD CONSTRAINT "bundle_contributions_daily_egg_record_id_fk"
-  FOREIGN KEY ("daily_egg_record_id") REFERENCES "daily_egg_records"("id") ON DELETE no action ON UPDATE no action;
-ALTER TABLE "bundle_contributions" ADD CONSTRAINT "bundle_contributions_created_by_fk"
-  FOREIGN KEY ("created_by") REFERENCES "users"("id") ON DELETE no action ON UPDATE no action;
 
 CREATE TABLE "daily_feed_records" (
     "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -517,6 +507,12 @@ ALTER TABLE "daily_records" ADD CONSTRAINT "daily_records_imported_by_users_id_f
 ALTER TABLE "daily_egg_records" ADD CONSTRAINT "daily_egg_records_daily_record_id_daily_records_id_fk" FOREIGN KEY ("daily_record_id") REFERENCES "daily_records"("id") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "daily_egg_records" ADD CONSTRAINT "daily_egg_records_stock_item_id_stock_items_id_fk" FOREIGN KEY ("stock_item_id") REFERENCES "stock_items"("id") ON DELETE no action ON UPDATE no action;
 
+ALTER TABLE "daily_egg_bundles" ADD CONSTRAINT "daily_egg_bundles_daily_egg_record_id_fk" FOREIGN KEY ("daily_egg_record_id") REFERENCES "daily_egg_records"("id") ON DELETE cascade ON UPDATE no action;
+
+ALTER TABLE "bundle_contributions" ADD CONSTRAINT "bundle_contributions_bundle_id_fk" FOREIGN KEY ("bundle_id") REFERENCES "daily_egg_bundles"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "bundle_contributions" ADD CONSTRAINT "bundle_contributions_daily_egg_record_id_fk" FOREIGN KEY ("daily_egg_record_id") REFERENCES "daily_egg_records"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "bundle_contributions" ADD CONSTRAINT "bundle_contributions_created_by_fk" FOREIGN KEY ("created_by") REFERENCES "users"("id") ON DELETE no action ON UPDATE no action;
+
 ALTER TABLE "daily_feed_records" ADD CONSTRAINT "daily_feed_records_daily_record_id_daily_records_id_fk" FOREIGN KEY ("daily_record_id") REFERENCES "daily_records"("id") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "daily_feed_records" ADD CONSTRAINT "daily_feed_records_stock_item_id_stock_items_id_fk" FOREIGN KEY ("stock_item_id") REFERENCES "stock_items"("id") ON DELETE no action ON UPDATE no action;
 
@@ -584,6 +580,7 @@ CREATE UNIQUE INDEX "notification_reads_unique" ON "notification_reads" USING bt
 CREATE UNIQUE INDEX "alert_cooldowns_unique" ON "alert_cooldowns" USING btree ("alert_type","entity_id");
 CREATE UNIQUE INDEX "stock_items_category_name_unique" ON "stock_items" USING btree ("category_id","name");
 CREATE UNIQUE INDEX "daily_egg_records_record_item_unique" ON "daily_egg_records" USING btree ("daily_record_id","stock_item_id");
+CREATE UNIQUE INDEX "daily_egg_bundles_record_index_unique" ON "daily_egg_bundles" USING btree ("daily_egg_record_id", "bundle_index");
 CREATE UNIQUE INDEX "daily_feed_records_record_item_unique" ON "daily_feed_records" USING btree ("daily_record_id","stock_item_id");
 CREATE UNIQUE INDEX "daily_vaccine_records_record_item_unique" ON "daily_vaccine_records" USING btree ("daily_record_id","stock_item_id");
 CREATE UNIQUE INDEX "flocks_one_active_per_coop" ON "flocks" ("coop_id") WHERE "retired_at" IS NULL;
