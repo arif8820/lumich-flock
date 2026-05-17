@@ -59,7 +59,7 @@ export async function updateBundleAfterContribution(
   farmSchema: string,
   bundleId: string,
   addQtyButir: number,
-  addQtyKg: number
+  addQtyKg: string
 ): Promise<void> {
   const { dailyEggBundles: bundlesTable } = getFarmSchema(farmSchema)
   await db
