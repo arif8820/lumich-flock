@@ -3,6 +3,103 @@ import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq, and, desc, sum, asc, inArray, sql, max } from 'drizzle-orm'
 import { DailyEggBundle, NewDailyEggBundle } from '@/lib/db/schema'
 
+export async function getOpenBundlesForCarryOver(
+  farmSchema: string,
+  flockId: string
+): Promise<Array<{
+  bundleId: string
+  bundleCode: string | null
+  bundleIndex: number
+  qtyKg: number
+  qtyButir: number
+  recordDate: string
+  stockItemId: string
+  stockItemName: string
+}>> {
+  const { dailyEggBundles: bundlesTable, dailyEggRecords, dailyRecords, stockItems } = getFarmSchema(farmSchema)
+  const rows = await db
+    .select({
+      bundleId: bundlesTable.id,
+      bundleCode: bundlesTable.bundleCode,
+      bundleIndex: bundlesTable.bundleIndex,
+      qtyKg: bundlesTable.qtyKg,
+      qtyButir: bundlesTable.qtyButir,
+      recordDate: dailyRecords.recordDate,
+      stockItemId: stockItems.id,
+      stockItemName: stockItems.name,
+    })
+    .from(bundlesTable)
+    .innerJoin(dailyEggRecords, eq(bundlesTable.dailyEggRecordId, dailyEggRecords.id))
+    .innerJoin(dailyRecords, eq(dailyEggRecords.dailyRecordId, dailyRecords.id))
+    .innerJoin(stockItems, eq(dailyEggRecords.stockItemId, stockItems.id))
+    .where(and(eq(bundlesTable.isOpen, true), eq(dailyRecords.flockId, flockId)))
+    .orderBy(asc(dailyRecords.recordDate), asc(bundlesTable.bundleIndex))
+  return rows.map((r) => ({
+    ...r,
+    qtyKg: Number(r.qtyKg),
+  }))
+}
+
+export async function insertBundleContribution(
+  farmSchema: string,
+  data: {
+    bundleId: string
+    dailyEggRecordId: string
+    qtyButir: number
+    qtyKg: string
+    createdBy: string | null
+  }
+): Promise<{ id: string; bundleId: string; dailyEggRecordId: string; qtyButir: number; qtyKg: string; createdAt: Date }> {
+  const { bundleContributions } = getFarmSchema(farmSchema)
+  const [inserted] = await db.insert(bundleContributions).values(data).returning()
+  return inserted!
+}
+
+export async function updateBundleAfterContribution(
+  farmSchema: string,
+  bundleId: string,
+  addQtyButir: number,
+  addQtyKg: number
+): Promise<void> {
+  const { dailyEggBundles: bundlesTable } = getFarmSchema(farmSchema)
+  await db
+    .update(bundlesTable)
+    .set({
+      qtyButir: sql`${bundlesTable.qtyButir} + ${addQtyButir}`,
+      qtyKg: sql`${bundlesTable.qtyKg} + ${addQtyKg}`,
+      isOpen: false,
+      updatedAt: new Date(),
+    })
+    .where(eq(bundlesTable.id, bundleId))
+}
+
+export async function getBundleById(
+  farmSchema: string,
+  bundleId: string
+): Promise<{
+  id: string
+  dailyEggRecordId: string
+  isOpen: boolean
+  qtyButir: number
+  qtyKg: string
+  bundleCode: string | null
+} | null> {
+  const { dailyEggBundles: bundlesTable } = getFarmSchema(farmSchema)
+  const [row] = await db
+    .select({
+      id: bundlesTable.id,
+      dailyEggRecordId: bundlesTable.dailyEggRecordId,
+      isOpen: bundlesTable.isOpen,
+      qtyButir: bundlesTable.qtyButir,
+      qtyKg: bundlesTable.qtyKg,
+      bundleCode: bundlesTable.bundleCode,
+    })
+    .from(bundlesTable)
+    .where(eq(bundlesTable.id, bundleId))
+    .limit(1)
+  return row ?? null
+}
+
 export type DailySubRecords = {
   eggRecords: { stockItemId: string; qtyButir: number; qtyKg: number }[]
   feedRecords: { stockItemId: string; qtyUsed: number }[]
