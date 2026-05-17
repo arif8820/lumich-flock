@@ -1,136 +1,9 @@
 {
-  "id": "224fb474-41be-4792-a380-9975147376ca",
+  "id": "e98446e9-7156-4cee-b3df-77f8363bdade",
   "prevId": "5cf01884-2a2c-4708-ab03-c4c4edd3e30c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.roles": {
-      "name": "roles",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "display_name": {
-          "name": "display_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "is_system": {
-          "name": "is_system",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "roles_name_unique": {
-          "name": "roles_name_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "name"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.role_permissions": {
-      "name": "role_permissions",
-      "schema": "",
-      "columns": {
-        "role_id": {
-          "name": "role_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "permission_key": {
-          "name": "permission_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "granted_at": {
-          "name": "granted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "granted_by": {
-          "name": "granted_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "role_permissions_role_id_roles_id_fk": {
-          "name": "role_permissions_role_id_roles_id_fk",
-          "tableFrom": "role_permissions",
-          "tableTo": "roles",
-          "columnsFrom": [
-            "role_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "role_permissions_role_id_permission_key_pk": {
-          "name": "role_permissions_role_id_permission_key_pk",
-          "columns": [
-            "role_id",
-            "permission_key"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.users": {
       "name": "users",
       "schema": "",
@@ -150,18 +23,6 @@
         "full_name": {
           "name": "full_name",
           "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "phone": {
-          "name": "phone",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "role_id": {
-          "name": "role_id",
-          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -190,6 +51,12 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
+        },
+        "role_id": {
+          "name": "role_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
         }
       },
       "indexes": {},
@@ -197,25 +64,25 @@
         "users_role_id_roles_id_fk": {
           "name": "users_role_id_roles_id_fk",
           "tableFrom": "users",
-          "tableTo": "roles",
           "columnsFrom": [
             "role_id"
           ],
+          "tableTo": "roles",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "users_email_unique": {
           "name": "users_email_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "email"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -279,10 +146,10 @@
       "uniqueConstraints": {
         "coops_name_unique": {
           "name": "coops_name_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "name"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -318,9 +185,9 @@
           "primaryKey": false,
           "notNull": true
         },
-        "doc_date": {
-          "name": "doc_date",
-          "type": "date",
+        "initial_count": {
+          "name": "initial_count",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
@@ -386,144 +253,54 @@
         "flocks_coop_id_coops_id_fk": {
           "name": "flocks_coop_id_coops_id_fk",
           "tableFrom": "flocks",
-          "tableTo": "coops",
           "columnsFrom": [
             "coop_id"
           ],
+          "tableTo": "coops",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "flocks_imported_by_users_id_fk": {
           "name": "flocks_imported_by_users_id_fk",
           "tableFrom": "flocks",
-          "tableTo": "users",
           "columnsFrom": [
             "imported_by"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "flocks_created_by_users_id_fk": {
           "name": "flocks_created_by_users_id_fk",
           "tableFrom": "flocks",
-          "tableTo": "users",
           "columnsFrom": [
             "created_by"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "flocks_updated_by_users_id_fk": {
           "name": "flocks_updated_by_users_id_fk",
           "tableFrom": "flocks",
-          "tableTo": "users",
           "columnsFrom": [
             "updated_by"
           ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.flock_deliveries": {
-      "name": "flock_deliveries",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "flock_id": {
-          "name": "flock_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "delivery_date": {
-          "name": "delivery_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "quantity": {
-          "name": "quantity",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "age_at_arrival_days": {
-          "name": "age_at_arrival_days",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "notes": {
-          "name": "notes",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "flock_deliveries_flock_id_flocks_id_fk": {
-          "name": "flock_deliveries_flock_id_flocks_id_fk",
-          "tableFrom": "flock_deliveries",
-          "tableTo": "flocks",
-          "columnsFrom": [
-            "flock_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "flock_deliveries_created_by_users_id_fk": {
-          "name": "flock_deliveries_created_by_users_id_fk",
-          "tableFrom": "flock_deliveries",
           "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -697,28 +474,28 @@
         "customers_imported_by_users_id_fk": {
           "name": "customers_imported_by_users_id_fk",
           "tableFrom": "customers",
-          "tableTo": "users",
           "columnsFrom": [
             "imported_by"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "customers_created_by_users_id_fk": {
           "name": "customers_created_by_users_id_fk",
           "tableFrom": "customers",
-          "tableTo": "users",
           "columnsFrom": [
             "created_by"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -763,39 +540,39 @@
         "user_coop_assignments_user_id_users_id_fk": {
           "name": "user_coop_assignments_user_id_users_id_fk",
           "tableFrom": "user_coop_assignments",
-          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "user_coop_assignments_coop_id_coops_id_fk": {
           "name": "user_coop_assignments_coop_id_coops_id_fk",
           "tableFrom": "user_coop_assignments",
-          "tableTo": "coops",
           "columnsFrom": [
             "coop_id"
           ],
+          "tableTo": "coops",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "user_coop_assignments_user_id_coop_id_unique": {
           "name": "user_coop_assignments_user_id_coop_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "user_id",
             "coop_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -911,50 +688,50 @@
             }
           ],
           "isUnique": true,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "daily_records_flock_id_flocks_id_fk": {
           "name": "daily_records_flock_id_flocks_id_fk",
           "tableFrom": "daily_records",
-          "tableTo": "flocks",
           "columnsFrom": [
             "flock_id"
           ],
+          "tableTo": "flocks",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "daily_records_imported_by_users_id_fk": {
           "name": "daily_records_imported_by_users_id_fk",
           "tableFrom": "daily_records",
-          "tableTo": "users",
           "columnsFrom": [
             "imported_by"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "daily_records_created_by_users_id_fk": {
           "name": "daily_records_created_by_users_id_fk",
           "tableFrom": "daily_records",
-          "tableTo": "users",
           "columnsFrom": [
             "created_by"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1063,54 +840,54 @@
         "inventory_movements_stock_item_id_stock_items_id_fk": {
           "name": "inventory_movements_stock_item_id_stock_items_id_fk",
           "tableFrom": "inventory_movements",
-          "tableTo": "stock_items",
           "columnsFrom": [
             "stock_item_id"
           ],
+          "tableTo": "stock_items",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "inventory_movements_flock_id_flocks_id_fk": {
           "name": "inventory_movements_flock_id_flocks_id_fk",
           "tableFrom": "inventory_movements",
-          "tableTo": "flocks",
           "columnsFrom": [
             "flock_id"
           ],
+          "tableTo": "flocks",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "inventory_movements_imported_by_users_id_fk": {
           "name": "inventory_movements_imported_by_users_id_fk",
           "tableFrom": "inventory_movements",
-          "tableTo": "users",
           "columnsFrom": [
             "imported_by"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "inventory_movements_created_by_users_id_fk": {
           "name": "inventory_movements_created_by_users_id_fk",
           "tableFrom": "inventory_movements",
-          "tableTo": "users",
           "columnsFrom": [
             "created_by"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1185,41 +962,41 @@
         "stock_adjustments_stock_item_id_stock_items_id_fk": {
           "name": "stock_adjustments_stock_item_id_stock_items_id_fk",
           "tableFrom": "stock_adjustments",
-          "tableTo": "stock_items",
           "columnsFrom": [
             "stock_item_id"
           ],
+          "tableTo": "stock_items",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "stock_adjustments_flock_id_flocks_id_fk": {
           "name": "stock_adjustments_flock_id_flocks_id_fk",
           "tableFrom": "stock_adjustments",
-          "tableTo": "flocks",
           "columnsFrom": [
             "flock_id"
           ],
+          "tableTo": "flocks",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "stock_adjustments_created_by_users_id_fk": {
           "name": "stock_adjustments_created_by_users_id_fk",
           "tableFrom": "stock_adjustments",
-          "tableTo": "users",
           "columnsFrom": [
             "created_by"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1308,54 +1085,54 @@
         "regrade_requests_from_item_id_stock_items_id_fk": {
           "name": "regrade_requests_from_item_id_stock_items_id_fk",
           "tableFrom": "regrade_requests",
-          "tableTo": "stock_items",
           "columnsFrom": [
             "from_item_id"
           ],
+          "tableTo": "stock_items",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "regrade_requests_to_item_id_stock_items_id_fk": {
           "name": "regrade_requests_to_item_id_stock_items_id_fk",
           "tableFrom": "regrade_requests",
-          "tableTo": "stock_items",
           "columnsFrom": [
             "to_item_id"
           ],
+          "tableTo": "stock_items",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "regrade_requests_created_by_users_id_fk": {
           "name": "regrade_requests_created_by_users_id_fk",
           "tableFrom": "regrade_requests",
-          "tableTo": "users",
           "columnsFrom": [
             "created_by"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "regrade_requests_reviewed_by_users_id_fk": {
           "name": "regrade_requests_reviewed_by_users_id_fk",
           "tableFrom": "regrade_requests",
-          "tableTo": "users",
           "columnsFrom": [
             "reviewed_by"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1470,51 +1247,51 @@
         "sales_orders_customer_id_customers_id_fk": {
           "name": "sales_orders_customer_id_customers_id_fk",
           "tableFrom": "sales_orders",
-          "tableTo": "customers",
           "columnsFrom": [
             "customer_id"
           ],
+          "tableTo": "customers",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "sales_orders_created_by_users_id_fk": {
           "name": "sales_orders_created_by_users_id_fk",
           "tableFrom": "sales_orders",
-          "tableTo": "users",
           "columnsFrom": [
             "created_by"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "sales_orders_updated_by_users_id_fk": {
           "name": "sales_orders_updated_by_users_id_fk",
           "tableFrom": "sales_orders",
-          "tableTo": "users",
           "columnsFrom": [
             "updated_by"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "sales_orders_order_number_unique": {
           "name": "sales_orders_order_number_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "order_number"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -1595,15 +1372,15 @@
         "sales_order_items_order_id_sales_orders_id_fk": {
           "name": "sales_order_items_order_id_sales_orders_id_fk",
           "tableFrom": "sales_order_items",
-          "tableTo": "sales_orders",
           "columnsFrom": [
             "order_id"
           ],
+          "tableTo": "sales_orders",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1705,64 +1482,64 @@
         "sales_returns_order_id_sales_orders_id_fk": {
           "name": "sales_returns_order_id_sales_orders_id_fk",
           "tableFrom": "sales_returns",
-          "tableTo": "sales_orders",
           "columnsFrom": [
             "order_id"
           ],
+          "tableTo": "sales_orders",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "sales_returns_customer_id_customers_id_fk": {
           "name": "sales_returns_customer_id_customers_id_fk",
           "tableFrom": "sales_returns",
-          "tableTo": "customers",
           "columnsFrom": [
             "customer_id"
           ],
+          "tableTo": "customers",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "sales_returns_submitted_by_users_id_fk": {
           "name": "sales_returns_submitted_by_users_id_fk",
           "tableFrom": "sales_returns",
-          "tableTo": "users",
           "columnsFrom": [
             "submitted_by"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "sales_returns_reviewed_by_users_id_fk": {
           "name": "sales_returns_reviewed_by_users_id_fk",
           "tableFrom": "sales_returns",
-          "tableTo": "users",
           "columnsFrom": [
             "reviewed_by"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "sales_returns_return_number_unique": {
           "name": "sales_returns_return_number_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "return_number"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -1818,15 +1595,15 @@
         "sales_return_items_return_id_sales_returns_id_fk": {
           "name": "sales_return_items_return_id_sales_returns_id_fk",
           "tableFrom": "sales_return_items",
-          "tableTo": "sales_returns",
           "columnsFrom": [
             "return_id"
           ],
+          "tableTo": "sales_returns",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1958,64 +1735,64 @@
         "invoices_order_id_sales_orders_id_fk": {
           "name": "invoices_order_id_sales_orders_id_fk",
           "tableFrom": "invoices",
-          "tableTo": "sales_orders",
           "columnsFrom": [
             "order_id"
           ],
+          "tableTo": "sales_orders",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "invoices_return_id_sales_returns_id_fk": {
           "name": "invoices_return_id_sales_returns_id_fk",
           "tableFrom": "invoices",
-          "tableTo": "sales_returns",
           "columnsFrom": [
             "return_id"
           ],
+          "tableTo": "sales_returns",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "invoices_customer_id_customers_id_fk": {
           "name": "invoices_customer_id_customers_id_fk",
           "tableFrom": "invoices",
-          "tableTo": "customers",
           "columnsFrom": [
             "customer_id"
           ],
+          "tableTo": "customers",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "invoices_created_by_users_id_fk": {
           "name": "invoices_created_by_users_id_fk",
           "tableFrom": "invoices",
-          "tableTo": "users",
           "columnsFrom": [
             "created_by"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "invoices_invoice_number_unique": {
           "name": "invoices_invoice_number_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "invoice_number"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -2089,28 +1866,28 @@
         "payments_invoice_id_invoices_id_fk": {
           "name": "payments_invoice_id_invoices_id_fk",
           "tableFrom": "payments",
-          "tableTo": "invoices",
           "columnsFrom": [
             "invoice_id"
           ],
+          "tableTo": "invoices",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "payments_created_by_users_id_fk": {
           "name": "payments_created_by_users_id_fk",
           "tableFrom": "payments",
-          "tableTo": "users",
           "columnsFrom": [
             "created_by"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2187,41 +1964,41 @@
         "customer_credits_customer_id_customers_id_fk": {
           "name": "customer_credits_customer_id_customers_id_fk",
           "tableFrom": "customer_credits",
-          "tableTo": "customers",
           "columnsFrom": [
             "customer_id"
           ],
+          "tableTo": "customers",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "customer_credits_source_payment_id_payments_id_fk": {
           "name": "customer_credits_source_payment_id_payments_id_fk",
           "tableFrom": "customer_credits",
-          "tableTo": "payments",
           "columnsFrom": [
             "source_payment_id"
           ],
+          "tableTo": "payments",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "customer_credits_source_invoice_id_invoices_id_fk": {
           "name": "customer_credits_source_invoice_id_invoices_id_fk",
           "tableFrom": "customer_credits",
-          "tableTo": "invoices",
           "columnsFrom": [
             "source_invoice_id"
           ],
+          "tableTo": "invoices",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2304,15 +2081,15 @@
         "correction_records_corrected_by_users_id_fk": {
           "name": "correction_records_corrected_by_users_id_fk",
           "tableFrom": "correction_records",
-          "tableTo": "users",
           "columnsFrom": [
             "corrected_by"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2435,37 +2212,37 @@
             }
           ],
           "isUnique": true,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "notification_reads_notification_id_notifications_id_fk": {
           "name": "notification_reads_notification_id_notifications_id_fk",
           "tableFrom": "notification_reads",
-          "tableTo": "notifications",
           "columnsFrom": [
             "notification_id"
           ],
+          "tableTo": "notifications",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "notification_reads_user_id_users_id_fk": {
           "name": "notification_reads_user_id_users_id_fk",
           "tableFrom": "notification_reads",
-          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2528,9 +2305,9 @@
             }
           ],
           "isUnique": true,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {},
@@ -2574,15 +2351,15 @@
         "app_settings_updated_by_users_id_fk": {
           "name": "app_settings_updated_by_users_id_fk",
           "tableFrom": "app_settings",
-          "tableTo": "users",
           "columnsFrom": [
             "updated_by"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2641,10 +2418,10 @@
       "uniqueConstraints": {
         "stock_categories_name_unique": {
           "name": "stock_categories_name_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "name"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -2681,19 +2458,6 @@
           "notNull": true,
           "default": true
         },
-        "use_bundle_method": {
-          "name": "use_bundle_method",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "bundle_target_kg": {
-          "name": "bundle_target_kg",
-          "type": "numeric(8, 2)",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -2704,6 +2468,19 @@
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "use_bundle_method": {
+          "name": "use_bundle_method",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "bundle_target_kg": {
+          "name": "bundle_target_kg",
+          "type": "numeric(8, 2)",
           "primaryKey": false,
           "notNull": false
         }
@@ -2726,24 +2503,24 @@
             }
           ],
           "isUnique": true,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "stock_items_category_id_stock_categories_id_fk": {
           "name": "stock_items_category_id_stock_categories_id_fk",
           "tableFrom": "stock_items",
-          "tableTo": "stock_categories",
           "columnsFrom": [
             "category_id"
           ],
+          "tableTo": "stock_categories",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2821,252 +2598,37 @@
             }
           ],
           "isUnique": true,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "daily_egg_records_daily_record_id_daily_records_id_fk": {
           "name": "daily_egg_records_daily_record_id_daily_records_id_fk",
           "tableFrom": "daily_egg_records",
-          "tableTo": "daily_records",
           "columnsFrom": [
             "daily_record_id"
           ],
+          "tableTo": "daily_records",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "daily_egg_records_stock_item_id_stock_items_id_fk": {
           "name": "daily_egg_records_stock_item_id_stock_items_id_fk",
           "tableFrom": "daily_egg_records",
-          "tableTo": "stock_items",
           "columnsFrom": [
             "stock_item_id"
           ],
+          "tableTo": "stock_items",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.daily_egg_bundles": {
-      "name": "daily_egg_bundles",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "daily_egg_record_id": {
-          "name": "daily_egg_record_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "bundle_index": {
-          "name": "bundle_index",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "tray_count": {
-          "name": "tray_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "top_tray_count": {
-          "name": "top_tray_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "qty_butir": {
-          "name": "qty_butir",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "qty_kg": {
-          "name": "qty_kg",
-          "type": "numeric(8, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "bundle_code": {
-          "name": "bundle_code",
-          "type": "varchar(12)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "is_open": {
-          "name": "is_open",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "daily_egg_bundles_record_index_unique": {
-          "name": "daily_egg_bundles_record_index_unique",
-          "columns": [
-            {
-              "expression": "daily_egg_record_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "bundle_index",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "daily_egg_bundles_daily_egg_record_id_daily_egg_records_id_fk": {
-          "name": "daily_egg_bundles_daily_egg_record_id_daily_egg_records_id_fk",
-          "tableFrom": "daily_egg_bundles",
-          "tableTo": "daily_egg_records",
-          "columnsFrom": [
-            "daily_egg_record_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.bundle_contributions": {
-      "name": "bundle_contributions",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "bundle_id": {
-          "name": "bundle_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "daily_egg_record_id": {
-          "name": "daily_egg_record_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "qty_butir": {
-          "name": "qty_butir",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "qty_kg": {
-          "name": "qty_kg",
-          "type": "numeric(8, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "bundle_contributions_bundle_id_daily_egg_bundles_id_fk": {
-          "name": "bundle_contributions_bundle_id_daily_egg_bundles_id_fk",
-          "tableFrom": "bundle_contributions",
-          "tableTo": "daily_egg_bundles",
-          "columnsFrom": [
-            "bundle_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "bundle_contributions_daily_egg_record_id_daily_egg_records_id_fk": {
-          "name": "bundle_contributions_daily_egg_record_id_daily_egg_records_id_fk",
-          "tableFrom": "bundle_contributions",
-          "tableTo": "daily_egg_records",
-          "columnsFrom": [
-            "daily_egg_record_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "bundle_contributions_created_by_users_id_fk": {
-          "name": "bundle_contributions_created_by_users_id_fk",
-          "tableFrom": "bundle_contributions",
-          "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -3136,37 +2698,37 @@
             }
           ],
           "isUnique": true,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "daily_feed_records_daily_record_id_daily_records_id_fk": {
           "name": "daily_feed_records_daily_record_id_daily_records_id_fk",
           "tableFrom": "daily_feed_records",
-          "tableTo": "daily_records",
           "columnsFrom": [
             "daily_record_id"
           ],
+          "tableTo": "daily_records",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "daily_feed_records_stock_item_id_stock_items_id_fk": {
           "name": "daily_feed_records_stock_item_id_stock_items_id_fk",
           "tableFrom": "daily_feed_records",
-          "tableTo": "stock_items",
           "columnsFrom": [
             "stock_item_id"
           ],
+          "tableTo": "stock_items",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -3236,18 +2798,348 @@
             }
           ],
           "isUnique": true,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "daily_vaccine_records_daily_record_id_daily_records_id_fk": {
           "name": "daily_vaccine_records_daily_record_id_daily_records_id_fk",
           "tableFrom": "daily_vaccine_records",
-          "tableTo": "daily_records",
           "columnsFrom": [
             "daily_record_id"
+          ],
+          "tableTo": "daily_records",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "daily_vaccine_records_stock_item_id_stock_items_id_fk": {
+          "name": "daily_vaccine_records_stock_item_id_stock_items_id_fk",
+          "tableFrom": "daily_vaccine_records",
+          "columnsFrom": [
+            "stock_item_id"
+          ],
+          "tableTo": "stock_items",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.roles": {
+      "name": "roles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_system": {
+          "name": "is_system",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "roles_name_unique": {
+          "name": "roles_name_unique",
+          "columns": [
+            "name"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.role_permissions": {
+      "name": "role_permissions",
+      "schema": "",
+      "columns": {
+        "role_id": {
+          "name": "role_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "permission_key": {
+          "name": "permission_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "granted_at": {
+          "name": "granted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "granted_by": {
+          "name": "granted_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "role_permissions_role_id_roles_id_fk": {
+          "name": "role_permissions_role_id_roles_id_fk",
+          "tableFrom": "role_permissions",
+          "columnsFrom": [
+            "role_id"
+          ],
+          "tableTo": "roles",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {
+        "role_permissions_role_id_permission_key_pk": {
+          "name": "role_permissions_role_id_permission_key_pk",
+          "columns": [
+            "role_id",
+            "permission_key"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.daily_egg_bundles": {
+      "name": "daily_egg_bundles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "daily_egg_record_id": {
+          "name": "daily_egg_record_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bundle_index": {
+          "name": "bundle_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tray_count": {
+          "name": "tray_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "top_tray_count": {
+          "name": "top_tray_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "qty_butir": {
+          "name": "qty_butir",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "qty_kg": {
+          "name": "qty_kg",
+          "type": "numeric(8, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bundle_code": {
+          "name": "bundle_code",
+          "type": "varchar(12)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_open": {
+          "name": "is_open",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {
+        "daily_egg_bundles_record_index_unique": {
+          "name": "daily_egg_bundles_record_index_unique",
+          "columns": [
+            {
+              "expression": "daily_egg_record_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "bundle_index",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "daily_egg_bundles_daily_egg_record_id_daily_egg_records_id_fk": {
+          "name": "daily_egg_bundles_daily_egg_record_id_daily_egg_records_id_fk",
+          "tableFrom": "daily_egg_bundles",
+          "columnsFrom": [
+            "daily_egg_record_id"
+          ],
+          "tableTo": "daily_egg_records",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.bundle_contributions": {
+      "name": "bundle_contributions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "bundle_id": {
+          "name": "bundle_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "daily_egg_record_id": {
+          "name": "daily_egg_record_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "qty_butir": {
+          "name": "qty_butir",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "qty_kg": {
+          "name": "qty_kg",
+          "type": "numeric(8, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "bundle_contributions_bundle_id_daily_egg_bundles_id_fk": {
+          "name": "bundle_contributions_bundle_id_daily_egg_bundles_id_fk",
+          "tableFrom": "bundle_contributions",
+          "tableTo": "daily_egg_bundles",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "bundle_id"
           ],
           "columnsTo": [
             "id"
@@ -3255,340 +3147,13 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "daily_vaccine_records_stock_item_id_stock_items_id_fk": {
-          "name": "daily_vaccine_records_stock_item_id_stock_items_id_fk",
-          "tableFrom": "daily_vaccine_records",
-          "tableTo": "stock_items",
+        "bundle_contributions_daily_egg_record_id_daily_egg_records_id_fk": {
+          "name": "bundle_contributions_daily_egg_record_id_daily_egg_records_id_fk",
+          "tableFrom": "bundle_contributions",
+          "tableTo": "daily_egg_records",
+          "schemaTo": "public",
           "columnsFrom": [
-            "stock_item_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.farms": {
-      "name": "farms",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "schema_name": {
-          "name": "schema_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "farms_schema_name_unique": {
-          "name": "farms_schema_name_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "schema_name"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.farm_users": {
-      "name": "farm_users",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "email": {
-          "name": "email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "farm_schema": {
-          "name": "farm_schema",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "farm_users_farm_schema_farms_schema_name_fk": {
-          "name": "farm_users_farm_schema_farms_schema_name_fk",
-          "tableFrom": "farm_users",
-          "tableTo": "farms",
-          "columnsFrom": [
-            "farm_schema"
-          ],
-          "columnsTo": [
-            "schema_name"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "farm_users_email_unique": {
-          "name": "farm_users_email_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.cash_categories": {
-      "name": "cash_categories",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "type": {
-          "name": "type",
-          "type": "cash_category_type",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.cash_accounts": {
-      "name": "cash_accounts",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "type": {
-          "name": "type",
-          "type": "cash_account_type",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "beginning_balance": {
-          "name": "beginning_balance",
-          "type": "numeric(15, 2)",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'0'"
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.cash_transactions": {
-      "name": "cash_transactions",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "account_id": {
-          "name": "account_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "type": {
-          "name": "type",
-          "type": "cash_transaction_type",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "amount": {
-          "name": "amount",
-          "type": "numeric(15, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "transaction_date": {
-          "name": "transaction_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "category_id": {
-          "name": "category_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reference_number": {
-          "name": "reference_number",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "transfer_ref_id": {
-          "name": "transfer_ref_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "source_type": {
-          "name": "source_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "source_id": {
-          "name": "source_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "cash_transactions_account_id_cash_accounts_id_fk": {
-          "name": "cash_transactions_account_id_cash_accounts_id_fk",
-          "tableFrom": "cash_transactions",
-          "tableTo": "cash_accounts",
-          "columnsFrom": [
-            "account_id"
+            "daily_egg_record_id"
           ],
           "columnsTo": [
             "id"
@@ -3596,23 +3161,11 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "cash_transactions_category_id_cash_categories_id_fk": {
-          "name": "cash_transactions_category_id_cash_categories_id_fk",
-          "tableFrom": "cash_transactions",
-          "tableTo": "cash_categories",
-          "columnsFrom": [
-            "category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "cash_transactions_created_by_users_id_fk": {
-          "name": "cash_transactions_created_by_users_id_fk",
-          "tableFrom": "cash_transactions",
+        "bundle_contributions_created_by_users_id_fk": {
+          "name": "bundle_contributions_created_by_users_id_fk",
+          "tableFrom": "bundle_contributions",
           "tableTo": "users",
+          "schemaTo": "public",
           "columnsFrom": [
             "created_by"
           ],
@@ -3825,41 +3378,13 @@
         "phase_change",
         "other"
       ]
-    },
-    "public.cash_category_type": {
-      "name": "cash_category_type",
-      "schema": "public",
-      "values": [
-        "in",
-        "out",
-        "both"
-      ]
-    },
-    "public.cash_account_type": {
-      "name": "cash_account_type",
-      "schema": "public",
-      "values": [
-        "cash",
-        "bank",
-        "ewallet"
-      ]
-    },
-    "public.cash_transaction_type": {
-      "name": "cash_transaction_type",
-      "schema": "public",
-      "values": [
-        "in",
-        "out",
-        "transfer_in",
-        "transfer_out"
-      ]
     }
   },
   "schemas": {},
+  "views": {},
   "sequences": {},
   "roles": {},
   "policies": {},
-  "views": {},
   "_meta": {
     "columns": {},
     "schemas": {},
