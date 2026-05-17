@@ -24,7 +24,7 @@ export function getFarmSchema(schema: string) {
   const movementSourceTypeEnum = s.enum('movement_source_type', [
     'daily_egg_records', 'daily_feed_records', 'daily_vaccine_records',
     'sales_order_items', 'stock_adjustments', 'regrade_requests',
-    'sales_returns', 'import',
+    'sales_returns', 'import', 'bundle_contributions',
   ])
   const regradeStatusEnum = s.enum('regrade_status', ['PENDING', 'APPROVED', 'REJECTED'])
   const customerTypeEnum = s.enum('customer_type', ['retail', 'wholesale', 'distributor'])
@@ -151,6 +151,7 @@ export function getFarmSchema(schema: string) {
     name: text('name').notNull(),
     isActive: boolean('is_active').notNull().default(true),
     useBundleMethod: boolean('use_bundle_method').notNull().default(false),
+    bundleTargetKg: numeric('bundle_target_kg', { precision: 8, scale: 2 }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdateFn(() => new Date()),
   }, (t) => [
@@ -200,6 +201,7 @@ export function getFarmSchema(schema: string) {
       qtyButir: integer('qty_butir').notNull(),
       qtyKg: numeric('qty_kg', { precision: 8, scale: 2 }).notNull(),
       bundleCode: varchar('bundle_code', { length: 12 }),
+      isOpen: boolean('is_open').notNull().default(false),
       createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
       updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdateFn(() => new Date()),
     },
@@ -207,6 +209,16 @@ export function getFarmSchema(schema: string) {
       uniqueIndex('daily_egg_bundles_record_index_unique').on(t.dailyEggRecordId, t.bundleIndex),
     ]
   )
+
+  const bundleContributions = s.table('bundle_contributions', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    bundleId: uuid('bundle_id').notNull().references(() => dailyEggBundles.id, { onDelete: 'cascade' }),
+    dailyEggRecordId: uuid('daily_egg_record_id').notNull().references(() => dailyEggRecords.id),
+    qtyButir: integer('qty_butir').notNull(),
+    qtyKg: numeric('qty_kg', { precision: 8, scale: 2 }).notNull(),
+    createdBy: uuid('created_by').references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  })
 
   const dailyFeedRecords = s.table('daily_feed_records', {
     id: uuid('id').primaryKey().defaultRandom(),
@@ -489,6 +501,7 @@ export function getFarmSchema(schema: string) {
     dailyRecords,
     dailyEggRecords,
     dailyEggBundles,
+    bundleContributions,
     dailyFeedRecords,
     dailyVaccineRecords,
     inventoryMovements,

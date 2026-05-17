@@ -12,7 +12,7 @@ CREATE TYPE "customer_status" AS ENUM('active', 'inactive', 'blocked');
 CREATE TYPE "customer_type" AS ENUM('retail', 'wholesale', 'distributor');
 CREATE TYPE "movement_type" AS ENUM('in', 'out');
 CREATE TYPE "movement_source" AS ENUM('production', 'sale', 'adjustment', 'regrade', 'import', 'purchase');
-CREATE TYPE "movement_source_type" AS ENUM('daily_egg_records', 'daily_feed_records', 'daily_vaccine_records', 'sales_order_items', 'stock_adjustments', 'regrade_requests', 'sales_returns', 'import');
+CREATE TYPE "movement_source_type" AS ENUM('daily_egg_records', 'daily_feed_records', 'daily_vaccine_records', 'sales_order_items', 'stock_adjustments', 'regrade_requests', 'sales_returns', 'import', 'bundle_contributions');
 CREATE TYPE "regrade_status" AS ENUM('PENDING', 'APPROVED', 'REJECTED');
 CREATE TYPE "sales_order_status" AS ENUM('draft', 'confirmed', 'fulfilled', 'cancelled');
 CREATE TYPE "payment_method" AS ENUM('cash', 'credit');
@@ -178,6 +178,7 @@ CREATE TABLE IF NOT EXISTS "daily_egg_bundles" (
   "qty_butir" integer NOT NULL,
   "qty_kg" numeric(8, 2) NOT NULL,
   "bundle_code" varchar(12),
+  "is_open" boolean NOT NULL DEFAULT false,
   "created_at" timestamptz DEFAULT now() NOT NULL,
   "updated_at" timestamptz
 );
@@ -185,6 +186,22 @@ ALTER TABLE "daily_egg_bundles" ADD CONSTRAINT "daily_egg_bundles_daily_egg_reco
   FOREIGN KEY ("daily_egg_record_id") REFERENCES "daily_egg_records"("id") ON DELETE cascade ON UPDATE no action;
 CREATE UNIQUE INDEX "daily_egg_bundles_record_index_unique"
   ON "daily_egg_bundles" USING btree ("daily_egg_record_id", "bundle_index");
+
+CREATE TABLE "bundle_contributions" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  "bundle_id" uuid NOT NULL,
+  "daily_egg_record_id" uuid NOT NULL,
+  "qty_butir" integer NOT NULL,
+  "qty_kg" numeric(8, 2) NOT NULL,
+  "created_by" uuid,
+  "created_at" timestamptz DEFAULT now() NOT NULL
+);
+ALTER TABLE "bundle_contributions" ADD CONSTRAINT "bundle_contributions_bundle_id_fk"
+  FOREIGN KEY ("bundle_id") REFERENCES "daily_egg_bundles"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "bundle_contributions" ADD CONSTRAINT "bundle_contributions_daily_egg_record_id_fk"
+  FOREIGN KEY ("daily_egg_record_id") REFERENCES "daily_egg_records"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "bundle_contributions" ADD CONSTRAINT "bundle_contributions_created_by_fk"
+  FOREIGN KEY ("created_by") REFERENCES "users"("id") ON DELETE no action ON UPDATE no action;
 
 CREATE TABLE "daily_feed_records" (
     "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -224,6 +241,7 @@ CREATE TABLE "stock_items" (
     "name" text NOT NULL,
     "is_active" boolean DEFAULT true NOT NULL,
     "use_bundle_method" boolean DEFAULT false NOT NULL,
+    "bundle_target_kg" numeric(8,2),
     "created_at" timestamp with time zone DEFAULT now() NOT NULL,
     "updated_at" timestamp with time zone
 );
