@@ -8,6 +8,7 @@ import {
   createStockItem,
   toggleStockItemActive,
   toggleBundleMethod,
+  updateStockItemBundleTarget,
 } from '@/lib/services/stock-catalog.service'
 
 type ActionResult<T = void> =
@@ -106,4 +107,27 @@ export async function toggleBundleMethodAction(itemId: string): Promise<ActionRe
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Gagal mengubah metode bundle' }
   }
+}
+
+const updateBundleTargetSchema = z.object({
+  itemId: z.string().uuid(),
+  targetKg: z.number().positive().nullable(),
+})
+
+export async function updateStockItemBundleTargetAction(data: {
+  farmSchema: string
+  itemId: string
+  targetKg: number | null
+}): Promise<{ success: boolean; error?: string }> {
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+  const denied = requirePermission(session, PERMISSIONS.STOK.CREATE)
+  if (denied) return denied
+
+  const parsed = updateBundleTargetSchema.safeParse({ itemId: data.itemId, targetKg: data.targetKg })
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
+  }
+
+  return updateStockItemBundleTarget(session.farmSchema, parsed.data.itemId, parsed.data.targetKg)
 }

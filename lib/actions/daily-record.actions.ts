@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 import { getRequiredSession } from '@/lib/auth/guards'
-import { saveDailyRecord, saveSingleBundle, deleteBundle, getExistingBundlesForInput, getFlockOptionsForInput, type Role } from '@/lib/services/daily-record.service'
+import { saveDailyRecord, saveSingleBundle, deleteBundle, getExistingBundlesForInput, getFlockOptionsForInput, addBundleContribution, getOpenBundlesForCarryOver, type Role } from '@/lib/services/daily-record.service'
 import { findAssignedCoopIds } from '@/lib/db/queries/user-coop-assignment.queries'
 import { findFlockById } from '@/lib/db/queries/flock.queries'
 
@@ -142,4 +142,48 @@ export async function getFlockOptionsForInputAction(): Promise<ActionResult<impo
   } catch {
     return { success: false, error: 'Gagal memuat daftar flock' }
   }
+}
+
+const addBundleContributionSchema = z.object({
+  bundleId: z.string().uuid(),
+  recordDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal tidak valid'),
+  originalRecordDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal tidak valid'),
+  stockItemId: z.string().uuid(),
+  flockId: z.string().uuid(),
+  trayCount: z.coerce.number().int().min(1),
+  topTrayCount: z.coerce.number().int().min(0).max(30),
+  qtyKg: z.coerce.number().min(0),
+})
+
+export async function addBundleContributionAction(data: {
+  bundleId: string
+  recordDate: string
+  originalRecordDate: string
+  stockItemId: string
+  flockId: string
+  trayCount: number
+  topTrayCount: number
+  qtyKg: number
+}): Promise<{ success: boolean; data?: unknown; error?: string }> {
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+
+  const parsed = addBundleContributionSchema.safeParse(data)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
+  }
+
+  const coopGuard = await assertCoopAccess(session.farmSchema, session.id, session.roleSlug as Role, parsed.data.flockId)
+  if (coopGuard) return coopGuard
+
+  return addBundleContribution(session.farmSchema, parsed.data, session.id, session.roleSlug as Role)
+}
+
+export async function getOpenBundlesForCarryOverAction(
+  flockId: string
+): Promise<{ success: boolean; data?: unknown; error?: string }> {
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+
+  return getOpenBundlesForCarryOver(session.farmSchema, flockId)
 }

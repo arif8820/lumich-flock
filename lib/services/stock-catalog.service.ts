@@ -9,6 +9,7 @@ import {
   insertStockItem,
   updateStockItemActive,
   updateStockItemBundleMethod,
+  updateStockItemBundleTarget as updateStockItemBundleTargetQuery,
 } from '@/lib/db/queries/stock-catalog.queries'
 import type { StockCategory, StockItem } from '@/lib/db/schema'
 
@@ -85,4 +86,17 @@ export async function toggleBundleMethod(farmSchema: string, itemId: string): Pr
   const item = await findItemById(farmSchema, itemId)
   if (!item) throw new Error('Item stok tidak ditemukan')
   await updateStockItemBundleMethod(farmSchema, itemId, !item.useBundleMethod)
+}
+
+export async function updateStockItemBundleTarget(
+  farmSchema: string,
+  itemId: string,
+  targetKg: number | null
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await updateStockItemBundleTargetQuery(farmSchema, itemId, targetKg)
+    return { success: true }
+  } catch {
+    return { success: false, error: 'Gagal mengubah target ikatan' }
+  }
 }
