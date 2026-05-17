@@ -437,7 +437,7 @@ export async function addBundleContribution(
     }
 
     // 4. Compute qtyButir (standard egg count formula)
-    const qtyButir = input.trayCount * 30 + input.topTrayCount
+    const qtyButir = computeBundleButir(input.trayCount, input.topTrayCount)
     const qtyKgStr = input.qtyKg.toFixed(2)
     const isLateInput = computeIsLateInput(new Date(input.recordDate), now)
 

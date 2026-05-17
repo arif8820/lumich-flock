@@ -246,7 +246,7 @@ describe('daily-record.service — pure functions', () => {
         bundleId: 'bundle-1',
         bundleCode: '160526-001',
         isOpen: false,
-        totalQtyButir: 270 + 6 * 30 + 0, // 270 + 180 = 450
+        totalQtyButir: 270 + (6 - 1) * 30 + 0, // 270 + 150 = 420
         totalQtyKg: (9 + 9).toFixed(2),
       })
     })
