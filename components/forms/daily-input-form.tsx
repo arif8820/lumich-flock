@@ -604,6 +604,11 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
                                       </p>
                                     </div>
                                   </div>
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs" style={{ color: 'var(--lf-text-soft)' }}>
+                                      {computeButir(draft.trayCount, draft.topTrayCount)} butir
+                                    </span>
+                                  </div>
                                   {errMsg && (
                                     <p className="text-xs px-2 py-1 rounded-lg" style={{ color: 'var(--lf-danger-text)', background: 'var(--lf-danger-bg)' }}>
                                       {errMsg}
