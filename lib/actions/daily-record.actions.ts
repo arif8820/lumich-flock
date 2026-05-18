@@ -5,6 +5,7 @@ import { getRequiredSession } from '@/lib/auth/guards'
 import { saveDailyRecord, saveSingleBundle, deleteBundle, getExistingBundlesForInput, getFlockOptionsForInput, addBundleContribution, getOpenBundlesForCarryOver, type Role } from '@/lib/services/daily-record.service'
 import { findAssignedCoopIds } from '@/lib/db/queries/user-coop-assignment.queries'
 import { findFlockById } from '@/lib/db/queries/flock.queries'
+import { findDailyRecord, findDailySubRecordsByRecordId } from '@/lib/db/queries/daily-record.queries'
 
 type ActionResult<T = void> =
   | { success: true; data: T }
@@ -187,4 +188,47 @@ export async function getOpenBundlesForCarryOverAction(
   if ('error' in session) return session
 
   return getOpenBundlesForCarryOver(session.farmSchema, flockId, inputDate)
+}
+
+export type ExistingRecordData = {
+  id: string
+  deaths: number
+  culled: number
+  eggsCracked: number
+  eggsAbnormal: number
+  notes: string | null
+  eggEntries: { stockItemId: string; qtyButir: number; qtyKg: number }[]
+  feedEntries: { stockItemId: string; qtyUsed: number }[]
+  vaccineEntries: { stockItemId: string; qtyUsed: number }[]
+}
+
+export async function getExistingDailyRecordAction(
+  flockId: string,
+  recordDate: string
+): Promise<ActionResult<ExistingRecordData | null>> {
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+
+  try {
+    const record = await findDailyRecord(session.farmSchema, flockId, recordDate)
+    if (!record) return { success: true, data: null }
+
+    const subRecords = await findDailySubRecordsByRecordId(session.farmSchema, record.id)
+    return {
+      success: true,
+      data: {
+        id: record.id,
+        deaths: record.deaths,
+        culled: record.culled,
+        eggsCracked: record.eggsCracked,
+        eggsAbnormal: record.eggsAbnormal,
+        notes: record.notes,
+        eggEntries: subRecords.eggRecords,
+        feedEntries: subRecords.feedRecords,
+        vaccineEntries: subRecords.vaccineRecords,
+      },
+    }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Gagal memuat data produksi' }
+  }
 }
