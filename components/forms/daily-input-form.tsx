@@ -555,6 +555,7 @@ export function DailyInputForm({ flocks, userRole, isAdmin, eggItems, feedItems,
                             type="number"
                             value={draft.trayCount}
                             min={1}
+                            onFocus={(e) => e.target.select()}
                             onChange={(e) => setDraftBundle((prev) => ({
                               ...prev,
                               [item.id]: { ...(prev[item.id] ?? emptyDraft()), trayCount: Math.max(1, parseInt(e.target.value) || 1) },
@@ -569,6 +570,7 @@ export function DailyInputForm({ flocks, userRole, isAdmin, eggItems, feedItems,
                             value={draft.topTrayCount}
                             min={0}
                             max={30}
+                            onFocus={(e) => e.target.select()}
                             onChange={(e) => setDraftBundle((prev) => ({
                               ...prev,
                               [item.id]: { ...(prev[item.id] ?? emptyDraft()), topTrayCount: Math.min(30, Math.max(0, parseInt(e.target.value) || 0)) },
@@ -583,6 +585,7 @@ export function DailyInputForm({ flocks, userRole, isAdmin, eggItems, feedItems,
                             value={draft.qtyKg}
                             min={0}
                             step={0.01}
+                            onFocus={(e) => e.target.select()}
                             onChange={(e) => setDraftBundle((prev) => ({
                               ...prev,
                               [item.id]: { ...(prev[item.id] ?? emptyDraft()), qtyKg: Math.max(0, parseFloat(e.target.value) || 0) },
@@ -716,6 +719,7 @@ export function DailyInputForm({ flocks, userRole, isAdmin, eggItems, feedItems,
                                         type="number"
                                         value={draft.trayCount}
                                         min={1}
+                                        onFocus={(e) => e.target.select()}
                                         onChange={(e) => setCarryDraft((prev) => ({
                                           ...prev,
                                           [bundle.bundleId]: { ...(prev[bundle.bundleId] ?? { trayCount: 1, topTrayCount: 0, qtyKg: 0 }), trayCount: Math.max(1, parseInt(e.target.value) || 1) },
@@ -731,6 +735,7 @@ export function DailyInputForm({ flocks, userRole, isAdmin, eggItems, feedItems,
                                         value={draft.topTrayCount}
                                         min={0}
                                         max={30}
+                                        onFocus={(e) => e.target.select()}
                                         onChange={(e) => setCarryDraft((prev) => ({
                                           ...prev,
                                           [bundle.bundleId]: { ...(prev[bundle.bundleId] ?? { trayCount: 1, topTrayCount: 0, qtyKg: 0 }), topTrayCount: Math.min(30, Math.max(0, parseInt(e.target.value) || 0)) },
@@ -746,6 +751,7 @@ export function DailyInputForm({ flocks, userRole, isAdmin, eggItems, feedItems,
                                         value={draft.qtyKg}
                                         min={0}
                                         step={0.01}
+                                        onFocus={(e) => e.target.select()}
                                         onChange={(e) => setCarryDraft((prev) => ({
                                           ...prev,
                                           [bundle.bundleId]: { ...(prev[bundle.bundleId] ?? { trayCount: 1, topTrayCount: 0, qtyKg: 0 }), qtyKg: Math.max(0, parseFloat(e.target.value) || 0) },
