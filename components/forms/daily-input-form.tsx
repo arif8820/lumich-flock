@@ -457,7 +457,10 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
                     {saved.length > 0 && (
                       <div className="mt-3 space-y-1">
                         <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--lf-text-mid)' }}>Tersimpan hari ini</p>
-                        {saved.map((b) => (
+                        {saved.map((b) => {
+                          const prevButir = b.isCarryOver && b.contributionQtyButir != null ? b.qtyButir - b.contributionQtyButir : null
+                          const prevKg   = b.isCarryOver && b.contributionQtyKg != null   ? parseFloat(b.qtyKg) - parseFloat(b.contributionQtyKg) : null
+                          return (
                           <div
                             key={b.id}
                             className="flex items-center justify-between py-1.5 px-2 rounded-lg"
@@ -474,9 +477,16 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
                                   <span style={{ background: '#d4edda', color: '#155724', borderRadius: '6px', padding: '1px 8px', fontSize: '11px' }}>Selesai</span>
                                 )}
                               </div>
-                              <span className="text-[10px]" style={{ color: 'var(--lf-text-soft)' }}>
-                                {b.qtyButir} butir · {parseFloat(b.qtyKg).toFixed(2)} kg
-                              </span>
+                              {b.isCarryOver && prevButir != null && prevKg != null ? (
+                                <div className="flex flex-col gap-0" style={{ color: 'var(--lf-text-soft)', fontSize: '10px' }}>
+                                  <span>Kemarin: {prevButir} butir · {prevKg.toFixed(2)} kg</span>
+                                  <span>Hari ini: {b.contributionQtyButir} butir · {parseFloat(b.contributionQtyKg!).toFixed(2)} kg</span>
+                                </div>
+                              ) : (
+                                <span className="text-[10px]" style={{ color: 'var(--lf-text-soft)' }}>
+                                  {b.qtyButir} butir · {parseFloat(b.qtyKg).toFixed(2)} kg
+                                </span>
+                              )}
                             </div>
                             <button
                               type="button"
@@ -488,11 +498,12 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
                               ×
                             </button>
                           </div>
-                        ))}
+                          )
+                        })}
                         <div className="flex justify-between pt-1 text-xs font-semibold">
-                          <span style={{ color: 'var(--lf-text-mid)' }}>Total</span>
+                          <span style={{ color: 'var(--lf-text-mid)' }}>Total hari ini</span>
                           <span style={{ color: 'var(--lf-blue-active)' }}>
-                            {saved.reduce((s, b) => s + b.qtyButir, 0).toLocaleString('id')} butir · {saved.reduce((s, b) => s + parseFloat(b.qtyKg), 0).toFixed(2)} kg
+                            {saved.reduce((s, b) => s + (b.isCarryOver ? (b.contributionQtyButir ?? 0) : b.qtyButir), 0).toLocaleString('id')} butir · {saved.reduce((s, b) => s + (b.isCarryOver ? parseFloat(b.contributionQtyKg ?? '0') : parseFloat(b.qtyKg)), 0).toFixed(2)} kg
                           </span>
                         </div>
                       </div>

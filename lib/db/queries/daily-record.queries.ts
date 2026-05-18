@@ -553,7 +553,12 @@ export async function deleteBundleById(farmSchema: string, bundleId: string): Pr
   await db.delete(bundlesTable).where(eq(bundlesTable.id, bundleId))
 }
 
-export type BundleWithStockItem = DailyEggBundle & { stockItemId: string; isCarryOver?: boolean }
+export type BundleWithStockItem = DailyEggBundle & {
+  stockItemId: string
+  isCarryOver?: boolean
+  contributionQtyButir?: number   // delta stored in bundle_contributions (only when isCarryOver=true)
+  contributionQtyKg?: string
+}
 
 export async function getBundlesByFlockDate(
   farmSchema: string,
@@ -589,7 +594,7 @@ export async function getBundleContributionsByFlockDate(
   farmSchema: string,
   flockId: string,
   recordDate: string
-): Promise<(BundleWithStockItem & { isCarryOver: true })[]> {
+): Promise<(BundleWithStockItem & { isCarryOver: true; contributionQtyButir: number; contributionQtyKg: string })[]> {
   const schema = getFarmSchema(farmSchema)
   const contribDailyRecords = schema.dailyRecords
   const contribEggRecords = schema.dailyEggRecords
@@ -614,7 +619,9 @@ export async function getBundleContributionsByFlockDate(
       deb.is_open AS "isOpen",
       deb.created_at AS "createdAt",
       deb.updated_at AS "updatedAt",
-      orig_der.stock_item_id AS "stockItemId"
+      orig_der.stock_item_id AS "stockItemId",
+      bc.qty_butir AS "contributionQtyButir",
+      bc.qty_kg AS "contributionQtyKg"
     FROM ${contributions} bc
     JOIN ${contribEggRecords} cder ON bc.daily_egg_record_id = cder.id
     JOIN ${contribDailyRecords} cdr ON cder.daily_record_id = cdr.id
@@ -639,6 +646,8 @@ export async function getBundleContributionsByFlockDate(
     updatedAt: r.updatedAt as Date | null,
     stockItemId: r.stockItemId as string,
     isCarryOver: true as const,
+    contributionQtyButir: Number(r.contributionQtyButir),
+    contributionQtyKg: r.contributionQtyKg as string,
   }))
 }
 
