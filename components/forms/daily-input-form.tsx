@@ -84,9 +84,8 @@ function computeLockStatus(
   const diffDays = Math.round((nowDay - recDay) / 86_400_000)
 
   if (isAdmin) {
-    // Admin editing existing past record → correction audit trail required
-    // Admin adding new record on past date → allowed without audit trail
-    return diffDays > 0 && loadedRecordId !== null ? 'correction' : 'open'
+    // Correction audit trail only required when editing a record that exists AND is past H+7
+    return diffDays > 7 && loadedRecordId !== null ? 'correction' : 'open'
   }
 
   const limit = role === 'operator' ? 1 : role === 'supervisor' ? 7 : 365
@@ -384,7 +383,7 @@ export function DailyInputForm({ flocks, userRole, isAdmin, eggItems, feedItems,
         fd.set('deaths', String(deaths))
         fd.set('culled', String(culled))
         const corrResult = await correctDailyRecordAction(fd)
-        if (!corrResult.success) {
+        if (!corrResult.success && corrResult.error !== 'Tidak ada perubahan data') {
           setError(`Data tersimpan tapi audit trail gagal: ${corrResult.error}`)
           setPending(false)
           return
