@@ -75,6 +75,7 @@ function computeLockStatus(
   recordDate: string,
   role: 'operator' | 'supervisor' | 'admin',
   isAdmin: boolean,
+  loadedRecordId: string | null,
 ): 'open' | 'locked' | 'correction' {
   const d = new Date(recordDate + 'T00:00:00Z')
   const now = new Date()
@@ -83,8 +84,9 @@ function computeLockStatus(
   const diffDays = Math.round((nowDay - recDay) / 86_400_000)
 
   if (isAdmin) {
-    // Admin can always edit; any past date (> today) triggers correction audit trail
-    return diffDays > 0 ? 'correction' : 'open'
+    // Admin editing existing past record → correction audit trail required
+    // Admin adding new record on past date → allowed without audit trail
+    return diffDays > 0 && loadedRecordId !== null ? 'correction' : 'open'
   }
 
   const limit = role === 'operator' ? 1 : role === 'supervisor' ? 7 : 365
@@ -117,8 +119,8 @@ export function DailyInputForm({ flocks, userRole, isAdmin, eggItems, feedItems,
 
   // Derived: lock status is purely a function of recordDate + role + isAdmin — no state needed
   const lockStatus = useMemo(
-    () => computeLockStatus(recordDate, userRole, isAdmin),
-    [recordDate, userRole, isAdmin]
+    () => computeLockStatus(recordDate, userRole, isAdmin, loadedRecordId),
+    [recordDate, userRole, isAdmin, loadedRecordId]
   )
   const [deaths, setDeaths] = useState(0)
   const [culled, setCulled] = useState(0)
@@ -340,9 +342,9 @@ export function DailyInputForm({ flocks, userRole, isAdmin, eggItems, feedItems,
   }
 
   async function submitForm() {
-    if (lockStatus === 'locked') { setError('Periode input sudah terkunci untuk role Anda'); return }
-    if (lockStatus === 'correction' && correctionReason.trim().length < 3) {
-      setError('Alasan koreksi minimal 3 karakter'); return
+    if (lockStatus === 'locked') { setError('Periode edit telah berakhir'); return }
+    if (lockStatus === 'correction' && correctionReason.trim().length < 10) {
+      setError('Alasan koreksi minimal 10 karakter'); return
     }
     if (depletionOverflow) { setError('Total depletion melebihi populasi aktif'); return }
     setError(null)
@@ -950,7 +952,7 @@ export function DailyInputForm({ flocks, userRole, isAdmin, eggItems, feedItems,
         <button
           type="button"
           onClick={() => void submitForm()}
-          disabled={pending || depletionOverflow || lockStatus === 'locked'}
+          disabled={pending || autoLoading || depletionOverflow || lockStatus === 'locked'}
           className="w-full font-semibold rounded-xl transition-opacity disabled:opacity-50"
           style={{
             minHeight: '52px',
