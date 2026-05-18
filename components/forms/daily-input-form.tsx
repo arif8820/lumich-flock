@@ -608,6 +608,9 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
                                     <span className="text-xs" style={{ color: 'var(--lf-text-soft)' }}>
                                       {computeButir(draft.trayCount, draft.topTrayCount)} butir
                                     </span>
+                                    <span className="text-[10px]" style={{ color: 'var(--lf-text-soft)' }}>
+                                      Kemarin: {bundle.qtyButir} butir
+                                    </span>
                                   </div>
                                   {errMsg && (
                                     <p className="text-xs px-2 py-1 rounded-lg" style={{ color: 'var(--lf-danger-text)', background: 'var(--lf-danger-bg)' }}>
