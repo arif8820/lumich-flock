@@ -23,6 +23,11 @@ const SOURCE_LABEL: Record<string, string> = {
   purchase: 'Pembelian',
 }
 
+// sourceType overrides source label for more specific display
+const SOURCE_TYPE_LABEL: Record<string, string> = {
+  bundle_contributions: 'Kontribusi Ikatan',
+}
+
 export default async function LaporanStokMutasiPage({
   searchParams,
 }: {
@@ -103,7 +108,7 @@ export default async function LaporanStokMutasiPage({
                       {row.movementType === 'in' ? 'Masuk' : 'Keluar'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm" style={{ color: 'var(--lf-text-mid)' }}>{SOURCE_LABEL[row.source] ?? row.source}</td>
+                  <td className="px-4 py-3 text-sm" style={{ color: 'var(--lf-text-mid)' }}>{(row.sourceType ? SOURCE_TYPE_LABEL[row.sourceType] : null) ?? SOURCE_LABEL[row.source] ?? row.source}</td>
                   <td className="px-4 py-3 text-sm text-right font-medium" style={{ color: 'var(--lf-text-dark)' }}>{row.quantity.toLocaleString('id-ID')}</td>
                 </tr>
               ))

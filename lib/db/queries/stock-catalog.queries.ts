@@ -67,3 +67,15 @@ export async function updateStockItemBundleMethod(
   const { stockItems } = getFarmSchema(farmSchema)
   await db.update(stockItems).set({ useBundleMethod }).where(eq(stockItems.id, id))
 }
+
+export async function updateStockItemBundleTarget(
+  farmSchema: string,
+  itemId: string,
+  targetKg: number | null
+): Promise<void> {
+  const { stockItems } = getFarmSchema(farmSchema)
+  await db
+    .update(stockItems)
+    .set({ bundleTargetKg: targetKg !== null ? String(targetKg) : null })
+    .where(eq(stockItems.id, itemId))
+}

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { getCategories } from '@/lib/services/stock-catalog.service'
 import { findItemsByCategory } from '@/lib/db/queries/stock-catalog.queries'
 import { createCategoryAction, createStockItemAction, toggleStockItemActiveAction, toggleBundleMethodAction } from '@/lib/actions/stock-catalog.actions'
+import { BundleTargetInput } from './BundleTargetInput'
 
 export default async function StokKatalogPage({
   searchParams,
@@ -103,14 +104,19 @@ export default async function StokKatalogPage({
                     </div>
                     <div className="flex items-center gap-2">
                       {cat.name === 'Telur' && (
-                        <form action={handleBundleToggle}>
-                          <button
-                            type="submit"
-                            className="text-xs px-2 py-1 border border-[var(--lf-border)] rounded-lg text-[var(--lf-text-mid)] hover:bg-[var(--lf-surface)]"
-                          >
-                            {item.useBundleMethod ? 'Tray: ON' : 'Tray: OFF'}
-                          </button>
-                        </form>
+                        <>
+                          <form action={handleBundleToggle}>
+                            <button
+                              type="submit"
+                              className="text-xs px-2 py-1 border border-[var(--lf-border)] rounded-lg text-[var(--lf-text-mid)] hover:bg-[var(--lf-surface)]"
+                            >
+                              {item.useBundleMethod ? 'Tray: ON' : 'Tray: OFF'}
+                            </button>
+                          </form>
+                          {item.useBundleMethod && (
+                            <BundleTargetInput itemId={item.id} initialValue={item.bundleTargetKg} />
+                          )}
+                        </>
                       )}
                       <form action={handleToggle}>
                         <button

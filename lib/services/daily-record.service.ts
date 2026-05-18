@@ -9,7 +9,10 @@ import {
   getBundlesByEggRecordId,
   getNextBundleSequence,
   getBundlesByFlockDate,
+  getBundleContributionsByFlockDate,
   getBundleWithContext,
+  getBundleById,
+  getOpenBundlesForCarryOver as getOpenBundlesQuery,
   type FlockPerformanceRow,
   type BundleWithStockItem,
 } from '@/lib/db/queries/daily-record.queries'
@@ -17,17 +20,17 @@ import { getStockBalance } from '@/lib/db/queries/inventory.queries'
 import { findAllActiveFlocks, findFlockById } from '@/lib/db/queries/flock.queries'
 import { sumDeliveriesQuantityByFlockId } from '@/lib/db/queries/flock-delivery.queries'
 import { findAssignedCoopIds } from '@/lib/db/queries/user-coop-assignment.queries'
+import { assertCanEdit } from '@/lib/services/lock-period.service'
 import { db } from '@/lib/db'
 import { getFarmSchema } from '@/lib/db/schema-factory'
 import { eq, and, sql } from 'drizzle-orm'
+import type { DailyRecord, DailyEggBundle } from '@/lib/db/schema'
 
 async function getBundleStockItemIds(farmSchema: string): Promise<string[]> {
   const { stockItems } = getFarmSchema(farmSchema)
   const rows = await db.select({ id: stockItems.id }).from(stockItems).where(eq(stockItems.useBundleMethod, true))
   return rows.map((r) => r.id)
 }
-import { assertCanEdit } from '@/lib/services/lock-period.service'
-import type { DailyRecord, DailyEggBundle } from '@/lib/db/schema'
 
 export type Role = 'operator' | 'supervisor' | 'admin'
 
@@ -211,6 +214,7 @@ export type SavedBundle = {
   bundleIndex: number
   qtyButir: number
   qtyKg: string
+  isOpen: boolean
 }
 
 export async function saveSingleBundle(
@@ -234,12 +238,24 @@ export async function saveSingleBundle(
   if (!flock) throw new Error('Flock tidak ditemukan')
 
   const qtyButir = computeBundleButir(input.trayCount, input.topTrayCount)
+  if (qtyButir <= 0) throw new Error('Jumlah butir harus lebih dari 0 (isi Nampan dan Atas)')
+  if (input.qtyKg <= 0) throw new Error('Kg harus lebih dari 0')
   const qtyKgStr = input.qtyKg.toFixed(2)
   const isLateInput = computeIsLateInput(recordDate, now)
 
-  const { dailyRecords, dailyEggRecords, dailyEggBundles: bundlesTable, inventoryMovements } = getFarmSchema(farmSchema)
+  const { dailyRecords, dailyEggRecords, dailyEggBundles: bundlesTable, inventoryMovements, stockItems } = getFarmSchema(farmSchema)
 
   return db.transaction(async (tx) => {
+    // Fetch bundle_target_kg inside the transaction to avoid TOCTOU race — read
+    // must be consistent with the bundle insert that follows in the same tx.
+    const [stockItemRow] = await tx
+      .select({ bundleTargetKg: stockItems.bundleTargetKg })
+      .from(stockItems)
+      .where(eq(stockItems.id, input.stockItemId))
+      .limit(1)
+    const targetKg = stockItemRow?.bundleTargetKg ?? null
+    const isOpen = targetKg != null ? Number(qtyKgStr) < Number(targetKg) : false
+
     // Upsert daily_records header
     const [record] = await tx
       .insert(dailyRecords)
@@ -294,6 +310,7 @@ export async function saveSingleBundle(
         qtyButir,
         qtyKg: qtyKgStr,
         bundleCode,
+        isOpen,
       })
       .returning()
 
@@ -317,6 +334,7 @@ export async function saveSingleBundle(
       bundleIndex: bundle!.bundleIndex,
       qtyButir,
       qtyKg: qtyKgStr,
+      isOpen,
     }
   })
 }
@@ -328,6 +346,11 @@ export async function deleteBundle(
   role: Role,
   now: Date = new Date()
 ): Promise<void> {
+  // Check is_open before allowing delete
+  const bundleInfo = await getBundleById(farmSchema, bundleId)
+  if (!bundleInfo) throw new Error('Ikatan tidak ditemukan')
+  if (!bundleInfo.isOpen) throw new Error('Ikatan sudah dilengkapi, tidak bisa dihapus')
+
   const ctx = await getBundleWithContext(farmSchema, bundleId)
   if (!ctx) throw new Error('Ikatan tidak ditemukan')
 
@@ -365,14 +388,210 @@ export async function deleteBundle(
   })
 }
 
+export type BundleContributionResult = {
+  bundleId: string
+  bundleCode: string | null
+  totalQtyButir: number
+  totalQtyKg: string
+  isOpen: boolean
+}
+
+export type OpenBundleGroup = {
+  bundleId: string
+  bundleCode: string | null
+  bundleIndex: number
+  qtyKg: number
+  qtyButir: number
+  recordDate: string
+  stockItemId: string
+  stockItemName: string
+}
+
+export async function addBundleContribution(
+  farmSchema: string,
+  input: {
+    bundleId: string
+    recordDate: string        // YYYY-MM-DD (day 2)
+    originalRecordDate: string // YYYY-MM-DD (day 1, from the carry-over list)
+    stockItemId: string
+    trayCount: number
+    topTrayCount: number
+    qtyKg: number
+    flockId: string
+  },
+  userId: string,
+  role: Role,
+  now: Date = new Date()
+// catches errors to return result envelope — called from server action
+): Promise<{ success: boolean; data?: BundleContributionResult; error?: string }> {
+  try {
+    // 1. Validate backdate lock period
+    validateBackdate(new Date(input.recordDate), now, role)
+
+    // 2. Fetch bundle and verify is_open = true
+    const bundle = await getBundleById(farmSchema, input.bundleId)
+    if (!bundle) return { success: false, error: 'Ikatan tidak ditemukan' }
+    if (!bundle.isOpen) return { success: false, error: 'Ikatan sudah ditutup, tidak bisa ditambah kontribusi' }
+
+    // 3. Verify max carry-over: bundle's recordDate must be H-1 from input.recordDate
+    const day1 = new Date(input.originalRecordDate)
+    const day2 = new Date(input.recordDate)
+    const dayDiffMs = day2.getTime() - day1.getTime()
+    const dayDiff = Math.round(dayDiffMs / 86_400_000)
+    if (dayDiff !== 1) {
+      return { success: false, error: 'Kontribusi hanya diizinkan untuk H-1 (carry-over maksimum 1 hari)' }
+    }
+
+    // 4. Input = final totals. Compute delta from current bundle state.
+    const totalQtyButir = computeBundleButir(input.trayCount, input.topTrayCount)
+    const deltaQtyButir = totalQtyButir - bundle.qtyButir
+    const deltaQtyKg = input.qtyKg - Number(bundle.qtyKg)
+    if (deltaQtyButir <= 0 || deltaQtyKg <= 0) {
+      return { success: false, error: 'Total akhir harus melebihi jumlah yang sudah tersimpan di ikatan ini' }
+    }
+    const qtyButir = deltaQtyButir
+    const qtyKgStr = deltaQtyKg.toFixed(2)
+    const isLateInput = computeIsLateInput(new Date(input.recordDate), now)
+
+    const { dailyRecords, dailyEggRecords, inventoryMovements, bundleContributions: contributionsTable, dailyEggBundles: bundlesTableTx } = getFarmSchema(farmSchema)
+
+    const result = await db.transaction(async (tx) => {
+      // 5. Upsert daily_records for input.recordDate
+      const [record] = await tx
+        .insert(dailyRecords)
+        .values({
+          flockId: input.flockId,
+          recordDate: input.recordDate,
+          deaths: 0,
+          culled: 0,
+          eggsCracked: 0,
+          eggsAbnormal: 0,
+          notes: null,
+          isLateInput,
+          createdBy: userId,
+        })
+        .onConflictDoUpdate({
+          target: [dailyRecords.flockId, dailyRecords.recordDate],
+          set: { isLateInput },
+        })
+        .returning()
+      const recordId = record!.id
+
+      // 6. Upsert daily_egg_records for input.recordDate + stockItemId (additive)
+      const [eggRecord] = await tx
+        .insert(dailyEggRecords)
+        .values({
+          dailyRecordId: recordId,
+          stockItemId: input.stockItemId,
+          qtyButir,
+          qtyKg: qtyKgStr,
+        })
+        .onConflictDoUpdate({
+          target: [dailyEggRecords.dailyRecordId, dailyEggRecords.stockItemId],
+          set: {
+            qtyButir: sql`${dailyEggRecords.qtyButir} + ${qtyButir}`,
+            qtyKg: sql`${dailyEggRecords.qtyKg} + ${qtyKgStr}::numeric`,
+          },
+        })
+        .returning()
+      const dailyEggRecordId = eggRecord!.id
+
+      // 7. Insert bundle_contributions row (inline in tx for atomicity)
+      const [contribution] = await tx
+        .insert(contributionsTable)
+        .values({
+          bundleId: input.bundleId,
+          dailyEggRecordId,
+          qtyButir,
+          qtyKg: qtyKgStr,
+          createdBy: userId,
+        })
+        .returning()
+
+      // 8. Insert inventory_movements
+      if (qtyButir > 0) {
+        await tx.insert(inventoryMovements).values({
+          stockItemId: input.stockItemId,
+          flockId: input.flockId,
+          movementType: 'in',
+          source: 'production',
+          sourceType: 'bundle_contributions',
+          sourceId: contribution!.id,
+          quantity: qtyButir,
+          movementDate: input.recordDate,
+          createdBy: userId,
+        })
+      }
+
+      // 9. Update bundle: add qty and close (isOpen = false) — inline in tx for atomicity
+      await tx
+        .update(bundlesTableTx)
+        .set({
+          qtyButir: sql`${bundlesTableTx.qtyButir} + ${qtyButir}`,
+          qtyKg: sql`${bundlesTableTx.qtyKg} + ${qtyKgStr}::numeric`,
+          isOpen: false,
+          updatedAt: new Date(),
+        })
+        .where(eq(bundlesTableTx.id, input.bundleId))
+
+      return {
+        bundleId: input.bundleId,
+        bundleCode: bundle.bundleCode,
+        totalQtyButir,
+        totalQtyKg: input.qtyKg.toFixed(2),
+        isOpen: false,
+      }
+    })
+
+    return { success: true, data: result }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Terjadi kesalahan' }
+  }
+}
+
+export async function getOpenBundlesForCarryOver(
+  farmSchema: string,
+  flockId: string,
+  inputDate: string
+): Promise<{ success: boolean; data?: Record<string, OpenBundleGroup>; error?: string }> {
+  try {
+    const rows = await getOpenBundlesQuery(farmSchema, flockId, inputDate)
+    const grouped: Record<string, OpenBundleGroup> = {}
+    for (const row of rows) {
+      // Only the oldest open bundle per stock item is surfaced — carry-over max is 1x,
+      // so at most one open bundle per stock item should exist. Taking only the first
+      // ensures we don't surface multiple partials if data is somehow inconsistent.
+      if (!grouped[row.stockItemId]) {
+        grouped[row.stockItemId] = row
+      }
+    }
+    return { success: true, data: grouped }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Terjadi kesalahan' }
+  }
+}
+
 export async function getExistingBundlesForInput(
   farmSchema: string,
   flockId: string,
   recordDate: string
 ): Promise<Record<string, BundleWithStockItem[]>> {
-  const bundles = await getBundlesByFlockDate(farmSchema, flockId, recordDate)
+  const [bundles, carryOverBundles] = await Promise.all([
+    getBundlesByFlockDate(farmSchema, flockId, recordDate),
+    getBundleContributionsByFlockDate(farmSchema, flockId, recordDate),
+  ])
+
+  // Build result: normal bundles first, then carry-over bundles (dedup by id — normal takes priority)
+  const seen = new Set<string>()
   const result: Record<string, BundleWithStockItem[]> = {}
+
   for (const b of bundles) {
+    seen.add(b.id)
+    if (!result[b.stockItemId]) result[b.stockItemId] = []
+    result[b.stockItemId]!.push(b)
+  }
+  for (const b of carryOverBundles) {
+    if (seen.has(b.id)) continue // already in list as a normal bundle
     if (!result[b.stockItemId]) result[b.stockItemId] = []
     result[b.stockItemId]!.push(b)
   }
