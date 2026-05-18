@@ -1,8 +1,22 @@
 import type { VersionEntry } from './types'
 
-export const CURRENT_VERSION = 'v0.9.1' as const
+export const CURRENT_VERSION = 'v0.9.2' as const
 
 export const changelog: VersionEntry[] = [
+  {
+    version: 'v0.9.2',
+    date: '2026-05-18',
+    title: 'Input Telur — Carry-Over Bundle (Ikatan Sebagian Antar Hari)',
+    changes: [
+      { type: 'feature', text: 'Admin dapat mengatur Target Kg per ikatan di Stok Katalog — ikatan di bawah target otomatis ditandai "Partial"' },
+      { type: 'feature', text: 'Ikatan partial dari hari sebelumnya muncul di Zona C (ungu) pada hari berikutnya — operator dapat melengkapi dengan input total akhir (bukan delta)' },
+      { type: 'feature', text: 'Zona B menampilkan ikatan carry-over dengan background ungu + breakdown "Kemarin: X butir / Hari ini: Y butir"' },
+      { type: 'feature', text: 'Kontribusi carry-over disimpan ke tabel bundle_contributions — audit trail per hari tetap akurat untuk HDP' },
+      { type: 'feature', text: 'Laporan Mutasi Stok: kontribusi carry-over muncul dengan label "Kontribusi Ikatan" (bukan "Produksi")' },
+      { type: 'improvement', text: 'Total Butir & Kg di form input hanya menghitung produksi hari ini — porsi kemarin tidak diikutkan' },
+      { type: 'improvement', text: 'Tombol simpan ikatan disabled jika butir = 0 atau kg = 0' },
+    ],
+  },
   {
     version: 'v0.9.1',
     date: '2026-05-15',
