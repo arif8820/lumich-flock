@@ -383,8 +383,12 @@ export function DailyInputForm({ flocks, userRole, isAdmin, eggItems, feedItems,
         fd.set('reason', correctionReason.trim())
         fd.set('deaths', String(deaths))
         fd.set('culled', String(culled))
-        // Fire-and-forget: main save already succeeded; correction failure should not block user
-        void correctDailyRecordAction(fd)
+        const corrResult = await correctDailyRecordAction(fd)
+        if (!corrResult.success) {
+          setError(`Data tersimpan tapi audit trail gagal: ${corrResult.error}`)
+          setPending(false)
+          return
+        }
       }
 
       router.push('/produksi')

@@ -13,7 +13,7 @@ type ActionResult<T = void> =
 
 const correctionSchema = z.object({
   recordId: z.string().uuid(),
-  reason: z.string().min(3, 'Alasan minimal 3 karakter'),
+  reason: z.string().min(10, 'Alasan minimal 10 karakter'),
   deaths: z.coerce.number().int().min(0).optional(),
   culled: z.coerce.number().int().min(0).optional(),
   eggsCracked: z.coerce.number().int().min(0).optional(),
