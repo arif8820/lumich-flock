@@ -542,10 +542,11 @@ export async function addBundleContribution(
 
 export async function getOpenBundlesForCarryOver(
   farmSchema: string,
-  flockId: string
+  flockId: string,
+  inputDate: string
 ): Promise<{ success: boolean; data?: Record<string, OpenBundleGroup>; error?: string }> {
   try {
-    const rows = await getOpenBundlesQuery(farmSchema, flockId)
+    const rows = await getOpenBundlesQuery(farmSchema, flockId, inputDate)
     const grouped: Record<string, OpenBundleGroup> = {}
     for (const row of rows) {
       // Only the oldest open bundle per stock item is surfaced — carry-over max is 1x,

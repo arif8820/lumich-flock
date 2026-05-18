@@ -139,18 +139,20 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
 
   // Fetch open carry-over bundles when flockId changes
   useEffect(() => {
-    if (!flockId) return
+    if (!flockId || !recordDate) return
     let cancelled = false
-    void getOpenBundlesForCarryOverAction(flockId).then((result) => {
+    void getOpenBundlesForCarryOverAction(flockId, recordDate).then((result) => {
       if (!cancelled && result.success && result.data) {
         const grouped = result.data as Record<string, CarryOverBundle>
         const asArrays: Record<string, CarryOverBundle[]> = {}
         for (const [k, v] of Object.entries(grouped)) asArrays[k] = [v]
         setCarryOverBundles(asArrays)
+      } else if (!cancelled) {
+        setCarryOverBundles({})
       }
     })
     return () => { cancelled = true }
-  }, [flockId])
+  }, [flockId, recordDate])
 
   const flock = flocks.find((f) => f.id === flockId)
   const totalDepletion = deaths + culled

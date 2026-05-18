@@ -180,10 +180,11 @@ export async function addBundleContributionAction(data: {
 }
 
 export async function getOpenBundlesForCarryOverAction(
-  flockId: string
+  flockId: string,
+  inputDate: string
 ): Promise<{ success: boolean; data?: unknown; error?: string }> {
   const session = await getRequiredSession()
   if ('error' in session) return session
 
-  return getOpenBundlesForCarryOver(session.farmSchema, flockId)
+  return getOpenBundlesForCarryOver(session.farmSchema, flockId, inputDate)
 }

@@ -5,7 +5,8 @@ import { DailyEggBundle, NewDailyEggBundle } from '@/lib/db/schema'
 
 export async function getOpenBundlesForCarryOver(
   farmSchema: string,
-  flockId: string
+  flockId: string,
+  inputDate: string // 'YYYY-MM-DD' — only bundles from the day before this date are returned
 ): Promise<Array<{
   bundleId: string
   bundleCode: string | null
@@ -17,6 +18,11 @@ export async function getOpenBundlesForCarryOver(
   stockItemName: string
 }>> {
   const { dailyEggBundles: bundlesTable, dailyEggRecords, dailyRecords, stockItems } = getFarmSchema(farmSchema)
+  // Compute previousDate = inputDate - 1 day
+  const d = new Date(inputDate)
+  d.setUTCDate(d.getUTCDate() - 1)
+  const previousDate = d.toISOString().split('T')[0]!
+
   const rows = await db
     .select({
       bundleId: bundlesTable.id,
@@ -32,8 +38,12 @@ export async function getOpenBundlesForCarryOver(
     .innerJoin(dailyEggRecords, eq(bundlesTable.dailyEggRecordId, dailyEggRecords.id))
     .innerJoin(dailyRecords, eq(dailyEggRecords.dailyRecordId, dailyRecords.id))
     .innerJoin(stockItems, eq(dailyEggRecords.stockItemId, stockItems.id))
-    .where(and(eq(bundlesTable.isOpen, true), eq(dailyRecords.flockId, flockId)))
-    .orderBy(asc(dailyRecords.recordDate), asc(bundlesTable.bundleIndex))
+    .where(and(
+      eq(bundlesTable.isOpen, true),
+      eq(dailyRecords.flockId, flockId),
+      eq(dailyRecords.recordDate, previousDate),
+    ))
+    .orderBy(asc(bundlesTable.bundleIndex))
   return rows.map((r) => ({
     ...r,
     qtyKg: Number(r.qtyKg),
