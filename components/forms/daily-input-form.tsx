@@ -221,11 +221,11 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
     const bundleButir = eggItems
       .filter((i) => i.useBundleMethod)
       .flatMap((i) => savedBundles[i.id] ?? [])
-      .reduce((s, b) => s + b.qtyButir, 0)
+      .reduce((s, b) => s + (b.isCarryOver ? (b.contributionQtyButir ?? 0) : b.qtyButir), 0)
     const bundleKg = eggItems
       .filter((i) => i.useBundleMethod)
       .flatMap((i) => savedBundles[i.id] ?? [])
-      .reduce((s, b) => s + parseFloat(b.qtyKg), 0)
+      .reduce((s, b) => s + (b.isCarryOver ? parseFloat(b.contributionQtyKg ?? '0') : parseFloat(b.qtyKg)), 0)
     return { totalButir: simpleButir + bundleButir, totalKg: simpleKg + bundleKg }
   })()
 
