@@ -202,6 +202,11 @@ export type ExistingRecordData = {
   vaccineEntries: { stockItemId: string; qtyUsed: number }[]
 }
 
+const getExistingDailyRecordSchema = z.object({
+  flockId: z.string().uuid(),
+  recordDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+})
+
 export async function getExistingDailyRecordAction(
   flockId: string,
   recordDate: string
@@ -209,8 +214,14 @@ export async function getExistingDailyRecordAction(
   const session = await getRequiredSession()
   if ('error' in session) return session
 
+  const parsed = getExistingDailyRecordSchema.safeParse({ flockId, recordDate })
+  if (!parsed.success) return { success: false, error: 'Parameter tidak valid' }
+
+  const coopGuard = await assertCoopAccess(session.farmSchema, session.id, session.roleSlug as Role, parsed.data.flockId)
+  if (coopGuard) return coopGuard
+
   try {
-    const record = await findDailyRecord(session.farmSchema, flockId, recordDate)
+    const record = await findDailyRecord(session.farmSchema, parsed.data.flockId, parsed.data.recordDate)
     if (!record) return { success: true, data: null }
 
     const subRecords = await findDailySubRecordsByRecordId(session.farmSchema, record.id)
