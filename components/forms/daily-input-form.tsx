@@ -142,8 +142,11 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
     if (!flockId) return
     let cancelled = false
     void getOpenBundlesForCarryOverAction(flockId).then((result) => {
-      if (!cancelled && result.success) {
-        setCarryOverBundles((result.data as Record<string, CarryOverBundle[]>) ?? {})
+      if (!cancelled && result.success && result.data) {
+        const grouped = result.data as Record<string, CarryOverBundle>
+        const asArrays: Record<string, CarryOverBundle[]> = {}
+        for (const [k, v] of Object.entries(grouped)) asArrays[k] = [v]
+        setCarryOverBundles(asArrays)
       }
     })
     return () => { cancelled = true }
