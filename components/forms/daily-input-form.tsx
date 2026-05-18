@@ -409,7 +409,7 @@ export function DailyInputForm({ flocks, userRole, isAdmin, eggItems, feedItems,
       <div className="bg-white rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)] space-y-3">
         <div>
           <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide">Flock</label>
-          <select value={flockId} onChange={(e) => { setFlockId(e.target.value); setCorrectionReason('') }} className={inputClass}>
+          <select value={flockId} onChange={(e) => { setFlockId(e.target.value); setCorrectionReason(''); setError(null) }} className={inputClass}>
             {flocks.map((f) => (
               <option key={f.id} value={f.id}>{f.name} — {f.coopName}</option>
             ))}
@@ -421,7 +421,7 @@ export function DailyInputForm({ flocks, userRole, isAdmin, eggItems, feedItems,
             <input
               type="date"
               value={recordDate}
-              onChange={(e) => { setRecordDate(e.target.value); setCorrectionReason('') }}
+              onChange={(e) => { setRecordDate(e.target.value); setCorrectionReason(''); setError(null) }}
               max={todayUTC()}
               min={minDate(userRole)}
               className={inputClass}
