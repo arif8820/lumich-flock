@@ -1,8 +1,21 @@
 import type { VersionEntry } from './types'
 
-export const CURRENT_VERSION = 'v0.9.2' as const
+export const CURRENT_VERSION = 'v0.9.3' as const
 
 export const changelog: VersionEntry[] = [
+  {
+    version: 'v0.9.3',
+    date: '2026-05-18',
+    title: 'Produksi — Unified Input & Edit',
+    changes: [
+      { type: 'feature', text: 'Form Input Harian kini otomatis memuat data yang sudah ada saat flock + tanggal dipilih — tidak perlu tombol Edit terpisah' },
+      { type: 'feature', text: 'Admin yang mengedit data lebih dari H+7 otomatis masuk mode Koreksi — field "Alasan Koreksi" (min 10 karakter) wajib diisi dan disimpan sebagai audit trail' },
+      { type: 'improvement', text: 'Tombol Edit dan Koreksi dihapus dari daftar Produksi — satu entry point untuk semua skenario' },
+      { type: 'improvement', text: 'Operator yang membuka tanggal di luar periode edit melihat form nonaktif dengan pesan jelas' },
+      { type: 'fix', text: 'Input angka (stepper & field pakan/vaksin): klik pada field langsung seleksi semua teks — mengetik angka baru langsung menggantikan nilai lama' },
+      { type: 'improvement', text: 'Route /produksi/[id]/edit dihapus — URL lama redirect 404' },
+    ],
+  },
   {
     version: 'v0.9.2',
     date: '2026-05-18',

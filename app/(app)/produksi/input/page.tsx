@@ -25,6 +25,7 @@ export default async function ProduksiInputPage() {
       <DailyInputForm
         flocks={flocks}
         userRole={session.roleSlug as 'operator' | 'supervisor' | 'admin'}
+        isAdmin={session.isAdmin}
         eggItems={eggItems}
         feedItems={feedItems.map((i) => ({ ...i, balance: balanceMap.get(i.id) ?? 0 }))}
         vaccineItems={vaccineItems.map((i) => ({ ...i, balance: balanceMap.get(i.id) ?? 0 }))}

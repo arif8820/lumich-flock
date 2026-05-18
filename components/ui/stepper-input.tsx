@@ -50,6 +50,7 @@ export function StepperInput({ value, onChange, min = 0, max, step = 1, classNam
         inputMode="numeric"
         value={value}
         onChange={handleChange}
+        onFocus={(e) => e.target.select()}
         min={min}
         max={max}
         className="flex-1 text-center font-bold bg-transparent border-none outline-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
