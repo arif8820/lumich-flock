@@ -461,7 +461,7 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
                           <div
                             key={b.id}
                             className="flex items-center justify-between py-1.5 px-2 rounded-lg"
-                            style={{ background: 'var(--lf-blue-pale)' }}
+                            style={{ background: b.isCarryOver ? '#f3eeff' : 'var(--lf-blue-pale)', border: b.isCarryOver ? '1px solid #d4b8ff' : undefined }}
                           >
                             <div className="flex flex-col gap-0.5">
                               <div className="flex items-center gap-1.5">
@@ -541,9 +541,12 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
 
                               {isExpanded && (
                                 <div className="space-y-2 pt-1">
+                                  <p className="text-[10px]" style={{ color: 'var(--lf-text-soft)' }}>
+                                    Isi kondisi ikatan <strong>setelah selesai</strong> (total keseluruhan, bukan tambahan)
+                                  </p>
                                   <div className="grid grid-cols-3 gap-2">
                                     <div>
-                                      <label className="text-[10px] font-medium uppercase block mb-1" style={{ color: 'var(--lf-text-mid)' }}>Nampan</label>
+                                      <label className="text-[10px] font-medium uppercase block mb-1" style={{ color: 'var(--lf-text-mid)' }}>Total Nampan</label>
                                       <input
                                         type="number"
                                         value={draft.trayCount}
@@ -557,7 +560,7 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
                                       />
                                     </div>
                                     <div>
-                                      <label className="text-[10px] font-medium uppercase block mb-1" style={{ color: 'var(--lf-text-mid)' }}>Atas</label>
+                                      <label className="text-[10px] font-medium uppercase block mb-1" style={{ color: 'var(--lf-text-mid)' }}>Total Atas</label>
                                       <input
                                         type="number"
                                         value={draft.topTrayCount}
@@ -572,7 +575,7 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
                                       />
                                     </div>
                                     <div>
-                                      <label className="text-[10px] font-medium uppercase block mb-1" style={{ color: 'var(--lf-text-mid)' }}>Kg</label>
+                                      <label className="text-[10px] font-medium uppercase block mb-1" style={{ color: 'var(--lf-text-mid)' }}>Total Kg</label>
                                       <input
                                         type="number"
                                         value={draft.qtyKg}
@@ -585,6 +588,9 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
                                         style={{ borderRadius: '10px', border: '1px solid var(--lf-border)' }}
                                         className={numInputClass}
                                       />
+                                      <p className="text-[10px] mt-0.5 text-center" style={{ color: 'var(--lf-text-soft)' }}>
+                                        Saat ini: {bundle.qtyKg.toFixed(2)} kg
+                                      </p>
                                     </div>
                                   </div>
                                   {errMsg && (

@@ -553,7 +553,7 @@ export async function deleteBundleById(farmSchema: string, bundleId: string): Pr
   await db.delete(bundlesTable).where(eq(bundlesTable.id, bundleId))
 }
 
-export type BundleWithStockItem = DailyEggBundle & { stockItemId: string }
+export type BundleWithStockItem = DailyEggBundle & { stockItemId: string; isCarryOver?: boolean }
 
 export async function getBundlesByFlockDate(
   farmSchema: string,
@@ -581,6 +581,65 @@ export async function getBundlesByFlockDate(
     .innerJoin(dailyRecords, eq(dailyEggRecords.dailyRecordId, dailyRecords.id))
     .where(and(eq(dailyRecords.flockId, flockId), eq(dailyRecords.recordDate, recordDate)))
     .orderBy(asc(bundlesTable.bundleIndex))
+}
+
+// Bundles that have a bundle_contributions row linked to a daily_egg_record on recordDate.
+// Used to show carry-over bundles in Zona B on the contribution day.
+export async function getBundleContributionsByFlockDate(
+  farmSchema: string,
+  flockId: string,
+  recordDate: string
+): Promise<(BundleWithStockItem & { isCarryOver: true })[]> {
+  const schema = getFarmSchema(farmSchema)
+  const contribDailyRecords = schema.dailyRecords
+  const contribEggRecords = schema.dailyEggRecords
+  const bundlesTable = schema.dailyEggBundles
+  const contributions = schema.bundleContributions
+
+  // Use raw SQL to avoid Drizzle alias limitation with two joins to same table.
+  // Join path: bundle_contributions (contrib day) → daily_egg_records (contrib day)
+  //   → daily_records (filter by flockId + recordDate = contrib day)
+  //   → daily_egg_bundles (original bundle)
+  //   → original daily_egg_records (for stockItemId)
+  const rows = await db.execute(sql`
+    SELECT DISTINCT
+      deb.id,
+      deb.daily_egg_record_id AS "dailyEggRecordId",
+      deb.bundle_index AS "bundleIndex",
+      deb.tray_count AS "trayCount",
+      deb.top_tray_count AS "topTrayCount",
+      deb.qty_butir AS "qtyButir",
+      deb.qty_kg AS "qtyKg",
+      deb.bundle_code AS "bundleCode",
+      deb.is_open AS "isOpen",
+      deb.created_at AS "createdAt",
+      deb.updated_at AS "updatedAt",
+      orig_der.stock_item_id AS "stockItemId"
+    FROM ${contributions} bc
+    JOIN ${contribEggRecords} cder ON bc.daily_egg_record_id = cder.id
+    JOIN ${contribDailyRecords} cdr ON cder.daily_record_id = cdr.id
+    JOIN ${bundlesTable} deb ON bc.bundle_id = deb.id
+    JOIN ${contribEggRecords} orig_der ON deb.daily_egg_record_id = orig_der.id
+    WHERE cdr.flock_id = ${flockId}
+      AND cdr.record_date = ${recordDate}
+    ORDER BY deb.bundle_index ASC
+  `)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (rows as any[]).map((r) => ({
+    id: r.id as string,
+    dailyEggRecordId: r.dailyEggRecordId as string,
+    bundleIndex: Number(r.bundleIndex),
+    trayCount: Number(r.trayCount),
+    topTrayCount: Number(r.topTrayCount),
+    qtyButir: Number(r.qtyButir),
+    qtyKg: r.qtyKg as string,
+    bundleCode: r.bundleCode as string | null,
+    isOpen: r.isOpen as boolean,
+    createdAt: r.createdAt as Date,
+    updatedAt: r.updatedAt as Date | null,
+    stockItemId: r.stockItemId as string,
+    isCarryOver: true as const,
+  }))
 }
 
 export async function getBundleWithContext(

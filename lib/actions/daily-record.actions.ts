@@ -150,9 +150,9 @@ const addBundleContributionSchema = z.object({
   originalRecordDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal tidak valid'),
   stockItemId: z.string().uuid(),
   flockId: z.string().uuid(),
-  trayCount: z.coerce.number().int().min(1),
+  trayCount: z.coerce.number().int().min(1, 'Nampan harus ≥ 1'),
   topTrayCount: z.coerce.number().int().min(0).max(30),
-  qtyKg: z.coerce.number().min(0),
+  qtyKg: z.coerce.number().min(0.01, 'Total kg harus lebih dari 0'),
 })
 
 export async function addBundleContributionAction(data: {

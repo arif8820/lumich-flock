@@ -9,6 +9,7 @@ import {
   getBundlesByEggRecordId,
   getNextBundleSequence,
   getBundlesByFlockDate,
+  getBundleContributionsByFlockDate,
   getBundleWithContext,
   getBundleById,
   getOpenBundlesForCarryOver as getOpenBundlesQuery,
@@ -439,9 +440,15 @@ export async function addBundleContribution(
       return { success: false, error: 'Kontribusi hanya diizinkan untuk H-1 (carry-over maksimum 1 hari)' }
     }
 
-    // 4. Compute qtyButir (standard egg count formula)
-    const qtyButir = computeBundleButir(input.trayCount, input.topTrayCount)
-    const qtyKgStr = input.qtyKg.toFixed(2)
+    // 4. Input = final totals. Compute delta from current bundle state.
+    const totalQtyButir = computeBundleButir(input.trayCount, input.topTrayCount)
+    const deltaQtyButir = totalQtyButir - bundle.qtyButir
+    const deltaQtyKg = input.qtyKg - Number(bundle.qtyKg)
+    if (deltaQtyButir <= 0 || deltaQtyKg <= 0) {
+      return { success: false, error: 'Total akhir harus melebihi jumlah yang sudah tersimpan di ikatan ini' }
+    }
+    const qtyButir = deltaQtyButir
+    const qtyKgStr = deltaQtyKg.toFixed(2)
     const isLateInput = computeIsLateInput(new Date(input.recordDate), now)
 
     const { dailyRecords, dailyEggRecords, inventoryMovements, bundleContributions: contributionsTable, dailyEggBundles: bundlesTableTx } = getFarmSchema(farmSchema)
@@ -528,8 +535,8 @@ export async function addBundleContribution(
       return {
         bundleId: input.bundleId,
         bundleCode: bundle.bundleCode,
-        totalQtyButir: bundle.qtyButir + qtyButir,
-        totalQtyKg: (Number(bundle.qtyKg) + Number(qtyKgStr)).toFixed(2),
+        totalQtyButir,
+        totalQtyKg: input.qtyKg.toFixed(2),
         isOpen: false,
       }
     })
@@ -567,9 +574,22 @@ export async function getExistingBundlesForInput(
   flockId: string,
   recordDate: string
 ): Promise<Record<string, BundleWithStockItem[]>> {
-  const bundles = await getBundlesByFlockDate(farmSchema, flockId, recordDate)
+  const [bundles, carryOverBundles] = await Promise.all([
+    getBundlesByFlockDate(farmSchema, flockId, recordDate),
+    getBundleContributionsByFlockDate(farmSchema, flockId, recordDate),
+  ])
+
+  // Build result: normal bundles first, then carry-over bundles (dedup by id — normal takes priority)
+  const seen = new Set<string>()
   const result: Record<string, BundleWithStockItem[]> = {}
+
   for (const b of bundles) {
+    seen.add(b.id)
+    if (!result[b.stockItemId]) result[b.stockItemId] = []
+    result[b.stockItemId]!.push(b)
+  }
+  for (const b of carryOverBundles) {
+    if (seen.has(b.id)) continue // already in list as a normal bundle
     if (!result[b.stockItemId]) result[b.stockItemId] = []
     result[b.stockItemId]!.push(b)
   }
