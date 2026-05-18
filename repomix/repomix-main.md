@@ -249,6 +249,7 @@ lib/db/schema/coops.ts
 lib/db/schema/correction-records.ts
 lib/db/schema/customer-credits.ts
 lib/db/schema/customers.ts
+lib/db/schema/daily-egg-bundles.ts
 lib/db/schema/daily-egg-records.ts
 lib/db/schema/daily-feed-records.ts
 lib/db/schema/daily-records.ts
@@ -396,6 +397,13 @@ PORT=5555
 nohup.out
 ````
 
+## File: app/(app)/admin/flock-phases/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { getAllFlockPhases } from '@/lib/services/flock-phase.service'
+````
+
 ## File: app/(app)/admin/kas/account-form.tsx
 ````typescript
 // client: needs form state
@@ -444,6 +452,115 @@ async function handleSubmit(fd: FormData)
 // checkbox unchecked = no value in FormData; normalize explicitly
 ````
 
+## File: app/(app)/admin/kas/page.tsx
+````typescript
+import { getSession } from '@/lib/auth/get-session'
+import { redirect } from 'next/navigation'
+import { listAccounts, countTransactionsByAccount } from '@/lib/db/queries/cash-account.queries'
+import { listCategories } from '@/lib/db/queries/cash-category.queries'
+import { AccountForm } from './account-form'
+import { CategoryForm } from './category-form'
+import { AccountList } from './account-list'
+import { CategoryList } from './category-list'
+⋮----
+{/* Accounts */}
+⋮----
+{/* Categories */}
+````
+
+## File: app/(app)/admin/layout.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+⋮----
+export default async function AdminLayout(
+````
+
+## File: app/(app)/admin/page.tsx
+````typescript
+import Link from 'next/link'
+import { Users, Settings, MessageSquare, Bell, Upload, Package, Wallet, Shield } from 'lucide-react'
+````
+
+## File: app/(app)/admin/pelanggan/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import { getAllCustomers } from '@/lib/services/customer.service'
+import { CustomerManagementClient } from '@/components/forms/customer-management-client'
+⋮----
+export default async function PelangganPage()
+````
+
+## File: app/(app)/admin/roles/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import { listRoles } from '@/lib/services/role.service'
+import { RoleManagementClient } from './RoleManagementClient'
+⋮----
+export default async function RolesPage()
+````
+
+## File: app/(app)/admin/settings/alerts/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { getAppSetting } from '@/lib/services/app-settings.service'
+import { updateAlertSettings } from '@/lib/actions/app-settings.actions'
+````
+
+## File: app/(app)/admin/settings/wa-template/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { getAppSetting } from '@/lib/services/app-settings.service'
+import { saveWaTemplateAction } from '@/lib/actions/app-settings.actions'
+⋮----
+function renderPreview(template: string): string
+⋮----
+async function handleSaveTemplate(formData: FormData)
+⋮----
+{/* Header */}
+⋮----
+{/* Alerts */}
+⋮----
+{/* Form */}
+⋮----
+{/* Variable hints */}
+⋮----
+{/* Preview */}
+````
+
+## File: app/(app)/admin/users/[id]/kandang/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { getSession } from '@/lib/auth/get-session'
+import { getUserById } from '@/lib/services/user.service'
+import { getAllCoops } from '@/lib/services/coop.service'
+import { findAssignmentsByUser } from '@/lib/db/queries/user-coop-assignment.queries'
+import { CoopAssignmentPanel } from '@/components/forms/coop-assignment-panel'
+⋮----
+export default async function UserKandangPage(
+````
+
+## File: app/(app)/admin/users/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { getAllUsers, getAllRoles } from '@/lib/services/user.service'
+import { UserManagementClient } from '@/components/forms/user-management-client'
+⋮----
+export default async function UsersPage()
+````
+
 ## File: app/(app)/dashboard/flock-only-filter.tsx
 ````typescript
 // client: needs onClick and onChange for URL navigation
@@ -463,6 +580,367 @@ function navigate(flockId: string, days: number)
 function handleFlockChange(e: React.ChangeEvent<HTMLSelectElement>)
 ⋮----
 function handleDaysClick(days: number)
+````
+
+## File: app/(app)/dashboard/page.tsx
+````typescript
+import Link from 'next/link'
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import { redirect } from 'next/navigation'
+import { KpiCard } from '@/components/ui/kpi-card'
+import { DashboardCharts } from '@/components/ui/charts/dashboard-charts'
+import {
+  getDashboardKpis,
+  getProductionChartData,
+  getRecentDashboardRecords,
+  getHdpChartData,
+  getFcrChartData,
+  getProductionBySkuChartData,
+} from '@/lib/services/dashboard.service'
+import { getAgingData } from '@/lib/services/invoice.service'
+import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
+import FlockOnlyFilter from './flock-only-filter'
+import type { AgingRow } from '@/lib/db/queries/invoice.queries'
+⋮----
+function getPeriodRange(days: number):
+⋮----
+// Union all SKU keys across all rows to avoid missing SKUs absent from first row
+⋮----
+{/* Header */}
+⋮----
+{/* KPI Grid — 2 cols mobile / 3 cols tablet / 6 cols desktop */}
+⋮----
+{/* Charts 2x2 */}
+⋮----
+{/* Recent records table — 7 columns */}
+⋮----
+{/* Aging widget — admin + supervisor only */}
+````
+
+## File: app/(app)/flock/[id]/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import { findFlockById } from '@/lib/db/queries/flock.queries'
+import { findDeliveriesByFlockId } from '@/lib/db/queries/flock-delivery.queries'
+import { getCoopById } from '@/lib/services/coop.service'
+import { FlockDetailClient } from '@/components/forms/flock-detail-client'
+⋮----
+canAddDelivery=
+````
+
+## File: app/(app)/flock/layout.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+⋮----
+export default async function FlockLayout(
+````
+
+## File: app/(app)/flock/new/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import { getAllCoops } from '@/lib/services/coop.service'
+import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
+import { CreateFlockForm } from '@/components/forms/create-flock-form'
+⋮----
+export default async function NewFlockPage()
+````
+
+## File: app/(app)/forbidden/page.tsx
+````typescript
+import Link from 'next/link'
+⋮----
+export default function ForbiddenPage()
+````
+
+## File: app/(app)/kas/layout.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+⋮----
+export default async function KasLayout(
+````
+
+## File: app/(app)/kas/page.tsx
+````typescript
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { listAccounts, getAccountBalance } from '@/lib/db/queries/cash-account.queries'
+import { listTransactions } from '@/lib/db/queries/cash-transaction.queries'
+import { Wallet, ArrowUpCircle, ArrowDownCircle, ArrowLeftRight, Plus } from 'lucide-react'
+⋮----
+function formatRupiah(amount: number)
+⋮----
+function formatDate(date: Date | string)
+⋮----
+{/* Header */}
+⋮----
+{/* Total balance card */}
+⋮----
+{/* Account cards */}
+⋮----
+<p className="text-[18px] font-bold" style=
+⋮----
+{/* Recent transactions */}
+⋮----
+````
+
+## File: app/(app)/kas/transaksi/baru/page.tsx
+````typescript
+import { getSession } from '@/lib/auth/get-session'
+import { redirect } from 'next/navigation'
+import { listAccounts } from '@/lib/db/queries/cash-account.queries'
+import { listActiveCategories } from '@/lib/db/queries/cash-category.queries'
+import { TransactionForm } from '@/components/forms/kas/transaction-form'
+import { ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
+````
+
+## File: app/(app)/kas/transfer/baru/page.tsx
+````typescript
+import { getSession } from '@/lib/auth/get-session'
+import { redirect } from 'next/navigation'
+import { listAccounts } from '@/lib/db/queries/cash-account.queries'
+import { TransferForm } from '@/components/forms/kas/transfer-form'
+import { ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
+````
+
+## File: app/(app)/laporan/layout.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+⋮----
+export default async function LaporanLayout(
+````
+
+## File: app/(app)/layout.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
+import { getSession } from '@/lib/auth/get-session'
+import { AppShell, type ClientUser } from '@/components/layout/app-shell'
+import {
+  getNotificationsForRole,
+  getReadNotificationIds,
+} from '@/lib/services/notification.service'
+import { CURRENT_VERSION } from '@/lib/changelog/data'
+⋮----
+export default async function AppLayout(
+⋮----
+type NotificationRole = typeof NOTIFICATION_ROLES[number]
+````
+
+## File: app/(app)/penjualan/[id]/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import {
+  findSalesOrderById,
+  findSalesOrderItems,
+} from '@/lib/db/queries/sales-order.queries'
+import {
+  confirmSOAction,
+  cancelSOAction,
+  deleteDraftSOAction,
+  fulfillSOAction,
+} from '@/lib/actions/sales-order.actions'
+import { findSalesReturnsByOrderId } from '@/lib/db/queries/sales-return.queries'
+import { SOStatusBadge } from '@/components/ui/so-status-badge'
+import { Button } from '@/components/ui/button'
+⋮----
+async function confirmAction()
+async function cancelAction()
+async function deleteAction()
+async function fulfillAction()
+⋮----
+{/* SO Items */}
+⋮----
+{/* Sales Returns */}
+⋮----
+{/* Status Actions */}
+````
+
+## File: app/(app)/penjualan/[id]/return/new/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import { findSalesOrderById, findSalesOrderItems } from '@/lib/db/queries/sales-order.queries'
+import { CreateReturnClient } from '@/components/forms/create-return-client'
+⋮----
+export default async function CreateReturnPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+})
+````
+
+## File: app/(app)/penjualan/invoices/[id]/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import { getInvoiceDetails } from '@/lib/services/invoice.service'
+import { recordPaymentAction, applyCreditAction, sendInvoiceEmailAction } from '@/lib/actions/invoice.actions'
+import { getAppSetting } from '@/lib/services/app-settings.service'
+import { InvoiceStatusBadge } from '@/components/ui/invoice-status-badge'
+import { Button } from '@/components/ui/button'
+⋮----
+// WA share setup (admin only)
+⋮----
+// Inline server actions
+async function handleRecordPayment(formData: FormData)
+⋮----
+async function handleSendEmail()
+⋮----
+{/* Header */}
+⋮----
+{/* Download PDF button */}
+⋮----
+{/* WA share button — admin only, requires customer phone */}
+⋮----
+{/* Email send button — admin only, requires customer email */}
+⋮----
+{/* Alerts */}
+⋮----
+{/* Financial summary */}
+⋮----
+{/* Payment history */}
+⋮----
+{/* Record Payment form (admin only, status not paid/cancelled/draft) */}
+⋮----
+{/* Available credits (admin only) */}
+⋮----
+async function handleApplyCredit(formData: FormData)
+````
+
+## File: app/(app)/penjualan/invoices/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import { listInvoices } from '@/lib/db/queries/invoice.queries'
+import { InvoiceStatusBadge } from '@/components/ui/invoice-status-badge'
+import { Button } from '@/components/ui/button'
+import type { Invoice } from '@/lib/db/schema'
+⋮----
+{/* Header */}
+⋮----
+{/* Status filter buttons */}
+⋮----
+{/* Table */}
+⋮----
+{/* Pagination */}
+````
+
+## File: app/(app)/penjualan/layout.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+⋮----
+export default async function PenjualanLayout(
+````
+
+## File: app/(app)/penjualan/new/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import { getAllCustomers } from '@/lib/services/customer.service'
+import { CreateSOClient } from '@/components/forms/create-so-client'
+⋮----
+export default async function CreateSOPage()
+````
+
+## File: app/(app)/penjualan/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import { listSalesOrders } from '@/lib/db/queries/sales-order.queries'
+import { listSalesReturnsWithOrder } from '@/lib/db/queries/sales-return.queries'
+import { SOStatusBadge } from '@/components/ui/so-status-badge'
+import { Button } from '@/components/ui/button'
+⋮----
+// USED BY: [penjualan/page, return/[id]/page] — count: 2
+⋮----
+{/* Page header */}
+⋮----
+{/* Tab strip */}
+⋮----
+{/* SO Tab Content */}
+⋮----
+{/* SO Status Filter */}
+⋮----
+{/* SO Table */}
+⋮----
+{/* SO Pagination */}
+⋮----
+{/* Return Tab Content */}
+⋮----
+{/* Return Status Filter */}
+⋮----
+{/* Return Table */}
+⋮----
+{/* Return Pagination */}
+````
+
+## File: app/(app)/penjualan/return/[id]/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import {
+  findSalesReturnById,
+  findSalesReturnItems,
+} from '@/lib/db/queries/sales-return.queries'
+import { findSalesOrderById } from '@/lib/db/queries/sales-order.queries'
+import {
+  approveSalesReturnAction,
+  rejectSalesReturnAction,
+} from '@/lib/actions/sales-return.actions'
+import { Button } from '@/components/ui/button'
+⋮----
+// USED BY: [penjualan/page, return/[id]/page] — count: 2
+⋮----
+async function approveAction()
+async function rejectAction()
+⋮----
+{/* Return Items */}
+⋮----
+{/* Admin Actions - only for pending returns */}
 ````
 
 ## File: app/(app)/produksi/[id]/edit/edit-form.tsx
@@ -509,9 +987,81 @@ function handleSubmit(e: React.FormEvent<HTMLFormElement>)
 onChange=
 ````
 
+## File: app/(app)/produksi/layout.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+⋮----
+export default async function ProduksiLayout(
+````
+
+## File: app/(app)/stok/beli/page.tsx
+````typescript
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import { redirect } from 'next/navigation'
+import { getCategoriesWithActiveItems } from '@/lib/services/stock-catalog.service'
+import { createStockPurchaseAction } from '@/lib/actions/stock.actions'
+import StockItemCascadeForm from '@/components/forms/stock-item-cascade-form'
+⋮----
+// Exclude Telur — eggs enter via production input, not purchase
+⋮----
+async function handleSubmit(formData: FormData)
+````
+
+## File: app/(app)/stok/layout.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+⋮----
+export default async function StokLayout(
+````
+
+## File: app/(app)/stok/regrade/[id]/page.tsx
+````typescript
+import { getSession } from '@/lib/auth/get-session'
+import { redirect, notFound } from 'next/navigation'
+import { findRegradeRequestById } from '@/lib/db/queries/inventory.queries'
+import { findItemById } from '@/lib/db/queries/stock-catalog.queries'
+import { approveRegradeRequestAction, rejectRegradeRequestAction } from '@/lib/actions/stock.actions'
+⋮----
+async function approve()
+⋮----
+async function reject()
+````
+
+## File: app/(app)/stok/sesuaikan/page.tsx
+````typescript
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import { redirect } from 'next/navigation'
+import { getCategoriesWithActiveItems } from '@/lib/services/stock-catalog.service'
+import { createStockAdjustmentAction } from '@/lib/actions/stock.actions'
+import StockItemCascadeForm from '@/components/forms/stock-item-cascade-form'
+⋮----
+async function handleSubmit(formData: FormData)
+````
+
 ## File: app/(auth)/layout.tsx
 ````typescript
 export default function AuthLayout(
+````
+
+## File: app/(auth)/logout/route.ts
+````typescript
+import { NextResponse } from 'next/server'
+import { createSupabaseServerClient } from '@/lib/auth/server'
+import type { NextRequest } from 'next/server'
+⋮----
+export async function GET(request: NextRequest)
+⋮----
+// Use NEXT_PUBLIC_APP_URL in prod to avoid redirecting to internal reverse-proxy origin
 ````
 
 ## File: app/api/alerts/run/route.ts
@@ -565,6 +1115,26 @@ export async function GET(
 // 8. Persist PDF metadata on invoice record
 ⋮----
 // 9. Return PDF bytes — convert Buffer to Uint8Array for Web Response compatibility
+````
+
+## File: app/api/laporan/aging-csv/route.ts
+````typescript
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import { getAgingData } from '@/lib/services/invoice.service'
+⋮----
+export async function GET(): Promise<Response>
+````
+
+## File: app/changelog/ChangelogSeenMarker.tsx
+````typescript
+// client: needs useEffect to fire server action on mount
+⋮----
+import { useEffect } from 'react'
+import { markChangelogSeen } from '@/lib/actions/changelog.actions'
+⋮----
+export function ChangelogSeenMarker()
 ````
 
 ## File: app/page.tsx
@@ -752,6 +1322,75 @@ const handleSubmit = async (e: React.FormEvent) =>
 onQuantityChange=
 ````
 
+## File: components/forms/create-so-client.tsx
+````typescript
+// client: needs useState, useEffect for sessionStorage draft persistence
+⋮----
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { createDraftSOAction } from '@/lib/actions/sales-order.actions'
+import { Button } from '@/components/ui/button'
+import { SOItemRow } from '@/components/ui/so-item-row'
+import { SOSummaryFooter } from '@/components/ui/so-summary-footer'
+import type { Customer } from '@/lib/db/schema'
+⋮----
+type SalesOrderItem = {
+  itemType: 'egg_grade_a' | 'egg_grade_b' | 'flock' | 'other'
+  itemRefId?: string
+  description?: string
+  quantity: number
+  unit: 'butir' | 'ekor' | 'unit'
+  pricePerUnit: number
+  discountPct: number
+}
+⋮----
+type DraftSO = {
+  customerId?: string
+  orderDate: string
+  paymentMethod: 'cash' | 'credit'
+  taxPct: number
+  notes?: string
+  overrideReason?: string
+  items: SalesOrderItem[]
+}
+⋮----
+interface Props {
+  customers: Customer[]
+  isAdmin: boolean
+}
+⋮----
+const addItem = () =>
+⋮----
+const updateItem = (index: number, field: keyof SalesOrderItem, value: unknown) =>
+⋮----
+const removeItem = (index: number) =>
+⋮----
+const handleSubmit = async (e: React.FormEvent) =>
+⋮----
+onPriceChange=
+onDiscountChange=
+````
+
+## File: components/forms/create-user-form.tsx
+````typescript
+// client: form state, submit handler, eye toggle
+⋮----
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Eye, EyeOff } from 'lucide-react'
+import { createUserAction } from '@/lib/actions/user.actions'
+⋮----
+type RoleOption = { id: string; displayName: string }
+⋮----
+interface Props {
+  roles: RoleOption[]
+  onSuccess: () => void
+  onCancel: () => void
+}
+⋮----
+async function onSubmit(e: React.FormEvent)
+````
+
 ## File: components/forms/customer-management-client.tsx
 ````typescript
 // client: interactive customer table with create form, inline edit, activate/deactivate
@@ -818,6 +1457,74 @@ interface Props {
 // creditLimit is Drizzle numeric → TS string; strip trailing DB zeros
 ⋮----
 async function onSubmit(e: React.FormEvent)
+````
+
+## File: components/forms/flock-detail-client.tsx
+````typescript
+// client: needs add-delivery form state and retire action
+⋮----
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { retireFlockAction } from '@/lib/actions/flock.actions'
+import { AddDeliveryForm } from '@/components/forms/add-delivery-form'
+import type { Flock, FlockDelivery } from '@/lib/db/schema'
+⋮----
+interface Props {
+  flock: Flock
+  deliveries: FlockDelivery[]
+  coopName: string
+  canAddDelivery: boolean
+  canRetire: boolean
+}
+⋮----
+function formatDate(date: Date | string | null): string
+⋮----
+async function handleRetire()
+⋮----
+function handleDeliverySuccess()
+⋮----
+{/* Header card */}
+⋮----
+{/* Deliveries section */}
+⋮----
+{/* Inline add delivery form */}
+````
+
+## File: components/forms/kas/transaction-form.tsx
+````typescript
+// client: needs form state and submission feedback
+⋮----
+import { useActionState, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
+import { createTransactionAction } from '@/lib/actions/cash.actions'
+import type { CashAccount } from '@/lib/db/schema/cash-account'
+import type { CashCategory } from '@/lib/db/schema/cash-category'
+⋮----
+type Props = {
+  accounts: CashAccount[]
+  categories: CashCategory[]
+  defaultAccountId?: string
+  defaultType?: 'in' | 'out'
+}
+⋮----
+type State = { success: boolean; error?: string } | null
+⋮----
+function handleSubmit(e: React.FormEvent<HTMLFormElement>)
+⋮----
+{/* Type */}
+⋮----
+{/* Account */}
+⋮----
+{/* Amount */}
+⋮----
+{/* Date */}
+⋮----
+{/* Category */}
+⋮----
+{/* Reference */}
+⋮----
+{/* Description */}
 ````
 
 ## File: components/forms/kas/transfer-form.tsx
@@ -906,6 +1613,41 @@ type Props = {
 }
 ⋮----
 export default function StockItemCascadeForm(
+````
+
+## File: components/forms/user-management-client.tsx
+````typescript
+// client: interactive user table with create form, role change, activate/deactivate
+⋮----
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { CreateUserForm } from './create-user-form'
+import { updateUserRoleAction, activateUserAction, deactivateUserAction } from '@/lib/actions/user.actions'
+import type { UserWithRoleSlug } from '@/lib/db/queries/user.queries'
+⋮----
+type RoleOption = { id: string; name: string; displayName: string; isSystem: boolean }
+⋮----
+interface Props {
+  users: UserWithRoleSlug[]
+  roles: RoleOption[]
+}
+⋮----
+async function handleRoleChange(userId: string, newRoleId: string)
+⋮----
+async function handleToggleActive(user: UserWithRoleSlug)
+⋮----
+onSuccess=
+⋮----
+onCancel=
+⋮----
+onClick=
+````
+
+## File: components/layout/version-badge.tsx
+````typescript
+import Link from 'next/link'
+import { CURRENT_VERSION } from '@/lib/changelog/data'
 ````
 
 ## File: components/pdf/invoice-pdf-document.tsx
@@ -1357,11 +2099,545 @@ import { defineConfig } from 'drizzle-kit'
 // Brainstorming canvas — not app code
 ````
 
+## File: lib/actions/app-settings.actions.ts
+````typescript
+import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import { saveAppSetting } from '@/lib/services/app-settings.service'
+⋮----
+export async function updateAlertSettings(formData: FormData): Promise<void>
+⋮----
+type ActionResult = { success: true } | { success: false; error: string }
+⋮----
+export async function saveWaTemplateAction(formData: FormData): Promise<ActionResult>
+````
+
+## File: lib/actions/cash.actions.ts
+````typescript
+import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import {
+  createTransaction,
+  createTransfer,
+  createAccount,
+  updateAccountSettings,
+} from '@/lib/services/cash.service'
+⋮----
+import { countTransactionsByAccount } from '@/lib/db/queries/cash-account.queries'
+⋮----
+type ActionResult<T = undefined> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+⋮----
+// ── Schemas ──────────────────────────────────────────────────
+⋮----
+function maxDate()
+⋮----
+// ── Actions ───────────────────────────────────────────────────
+⋮----
+export async function createTransactionAction(
+  formData: FormData
+): Promise<ActionResult<
+⋮----
+export async function createTransferAction(
+  formData: FormData
+): Promise<ActionResult<
+⋮----
+export async function createAccountAction(
+  formData: FormData
+): Promise<ActionResult<
+⋮----
+export async function updateAccountAction(
+  formData: FormData
+): Promise<ActionResult>
+⋮----
+export async function createCategoryAction(
+  formData: FormData
+): Promise<ActionResult<
+⋮----
+export async function updateCategoryAction(
+  formData: FormData
+): Promise<ActionResult>
+````
+
+## File: lib/actions/coop.actions.ts
+````typescript
+import { z } from 'zod'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import { createCoop, getAllCoops, updateCoop, deactivateCoop, activateCoop } from '@/lib/services/coop.service'
+⋮----
+type ActionResult<T = void> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+⋮----
+export async function createCoopAction(formData: FormData): Promise<ActionResult<
+⋮----
+export async function updateCoopAction(id: string, formData: FormData): Promise<ActionResult>
+⋮----
+export async function deactivateCoopAction(id: string): Promise<ActionResult>
+⋮----
+export async function activateCoopAction(id: string): Promise<ActionResult>
+⋮----
+export async function getCoopsAction(): Promise<ActionResult<Awaited<ReturnType<typeof getAllCoops>>>>
+````
+
+## File: lib/actions/customer.actions.ts
+````typescript
+import { z } from 'zod'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import {
+  createCustomer,
+  getAllCustomers,
+  updateCustomerById,
+  deactivateCustomer,
+  activateCustomer,
+} from '@/lib/services/customer.service'
+⋮----
+type ActionResult<T = void> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+⋮----
+export async function createCustomerAction(formData: FormData): Promise<ActionResult<
+⋮----
+export async function updateCustomerAction(id: string, formData: FormData): Promise<ActionResult>
+⋮----
+export async function deactivateCustomerAction(id: string): Promise<ActionResult>
+⋮----
+export async function activateCustomerAction(id: string): Promise<ActionResult>
+⋮----
+export async function getCustomersAction(): Promise<ActionResult<Awaited<ReturnType<typeof getAllCustomers>>>>
+````
+
+## File: lib/actions/flock-delivery.actions.ts
+````typescript
+import { z } from 'zod'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import { createFlockDelivery } from '@/lib/services/flock-delivery.service'
+⋮----
+type ActionResult<T = void> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+⋮----
+export async function createFlockDeliveryAction(formData: FormData): Promise<ActionResult<
+````
+
+## File: lib/actions/flock-phase.actions.ts
+````typescript
+import { z } from 'zod'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import {
+  createFlockPhase,
+  updateFlockPhaseById,
+  deleteFlockPhaseById,
+} from '@/lib/services/flock-phase.service'
+import { revalidateTag } from 'next/cache'
+⋮----
+type ActionResult<T = void> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+⋮----
+export async function createFlockPhaseAction(formData: FormData): Promise<ActionResult>
+⋮----
+export async function updateFlockPhaseAction(id: string, formData: FormData): Promise<ActionResult>
+⋮----
+export async function deleteFlockPhaseAction(id: string): Promise<ActionResult>
+````
+
+## File: lib/actions/flock.actions.ts
+````typescript
+import { z } from 'zod'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import {
+  getAllActiveFlocks,
+  createFlock,
+  retireFlock,
+} from '@/lib/services/flock.service'
+⋮----
+type ActionResult<T = void> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+⋮----
+export async function createFlockAction(formData: FormData): Promise<ActionResult<
+⋮----
+export async function retireFlockAction(flockId: string): Promise<ActionResult>
+⋮----
+export async function getActiveFlocksAction(): Promise<ActionResult<Awaited<ReturnType<typeof getAllActiveFlocks>>>>
+````
+
+## File: lib/actions/invoice.actions.ts
+````typescript
+import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import { recordPayment, applyCredit, getInvoiceForPdf, markInvoiceSent } from '@/lib/services/invoice.service'
+import { sendInvoiceEmail } from '@/lib/services/email.service'
+import { InvoicePdfDocument } from '@/components/pdf/invoice-pdf-document'
+⋮----
+type ActionResult<T = undefined> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+⋮----
+export async function recordPaymentAction(
+  formData: FormData
+): Promise<ActionResult<
+⋮----
+export async function applyCreditAction(
+  invoiceId: string,
+  creditId: string,
+  amount: number
+): Promise<ActionResult>
+⋮----
+export async function sendInvoiceEmailAction(invoiceId: string): Promise<ActionResult>
+⋮----
+// any: renderToBuffer expects ReactElement<DocumentProps> but InvoicePdfDocument
+// returns a <Document> wrapper — the runtime shape is correct, cast is safe.
+⋮----
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+````
+
+## File: lib/actions/lock-period.actions.ts
+````typescript
+import { z } from 'zod'
+import { getRequiredSession } from '@/lib/auth/guards'
+// no requirePermission needed — uses session.isAdmin directly
+import { correctDailyRecord } from '@/lib/services/lock-period.service'
+import { findCorrectionsByEntity } from '@/lib/db/queries/correction-record.queries'
+import type { CorrectionRecordWithUser } from '@/lib/db/queries/correction-record.queries'
+⋮----
+type ActionResult<T = void> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+⋮----
+export async function correctDailyRecordAction(
+  formData: FormData
+): Promise<ActionResult<
+⋮----
+export async function getCorrectionHistoryAction(
+  entityId: string
+): Promise<ActionResult<CorrectionRecordWithUser[]>>
+````
+
+## File: lib/actions/notification.actions.ts
+````typescript
+import { getRequiredSession } from '@/lib/auth/guards'
+import {
+  getNotificationsForRole,
+  getUnreadCount,
+  readNotification,
+  readAllNotifications,
+} from '@/lib/services/notification.service'
+import type { Notification } from '@/lib/services/notification.service'
+⋮----
+type NotificationRole = 'operator' | 'supervisor' | 'admin'
+⋮----
+type ActionResult<T = void> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+⋮----
+export async function getNotificationsAction(): Promise<ActionResult<Notification[]>>
+⋮----
+export async function getUnreadCountAction(): Promise<ActionResult<number>>
+⋮----
+export async function markNotificationReadAction(
+  notificationId: string
+): Promise<ActionResult>
+⋮----
+export async function markAllNotificationsReadAction(): Promise<ActionResult>
+````
+
+## File: lib/actions/role.actions.ts
+````typescript
+import { z } from 'zod'
+import { getRequiredSession } from '@/lib/auth/guards'
+import { requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import {
+  listRoles,
+  getRoleWithPermissions,
+  createRole,
+  updateRole,
+  deleteRole,
+  updatePermission,
+  setAllPermissions,
+} from '@/lib/services/role.service'
+⋮----
+type ActionResult<T = void> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+⋮----
+export async function getRolesAction(): Promise<
+  ActionResult<Awaited<ReturnType<typeof listRoles>>>
+> {
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+
+  const denied = requirePermission(session, PERMISSIONS.ROLE.MANAGE)
+  if (denied) return denied
+
+  try {
+    const roles = await listRoles(session.farmSchema)
+    return { success: true, data: roles }
+} catch (e)
+⋮----
+export async function getRoleWithPermissionsAction(
+  roleId: string
+): Promise<
+  ActionResult<Awaited<ReturnType<typeof getRoleWithPermissions>>>
+> {
+  const session = await getRequiredSession()
+  if ('error' in session) return session
+
+  const denied = requirePermission(session, PERMISSIONS.ROLE.MANAGE)
+  if (denied) return denied
+
+  try {
+    const roleWithPermissions = await getRoleWithPermissions(session.farmSchema, roleId)
+if (!roleWithPermissions)
+⋮----
+export async function createRoleAction(
+  formData: unknown
+): Promise<ActionResult>
+⋮----
+export async function updateRoleAction(
+  roleId: string,
+  formData: unknown
+): Promise<ActionResult>
+⋮----
+export async function deleteRoleAction(roleId: string): Promise<ActionResult>
+⋮----
+export async function updatePermissionAction(
+  roleId: string,
+  permissionKey: string,
+  granted: boolean
+): Promise<ActionResult>
+⋮----
+export async function setAllPermissionsAction(
+  roleId: string,
+  permissionKeys: string[]
+): Promise<ActionResult>
+````
+
+## File: lib/actions/sales-order.actions.ts
+````typescript
+import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import {
+  createDraftSO,
+  confirmSO,
+  cancelSO,
+  deleteDraftSO,
+  fulfillSO,
+} from '@/lib/services/sales-order.service'
+⋮----
+type ActionResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+⋮----
+export async function createDraftSOAction(formData: FormData): Promise<ActionResult<
+⋮----
+// Parse items array from FormData
+⋮----
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let items: any[] // any: raw JSON from FormData, validated by zod immediately after
+⋮----
+export async function confirmSOAction(orderId: string): Promise<ActionResult<undefined>>
+⋮----
+export async function cancelSOAction(orderId: string): Promise<ActionResult<undefined>>
+⋮----
+export async function deleteDraftSOAction(orderId: string): Promise<ActionResult<undefined>>
+⋮----
+export async function fulfillSOAction(orderId: string): Promise<ActionResult<undefined>>
+````
+
+## File: lib/actions/sales-return.actions.ts
+````typescript
+import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import {
+  createSalesReturn,
+  approveSalesReturn,
+  rejectSalesReturn,
+} from '@/lib/services/sales-return.service'
+⋮----
+type ActionResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+⋮----
+export async function createSalesReturnAction(formData: FormData): Promise<ActionResult<
+⋮----
+// Parse items array from FormData
+⋮----
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let items: any[] // any: raw JSON from FormData, validated by zod immediately after
+⋮----
+export async function approveSalesReturnAction(returnId: string): Promise<ActionResult<undefined>>
+⋮----
+export async function rejectSalesReturnAction(returnId: string): Promise<ActionResult<undefined>>
+````
+
+## File: lib/actions/stock.actions.ts
+````typescript
+import { z } from 'zod'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import {
+  getStockBalance,
+  getAllStockBalances,
+  createStockAdjustment,
+  submitRegradeRequest,
+  approveRegradeRequest,
+  rejectRegradeRequest,
+  createStockPurchase,
+  type StockBalance,
+} from '@/lib/services/stock.service'
+⋮----
+type StockRole = 'operator' | 'supervisor' | 'admin'
+⋮----
+type ActionResult<T = void> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+⋮----
+export async function getStockBalanceAction(
+  stockItemId: string
+): Promise<ActionResult<number>>
+⋮----
+export async function getAllStockBalancesAction(): Promise<ActionResult<StockBalance[]>>
+⋮----
+export async function createStockAdjustmentAction(
+  formData: FormData
+): Promise<ActionResult<
+⋮----
+export async function submitRegradeRequestAction(
+  formData: FormData
+): Promise<ActionResult<
+⋮----
+export async function approveRegradeRequestAction(
+  requestId: string
+): Promise<ActionResult>
+⋮----
+export async function rejectRegradeRequestAction(
+  requestId: string
+): Promise<ActionResult>
+⋮----
+export async function createStockPurchaseAction(
+  formData: FormData
+): Promise<ActionResult>
+````
+
+## File: lib/actions/user-coop-assignment.actions.ts
+````typescript
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import {
+  findAssignmentsByUser,
+  findAssignedCoopIds,
+  insertAssignment,
+  deleteAssignment,
+} from '@/lib/db/queries/user-coop-assignment.queries'
+⋮----
+type ActionResult<T = void> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+⋮----
+export async function getAssignmentsForUserAction(
+  userId: string
+): Promise<ActionResult<Awaited<ReturnType<typeof findAssignmentsByUser>>>>
+⋮----
+export async function getAssignedCoopIdsAction(userId: string): Promise<string[]>
+⋮----
+// User bisa lihat coop assignment mereka sendiri; admin bisa lihat semua
+⋮----
+export async function assignCoopToUserAction(userId: string, coopId: string): Promise<ActionResult>
+⋮----
+export async function removeCoopFromUserAction(userId: string, coopId: string): Promise<ActionResult>
+````
+
+## File: lib/actions/user.actions.ts
+````typescript
+import { z } from 'zod'
+import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import {
+  createUser,
+  getAllUsers,
+  getAllRoles,
+  updateUserRole,
+  deactivateUser,
+  activateUser,
+  changeUserPassword,
+} from '@/lib/services/user.service'
+⋮----
+type ActionResult<T = void> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+⋮----
+export async function createUserAction(
+  formData: FormData
+): Promise<ActionResult<
+⋮----
+export async function updateUserRoleAction(
+  userId: string,
+  roleId: string
+): Promise<ActionResult>
+⋮----
+export async function getAllRolesAction(): Promise<ActionResult<Awaited<ReturnType<typeof getAllRoles>>>>
+⋮----
+export async function deactivateUserAction(userId: string): Promise<ActionResult>
+⋮----
+export async function activateUserAction(userId: string): Promise<ActionResult>
+⋮----
+export async function changeUserPasswordAction(
+  userId: string,
+  newPassword: string
+): Promise<ActionResult>
+⋮----
+export async function getUsersAction(): Promise<ActionResult<Awaited<ReturnType<typeof getAllUsers>>>>
+````
+
 ## File: lib/auth/admin.ts
 ````typescript
 import { createClient } from '@supabase/supabase-js'
 ⋮----
 // Service role client — server only, never expose to client
+````
+
+## File: lib/auth/guards.ts
+````typescript
+import { getSession } from './get-session'
+import type { SessionUser } from './get-session'
+import type { PermissionKey } from './permissions'
+⋮----
+type GuardFailure = { success: false; error: string }
+⋮----
+export async function requireAuth(): Promise<GuardFailure | null>
+⋮----
+export function hasPermission(session: SessionUser, key: PermissionKey): boolean
+⋮----
+export function requirePermission(session: SessionUser, key: PermissionKey): GuardFailure | null
+⋮----
+// Helper: get session and fail fast if not authenticated
+export async function getRequiredSession(): Promise<SessionUser | GuardFailure>
+⋮----
+/** @deprecated Use requirePermission() instead. Will be removed in Task 6. */
+export async function requireSupervisorOrAdmin(): Promise<GuardFailure | null>
+⋮----
+/** @deprecated Use requirePermission() instead. Will be removed in Task 6. */
+export async function requireAdmin(): Promise<GuardFailure | null>
 ````
 
 ## File: lib/auth/server.ts
@@ -1377,6 +2653,11 @@ export async function createSupabaseServerClient()
 ⋮----
 getAll()
 setAll(cookiesToSet)
+````
+
+## File: lib/changelog/index.ts
+````typescript
+
 ````
 
 ## File: lib/db/index.ts
@@ -1751,6 +3032,54 @@ export async function listPaymentsByInvoice(farmSchema: string, invoiceId: strin
 export async function sumPaymentsByInvoice(farmSchema: string, invoiceId: string, tx?: DrizzleTx): Promise<number>
 ````
 
+## File: lib/db/queries/roles.queries.ts
+````typescript
+import { db } from '@/lib/db'
+import { getFarmSchema } from '@/lib/db/schema-factory'
+import { eq, and, desc, asc, count } from 'drizzle-orm'
+⋮----
+export async function getRoles(farmSchema: string)
+⋮----
+export async function getRoleById(farmSchema: string, roleId: string)
+⋮----
+export async function getRolePermissions(farmSchema: string, roleId: string): Promise<string[]>
+⋮----
+export async function getUserRolePermissions(
+  farmSchema: string,
+  userId: string
+): Promise<
+⋮----
+export async function getRoleUserCount(farmSchema: string, roleId: string): Promise<number>
+⋮----
+export async function createRoleQuery(
+  farmSchema: string,
+  data: { name: string; displayName: string; createdBy: string }
+)
+⋮----
+export async function updateRoleQuery(
+  farmSchema: string,
+  roleId: string,
+  data: { displayName: string }
+)
+⋮----
+export async function deleteRoleQuery(farmSchema: string, roleId: string)
+⋮----
+export async function upsertRolePermission(
+  farmSchema: string,
+  roleId: string,
+  permissionKey: string,
+  grantedBy: string
+)
+⋮----
+export async function deleteRolePermission(
+  farmSchema: string,
+  roleId: string,
+  permissionKey: string
+)
+⋮----
+export async function deleteAllRolePermissions(farmSchema: string, roleId: string)
+````
+
 ## File: lib/db/queries/sales-return.queries.ts
 ````typescript
 import { db } from '@/lib/db'
@@ -1830,35 +3159,6 @@ export async function listSalesReturns(
 )
 ````
 
-## File: lib/db/queries/stock-catalog.queries.ts
-````typescript
-import { db } from '@/lib/db'
-import { getFarmSchema } from '@/lib/db/schema-factory'
-import { eq, and } from 'drizzle-orm'
-⋮----
-export async function findAllCategories(farmSchema: string)
-⋮----
-export async function findCategoryById(farmSchema: string, id: string)
-⋮----
-export async function findCategoryByName(farmSchema: string, name: string)
-⋮----
-export async function findItemsByCategory(farmSchema: string, categoryId: string)
-⋮----
-export async function findActiveItemsByCategory(farmSchema: string, categoryId: string)
-⋮----
-export async function findItemById(farmSchema: string, id: string)
-⋮----
-// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function insertCategory(farmSchema: string, data: any)
-⋮----
-// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function insertStockItem(farmSchema: string, data: any)
-⋮----
-export async function updateStockItemActive(farmSchema: string, id: string, isActive: boolean): Promise<void>
-````
-
 ## File: lib/db/queries/user-coop-assignment.queries.ts
 ````typescript
 import { db } from '@/lib/db'
@@ -1872,6 +3172,38 @@ export async function findAssignedCoopIds(farmSchema: string, userId: string): P
 export async function insertAssignment(farmSchema: string, userId: string, coopId: string)
 ⋮----
 export async function deleteAssignment(farmSchema: string, userId: string, coopId: string): Promise<void>
+````
+
+## File: lib/db/queries/user.queries.ts
+````typescript
+import { db } from '@/lib/db'
+import { getFarmSchema } from '@/lib/db/schema-factory'
+import { eq } from 'drizzle-orm'
+⋮----
+export type UserWithRoleSlug = {
+  id: string
+  email: string
+  fullName: string
+  roleId: string
+  roleSlug: string
+  roleName: string
+  isActive: boolean
+  createdAt: Date
+  createdBy: string | null
+  updatedAt: Date | null
+}
+⋮----
+export async function findAllUsers(farmSchema: string): Promise<UserWithRoleSlug[]>
+⋮----
+export async function findUserById(farmSchema: string, id: string)
+⋮----
+// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function insertUser(farmSchema: string, data: any)
+⋮----
+// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function updateUser(farmSchema: string, id: string, data: any)
 ````
 
 ## File: lib/db/schema/alert-cooldowns.ts
@@ -2048,6 +3380,23 @@ export type RegradeRequest = typeof regradeRequests.$inferSelect
 export type NewRegradeRequest = typeof regradeRequests.$inferInsert
 ````
 
+## File: lib/db/schema/role-permissions.ts
+````typescript
+import { pgTable, uuid, text, timestamp, primaryKey } from 'drizzle-orm/pg-core'
+import { roles } from './roles'
+⋮----
+export type RolePermission = typeof rolePermissions.$inferSelect
+export type NewRolePermission = typeof rolePermissions.$inferInsert
+````
+
+## File: lib/db/schema/roles.ts
+````typescript
+import { pgTable, uuid, text, boolean, timestamp } from 'drizzle-orm/pg-core'
+⋮----
+export type Role = typeof roles.$inferSelect
+export type NewRole = typeof roles.$inferInsert
+````
+
 ## File: lib/db/schema/sales-order-items.ts
 ````typescript
 import { pgTable, uuid, text, integer, numeric, pgEnum } from 'drizzle-orm/pg-core'
@@ -2084,15 +3433,6 @@ import { pgTable, uuid, text, boolean, timestamp } from 'drizzle-orm/pg-core'
 ⋮----
 export type StockCategory = typeof stockCategories.$inferSelect
 export type NewStockCategory = typeof stockCategories.$inferInsert
-````
-
-## File: lib/db/schema/stock-items.ts
-````typescript
-import { pgTable, uuid, text, boolean, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
-import { stockCategories } from './stock-categories'
-⋮----
-export type StockItem = typeof stockItems.$inferSelect
-export type NewStockItem = typeof stockItems.$inferInsert
 ````
 
 ## File: lib/db/schema/user-coop-assignments.ts
@@ -2544,6 +3884,72 @@ export async function pushNotification(
 export async function getReadNotificationIds(farmSchema: string, userId: string): Promise<string[]>
 ````
 
+## File: lib/services/role.service.ts
+````typescript
+import { revalidateTag } from 'next/cache'
+import {
+  getRoles,
+  getRoleById,
+  getRolePermissions,
+  getRoleUserCount,
+  createRoleQuery,
+  updateRoleQuery,
+  deleteRoleQuery,
+  upsertRolePermission,
+  deleteRolePermission,
+  deleteAllRolePermissions,
+} from '@/lib/db/queries/roles.queries'
+⋮----
+export async function listRoles(farmSchema: string)
+⋮----
+export async function getRoleWithPermissions(
+  farmSchema: string,
+  roleId: string
+): Promise<
+⋮----
+type CreateRoleInput = { name: string; displayName: string }
+type ServiceResult<T = undefined> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+type ServiceVoidResult = { success: true } | { success: false; error: string }
+⋮----
+export async function createRole(
+  farmSchema: string,
+  data: CreateRoleInput,
+  actorId: string
+): Promise<ServiceResult<Awaited<ReturnType<typeof createRoleQuery>>>>
+⋮----
+export async function updateRole(
+  farmSchema: string,
+  roleId: string,
+  data: { displayName: string },
+  // actorId reserved for future audit trail
+  _actorId: string
+): Promise<ServiceResult<NonNullable<Awaited<ReturnType<typeof updateRoleQuery>>>>>
+⋮----
+// actorId reserved for future audit trail
+⋮----
+export async function deleteRole(
+  farmSchema: string,
+  roleId: string
+): Promise<ServiceVoidResult>
+⋮----
+export async function updatePermission(
+  farmSchema: string,
+  roleId: string,
+  permissionKey: string,
+  granted: boolean,
+  actorId: string
+): Promise<ServiceVoidResult>
+⋮----
+export async function setAllPermissions(
+  farmSchema: string,
+  roleId: string,
+  permissionKeys: string[],
+  actorId: string
+): Promise<ServiceVoidResult>
+````
+
 ## File: lib/services/sales-order.service.test.ts
 ````typescript
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -2602,52 +4008,6 @@ type CreateReturnInput = {
 }
 ````
 
-## File: lib/services/stock-catalog.service.ts
-````typescript
-import {
-  findAllCategories,
-  findCategoryById,
-  findCategoryByName,
-  findActiveItemsByCategory,
-  findItemsByCategory,
-  findItemById,
-  insertCategory,
-  insertStockItem,
-  updateStockItemActive,
-} from '@/lib/db/queries/stock-catalog.queries'
-import type { StockCategory, StockItem } from '@/lib/db/schema'
-⋮----
-type CreateCategoryInput = { name: string; unit: string }
-type CreateStockItemInput = { categoryId: string; name: string }
-⋮----
-export async function getCategories(farmSchema: string): Promise<StockCategory[]>
-⋮----
-export type CategoryWithItems = StockCategory & { items: StockItem[] }
-⋮----
-export async function getCategoriesWithActiveItems(farmSchema: string): Promise<CategoryWithItems[]>
-⋮----
-export async function getCategoryWithItems(
-  farmSchema: string,
-  categoryId: string
-): Promise<
-⋮----
-export async function getActiveItemsByCategory(farmSchema: string, categoryId: string): Promise<StockItem[]>
-⋮----
-export async function getActiveItemsByCategoryName(farmSchema: string, name: string): Promise<StockItem[]>
-⋮----
-export async function getActiveEggItems(farmSchema: string): Promise<StockItem[]>
-⋮----
-export async function getActiveFeedItems(farmSchema: string): Promise<StockItem[]>
-⋮----
-export async function getActiveVaccineItems(farmSchema: string): Promise<StockItem[]>
-⋮----
-export async function createCategory(farmSchema: string, input: CreateCategoryInput): Promise<StockCategory>
-⋮----
-export async function createStockItem(farmSchema: string, input: CreateStockItemInput): Promise<StockItem>
-⋮----
-export async function toggleStockItemActive(farmSchema: string, itemId: string): Promise<void>
-````
-
 ## File: lib/services/stock.service.test.ts
 ````typescript
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -2673,6 +4033,66 @@ vi.mocked(q.findRegradeRequestById).mockResolvedValue({ id: 'req-1', status: 'AP
 vi.mocked(q.findRegradeRequestById).mockResolvedValue({ id: 'req-1', status: 'PENDING' } as any) // any: partial mock
 ⋮----
 vi.mocked(q.findRegradeRequestById).mockResolvedValue({ id: 'req-1', status: 'PENDING' } as any) // any: partial mock
+````
+
+## File: lib/services/user.service.test.ts
+````typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+⋮----
+import { supabaseAdmin } from '@/lib/auth/admin'
+import { createUser, updateUserRole, deactivateUser, changeUserPassword } from './user.service'
+⋮----
+} as any) // any: Supabase return type is complex union
+⋮----
+} as any) // any: Supabase return type is complex union
+⋮----
+} as any) // any: partial User for mock
+⋮----
+} as any) // any: Supabase return type is complex union
+````
+
+## File: lib/services/user.service.ts
+````typescript
+import { supabaseAdmin } from '@/lib/auth/admin'
+import { db } from '@/lib/db'
+import { farmUsers } from '@/lib/db/schema'
+import {
+  findAllUsers,
+  findUserById,
+  insertUser,
+  updateUser,
+} from '@/lib/db/queries/user.queries'
+import { getRoles } from '@/lib/db/queries/roles.queries'
+import type { UserWithRoleSlug } from '@/lib/db/queries/user.queries'
+import type { User } from '@/lib/db/schema'
+⋮----
+export async function getAllRoles(farmSchema: string)
+⋮----
+type CreateUserInput = {
+  email: string
+  password: string
+  fullName: string
+  roleId: string
+  createdBy: string
+}
+⋮----
+export async function createUser(farmSchema: string, input: CreateUserInput): Promise<User>
+⋮----
+export async function getAllUsers(farmSchema: string): Promise<UserWithRoleSlug[]>
+⋮----
+export async function getUserById(farmSchema: string, id: string): Promise<User | null>
+⋮----
+export async function updateUserRole(
+  farmSchema: string,
+  id: string,
+  roleId: string
+): Promise<User | null>
+⋮----
+export async function deactivateUser(farmSchema: string, id: string): Promise<void>
+⋮----
+export async function activateUser(farmSchema: string, id: string): Promise<void>
+⋮----
+export async function changeUserPassword(id: string, newPassword: string): Promise<void>
 ````
 
 ## File: lib/utils.ts
@@ -2945,85 +4365,91 @@ import { defineConfig } from 'vitest/config'
 import tsconfigPaths from 'vite-tsconfig-paths'
 ````
 
-## File: app/(app)/admin/flock-phases/page.tsx
+## File: app/(app)/admin/import/page.tsx
 ````typescript
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/get-session'
-import { getAllFlockPhases } from '@/lib/services/flock-phase.service'
+import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
+import { ImportPanel } from './import-panel'
+⋮----
+export default async function ImportPage()
 ````
 
-## File: app/(app)/admin/kas/page.tsx
-````typescript
-import { getSession } from '@/lib/auth/get-session'
-import { redirect } from 'next/navigation'
-import { listAccounts, countTransactionsByAccount } from '@/lib/db/queries/cash-account.queries'
-import { listCategories } from '@/lib/db/queries/cash-category.queries'
-import { AccountForm } from './account-form'
-import { CategoryForm } from './category-form'
-import { AccountList } from './account-list'
-import { CategoryList } from './category-list'
-⋮----
-{/* Accounts */}
-⋮----
-{/* Categories */}
-````
-
-## File: app/(app)/admin/layout.tsx
+## File: app/(app)/admin/kandang/page.tsx
 ````typescript
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
+import { getAllCoopsWithPopulation } from '@/lib/services/coop.service'
+import { CoopManagementClient } from '@/components/forms/coop-management-client'
 ⋮----
-export default async function AdminLayout(
+export default async function KandangPage()
 ````
 
-## File: app/(app)/admin/page.tsx
+## File: app/(app)/admin/roles/RoleManagementClient.tsx
 ````typescript
-import Link from 'next/link'
-import { Users, Settings, MessageSquare, Bell, Upload, Package, Wallet, Shield } from 'lucide-react'
-````
-
-## File: app/(app)/admin/pelanggan/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import { getAllCustomers } from '@/lib/services/customer.service'
-import { CustomerManagementClient } from '@/components/forms/customer-management-client'
+// client: interactive role management with permission matrix and real-time toggles
 ⋮----
-export default async function PelangganPage()
-````
-
-## File: app/(app)/admin/settings/alerts/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { getAppSetting } from '@/lib/services/app-settings.service'
-import { updateAlertSettings } from '@/lib/actions/app-settings.actions'
-````
-
-## File: app/(app)/admin/settings/wa-template/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { getAppSetting } from '@/lib/services/app-settings.service'
-import { saveWaTemplateAction } from '@/lib/actions/app-settings.actions'
+import { useState, useTransition, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { Lock, Trash2, Plus, X, Pencil } from 'lucide-react'
+import {
+  getRoleWithPermissionsAction,
+  createRoleAction,
+  updateRoleAction,
+  deleteRoleAction,
+  updatePermissionAction,
+} from '@/lib/actions/role.actions'
 ⋮----
-function renderPreview(template: string): string
+type Role = {
+  id: string
+  name: string
+  displayName: string
+  isSystem: boolean
+  isActive: boolean
+  createdAt: Date
+}
 ⋮----
-async function handleSaveTemplate(formData: FormData)
+interface Props {
+  roles: Role[]
+}
 ⋮----
-{/* Header */}
+function isProtectedRole(role: Role)
 ⋮----
-{/* Alerts */}
+// Derived: clear permissions when no role selected
 ⋮----
-{/* Form */}
+// eslint-disable-next-line react-hooks/set-state-in-effect
 ⋮----
-{/* Variable hints */}
+async function handleTogglePermission(key: string, currentlyGranted: boolean)
 ⋮----
-{/* Preview */}
+// Optimistic update
+⋮----
+// Revert
+⋮----
+async function handleDeleteRole(role: Role)
+⋮----
+{/* Left panel: roles list */}
+⋮----
+e.stopPropagation()
+setEditingRole(role)
+⋮----
+handleDeleteRole(role)
+⋮----
+onClick=
+⋮----
+onClose=
+⋮----
+setShowCreate(false)
+startTransition(()
+⋮----
+setEditingRole(null)
+⋮----
+// client: modal form for creating a role
+⋮----
+// client: modal form for editing role display name
+⋮----
+async function handleSubmit(e: React.FormEvent)
+⋮----
+onChange=
 ````
 
 ## File: app/(app)/admin/stok-katalog/page.tsx
@@ -3032,7 +4458,7 @@ import { getSession } from '@/lib/auth/get-session'
 import { redirect } from 'next/navigation'
 import { getCategories } from '@/lib/services/stock-catalog.service'
 import { findItemsByCategory } from '@/lib/db/queries/stock-catalog.queries'
-import { createCategoryAction, createStockItemAction, toggleStockItemActiveAction } from '@/lib/actions/stock-catalog.actions'
+import { createCategoryAction, createStockItemAction, toggleStockItemActiveAction, toggleBundleMethodAction } from '@/lib/actions/stock-catalog.actions'
 ⋮----
 async function handleCreateCategory(formData: FormData)
 ⋮----
@@ -3042,134 +4468,9 @@ async function handleCreateItem(formData: FormData)
 ⋮----
 async function handleToggle()
 ⋮----
+async function handleBundleToggle()
+⋮----
 {/* Add category */}
-````
-
-## File: app/(app)/admin/users/[id]/kandang/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { getSession } from '@/lib/auth/get-session'
-import { getUserById } from '@/lib/services/user.service'
-import { getAllCoops } from '@/lib/services/coop.service'
-import { findAssignmentsByUser } from '@/lib/db/queries/user-coop-assignment.queries'
-import { CoopAssignmentPanel } from '@/components/forms/coop-assignment-panel'
-⋮----
-export default async function UserKandangPage(
-````
-
-## File: app/(app)/dashboard/page.tsx
-````typescript
-import Link from 'next/link'
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import { redirect } from 'next/navigation'
-import { KpiCard } from '@/components/ui/kpi-card'
-import { DashboardCharts } from '@/components/ui/charts/dashboard-charts'
-import {
-  getDashboardKpis,
-  getProductionChartData,
-  getRecentDashboardRecords,
-  getHdpChartData,
-  getFcrChartData,
-  getProductionBySkuChartData,
-} from '@/lib/services/dashboard.service'
-import { getAgingData } from '@/lib/services/invoice.service'
-import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
-import FlockOnlyFilter from './flock-only-filter'
-import type { AgingRow } from '@/lib/db/queries/invoice.queries'
-⋮----
-function getPeriodRange(days: number):
-⋮----
-// Union all SKU keys across all rows to avoid missing SKUs absent from first row
-⋮----
-{/* Header */}
-⋮----
-{/* KPI Grid — 2 cols mobile / 3 cols tablet / 6 cols desktop */}
-⋮----
-{/* Charts 2x2 */}
-⋮----
-{/* Recent records table — 7 columns */}
-⋮----
-{/* Aging widget — admin + supervisor only */}
-````
-
-## File: app/(app)/flock/[id]/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import { findFlockById } from '@/lib/db/queries/flock.queries'
-import { findDeliveriesByFlockId } from '@/lib/db/queries/flock-delivery.queries'
-import { getCoopById } from '@/lib/services/coop.service'
-import { FlockDetailClient } from '@/components/forms/flock-detail-client'
-⋮----
-canAddDelivery=
-````
-
-## File: app/(app)/flock/layout.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-⋮----
-export default async function FlockLayout(
-````
-
-## File: app/(app)/flock/new/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import { getAllCoops } from '@/lib/services/coop.service'
-import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
-import { CreateFlockForm } from '@/components/forms/create-flock-form'
-⋮----
-export default async function NewFlockPage()
-````
-
-## File: app/(app)/forbidden/page.tsx
-````typescript
-import Link from 'next/link'
-⋮----
-export default function ForbiddenPage()
-````
-
-## File: app/(app)/kas/layout.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-⋮----
-export default async function KasLayout(
-````
-
-## File: app/(app)/kas/transaksi/baru/page.tsx
-````typescript
-import { getSession } from '@/lib/auth/get-session'
-import { redirect } from 'next/navigation'
-import { listAccounts } from '@/lib/db/queries/cash-account.queries'
-import { listActiveCategories } from '@/lib/db/queries/cash-category.queries'
-import { TransactionForm } from '@/components/forms/kas/transaction-form'
-import { ArrowLeft } from 'lucide-react'
-import Link from 'next/link'
-````
-
-## File: app/(app)/kas/transfer/baru/page.tsx
-````typescript
-import { getSession } from '@/lib/auth/get-session'
-import { redirect } from 'next/navigation'
-import { listAccounts } from '@/lib/db/queries/cash-account.queries'
-import { TransferForm } from '@/components/forms/kas/transfer-form'
-import { ArrowLeft } from 'lucide-react'
-import Link from 'next/link'
 ````
 
 ## File: app/(app)/laporan/keuangan/layout.tsx
@@ -3182,207 +4483,37 @@ import { PERMISSIONS } from '@/lib/auth/permissions'
 export default async function KeuanganLaporanLayout(
 ````
 
-## File: app/(app)/laporan/layout.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-⋮----
-export default async function LaporanLayout(
-````
-
-## File: app/(app)/penjualan/[id]/page.tsx
+## File: app/(app)/laporan/page.tsx
 ````typescript
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/get-session'
 import { hasPermission } from '@/lib/auth/guards'
 import { PERMISSIONS } from '@/lib/auth/permissions'
 import {
-  findSalesOrderById,
-  findSalesOrderItems,
-} from '@/lib/db/queries/sales-order.queries'
-import {
-  confirmSOAction,
-  cancelSOAction,
-  deleteDraftSOAction,
-  fulfillSOAction,
-} from '@/lib/actions/sales-order.actions'
-import { findSalesReturnsByOrderId } from '@/lib/db/queries/sales-return.queries'
-import { SOStatusBadge } from '@/components/ui/so-status-badge'
-import { Button } from '@/components/ui/button'
-⋮----
-async function confirmAction()
-async function cancelAction()
-async function deleteAction()
-async function fulfillAction()
-⋮----
-{/* SO Items */}
-⋮----
-{/* Sales Returns */}
-⋮----
-{/* Status Actions */}
-````
-
-## File: app/(app)/penjualan/[id]/return/new/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import { findSalesOrderById, findSalesOrderItems } from '@/lib/db/queries/sales-order.queries'
-import { CreateReturnClient } from '@/components/forms/create-return-client'
-⋮----
-export default async function CreateReturnPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-})
-````
-
-## File: app/(app)/penjualan/invoices/[id]/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
+  Egg, Bird, Package, ShoppingCart, Users, Landmark, ArrowRight,
+} from 'lucide-react'
 import Link from 'next/link'
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import { getInvoiceDetails } from '@/lib/services/invoice.service'
-import { recordPaymentAction, applyCreditAction, sendInvoiceEmailAction } from '@/lib/actions/invoice.actions'
-import { getAppSetting } from '@/lib/services/app-settings.service'
-import { InvoiceStatusBadge } from '@/components/ui/invoice-status-badge'
-import { Button } from '@/components/ui/button'
 ⋮----
-// WA share setup (admin only)
-⋮----
-// Inline server actions
-async function handleRecordPayment(formData: FormData)
-⋮----
-async function handleSendEmail()
-⋮----
-{/* Header */}
-⋮----
-{/* Download PDF button */}
-⋮----
-{/* WA share button — admin only, requires customer phone */}
-⋮----
-{/* Email send button — admin only, requires customer email */}
-⋮----
-{/* Alerts */}
-⋮----
-{/* Financial summary */}
-⋮----
-{/* Payment history */}
-⋮----
-{/* Record Payment form (admin only, status not paid/cancelled/draft) */}
-⋮----
-{/* Available credits (admin only) */}
-⋮----
-async function handleApplyCredit(formData: FormData)
+type ReportCard = {
+  href: string
+  icon: React.ElementType
+  title: string
+  description: string
+  permissionKey: string
+}
 ````
 
-## File: app/(app)/penjualan/invoices/page.tsx
+## File: app/(app)/produksi/[id]/edit/page.tsx
 ````typescript
-import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import { listInvoices } from '@/lib/db/queries/invoice.queries'
-import { InvoiceStatusBadge } from '@/components/ui/invoice-status-badge'
-import { Button } from '@/components/ui/button'
-import type { Invoice } from '@/lib/db/schema'
-⋮----
-{/* Header */}
-⋮----
-{/* Status filter buttons */}
-⋮----
-{/* Table */}
-⋮----
-{/* Pagination */}
-````
-
-## File: app/(app)/penjualan/layout.tsx
-````typescript
 import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
+import { findDailyRecordById, findDailySubRecordsByRecordId } from '@/lib/db/queries/daily-record.queries'
+import { canEdit } from '@/lib/services/lock-period.service'
+import { getActiveEggItems, getActiveFeedItems, getActiveVaccineItems } from '@/lib/services/stock-catalog.service'
+import { getAllStockBalances } from '@/lib/db/queries/inventory.queries'
+import { DailyRecordEditForm } from './edit-form'
 ⋮----
-export default async function PenjualanLayout(
-````
-
-## File: app/(app)/penjualan/new/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import { getAllCustomers } from '@/lib/services/customer.service'
-import { CreateSOClient } from '@/components/forms/create-so-client'
-⋮----
-export default async function CreateSOPage()
-````
-
-## File: app/(app)/penjualan/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import { listSalesOrders } from '@/lib/db/queries/sales-order.queries'
-import { listSalesReturnsWithOrder } from '@/lib/db/queries/sales-return.queries'
-import { SOStatusBadge } from '@/components/ui/so-status-badge'
-import { Button } from '@/components/ui/button'
-⋮----
-// USED BY: [penjualan/page, return/[id]/page] — count: 2
-⋮----
-{/* Page header */}
-⋮----
-{/* Tab strip */}
-⋮----
-{/* SO Tab Content */}
-⋮----
-{/* SO Status Filter */}
-⋮----
-{/* SO Table */}
-⋮----
-{/* SO Pagination */}
-⋮----
-{/* Return Tab Content */}
-⋮----
-{/* Return Status Filter */}
-⋮----
-{/* Return Table */}
-⋮----
-{/* Return Pagination */}
-````
-
-## File: app/(app)/penjualan/return/[id]/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import {
-  findSalesReturnById,
-  findSalesReturnItems,
-} from '@/lib/db/queries/sales-return.queries'
-import { findSalesOrderById } from '@/lib/db/queries/sales-order.queries'
-import {
-  approveSalesReturnAction,
-  rejectSalesReturnAction,
-} from '@/lib/actions/sales-return.actions'
-import { Button } from '@/components/ui/button'
-⋮----
-// USED BY: [penjualan/page, return/[id]/page] — count: 2
-⋮----
-async function approveAction()
-async function rejectAction()
-⋮----
-{/* Return Items */}
-⋮----
-{/* Admin Actions - only for pending returns */}
+type Props = { params: Promise<{ id: string }> }
 ````
 
 ## File: app/(app)/produksi/flock-filter.tsx
@@ -3418,14 +4549,16 @@ function handleCoopChange(e: React.ChangeEvent<HTMLSelectElement>)
 function handleFlockChange(e: React.ChangeEvent<HTMLSelectElement>)
 ````
 
-## File: app/(app)/produksi/layout.tsx
+## File: app/(app)/produksi/input/page.tsx
 ````typescript
-import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
+import { redirect } from 'next/navigation'
+import { getFlockOptionsForInput } from '@/lib/services/daily-record.service'
+import { getActiveEggItems, getActiveFeedItems, getActiveVaccineItems } from '@/lib/services/stock-catalog.service'
+import { getAllStockBalances } from '@/lib/db/queries/inventory.queries'
+import { DailyInputForm } from '@/components/forms/daily-input-form'
 ⋮----
-export default async function ProduksiLayout(
+export default async function ProduksiInputPage()
 ````
 
 ## File: app/(app)/profil/page.tsx
@@ -3437,76 +4570,18 @@ import { ProfilTabs } from '@/components/profil/profil-tabs'
 export default async function ProfilPage()
 ````
 
-## File: app/(app)/stok/beli/page.tsx
+## File: app/(app)/stok/regrade/page.tsx
 ````typescript
 import { getSession } from '@/lib/auth/get-session'
 import { hasPermission } from '@/lib/auth/guards'
 import { PERMISSIONS } from '@/lib/auth/permissions'
 import { redirect } from 'next/navigation'
-import { getCategoriesWithActiveItems } from '@/lib/services/stock-catalog.service'
-import { createStockPurchaseAction } from '@/lib/actions/stock.actions'
-import StockItemCascadeForm from '@/components/forms/stock-item-cascade-form'
-⋮----
-// Exclude Telur — eggs enter via production input, not purchase
+import { getActiveEggItems } from '@/lib/services/stock-catalog.service'
+import { findPendingRegradeRequests } from '@/lib/db/queries/inventory.queries'
+import { submitRegradeRequestAction } from '@/lib/actions/stock.actions'
+import Link from 'next/link'
 ⋮----
 async function handleSubmit(formData: FormData)
-````
-
-## File: app/(app)/stok/layout.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-⋮----
-export default async function StokLayout(
-````
-
-## File: app/(app)/stok/regrade/[id]/page.tsx
-````typescript
-import { getSession } from '@/lib/auth/get-session'
-import { redirect, notFound } from 'next/navigation'
-import { findRegradeRequestById } from '@/lib/db/queries/inventory.queries'
-import { findItemById } from '@/lib/db/queries/stock-catalog.queries'
-import { approveRegradeRequestAction, rejectRegradeRequestAction } from '@/lib/actions/stock.actions'
-⋮----
-async function approve()
-⋮----
-async function reject()
-````
-
-## File: app/(app)/stok/sesuaikan/page.tsx
-````typescript
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import { redirect } from 'next/navigation'
-import { getCategoriesWithActiveItems } from '@/lib/services/stock-catalog.service'
-import { createStockAdjustmentAction } from '@/lib/actions/stock.actions'
-import StockItemCascadeForm from '@/components/forms/stock-item-cascade-form'
-⋮----
-async function handleSubmit(formData: FormData)
-````
-
-## File: app/(auth)/logout/route.ts
-````typescript
-import { NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/auth/server'
-import type { NextRequest } from 'next/server'
-⋮----
-export async function GET(request: NextRequest)
-⋮----
-// Use NEXT_PUBLIC_APP_URL in prod to avoid redirecting to internal reverse-proxy origin
-````
-
-## File: app/api/laporan/aging-csv/route.ts
-````typescript
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import { getAgingData } from '@/lib/services/invoice.service'
-⋮----
-export async function GET(): Promise<Response>
 ````
 
 ## File: app/api/laporan/flock-csv/route.ts
@@ -3568,6 +4643,21 @@ function formatRupiah(n: number)
 export async function GET(request: NextRequest): Promise<Response>
 ````
 
+## File: app/api/laporan/produksi-csv/route.ts
+````typescript
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import { getProductionReportData } from '@/lib/services/daily-record.service'
+import type { Role, ProductionReportResult } from '@/lib/services/daily-record.service'
+⋮----
+function parseSafeISODate(str: string | null, fallback: Date): string
+⋮----
+function escapeField(value: string): string
+⋮----
+export async function GET(request: Request): Promise<Response>
+````
+
 ## File: app/api/laporan/stok-csv/route.ts
 ````typescript
 import { getSession } from '@/lib/auth/get-session'
@@ -3591,16 +4681,6 @@ function parseSafe(s: string | null, d: Date)
 function esc(v: string)
 ⋮----
 export async function GET(request: Request): Promise<Response>
-````
-
-## File: app/changelog/ChangelogSeenMarker.tsx
-````typescript
-// client: needs useEffect to fire server action on mount
-⋮----
-import { useEffect } from 'react'
-import { markChangelogSeen } from '@/lib/actions/changelog.actions'
-⋮----
-export function ChangelogSeenMarker()
 ````
 
 ## File: app/layout.tsx
@@ -3644,143 +4724,6 @@ onClick=
 onCancel=
 ````
 
-## File: components/forms/create-so-client.tsx
-````typescript
-// client: needs useState, useEffect for sessionStorage draft persistence
-⋮----
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { createDraftSOAction } from '@/lib/actions/sales-order.actions'
-import { Button } from '@/components/ui/button'
-import { SOItemRow } from '@/components/ui/so-item-row'
-import { SOSummaryFooter } from '@/components/ui/so-summary-footer'
-import type { Customer } from '@/lib/db/schema'
-⋮----
-type SalesOrderItem = {
-  itemType: 'egg_grade_a' | 'egg_grade_b' | 'flock' | 'other'
-  itemRefId?: string
-  description?: string
-  quantity: number
-  unit: 'butir' | 'ekor' | 'unit'
-  pricePerUnit: number
-  discountPct: number
-}
-⋮----
-type DraftSO = {
-  customerId?: string
-  orderDate: string
-  paymentMethod: 'cash' | 'credit'
-  taxPct: number
-  notes?: string
-  overrideReason?: string
-  items: SalesOrderItem[]
-}
-⋮----
-interface Props {
-  customers: Customer[]
-  isAdmin: boolean
-}
-⋮----
-const addItem = () =>
-⋮----
-const updateItem = (index: number, field: keyof SalesOrderItem, value: unknown) =>
-⋮----
-const removeItem = (index: number) =>
-⋮----
-const handleSubmit = async (e: React.FormEvent) =>
-⋮----
-onPriceChange=
-onDiscountChange=
-````
-
-## File: components/forms/create-user-form.tsx
-````typescript
-// client: form state, submit handler, eye toggle
-⋮----
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Eye, EyeOff } from 'lucide-react'
-import { createUserAction } from '@/lib/actions/user.actions'
-⋮----
-type RoleOption = { id: string; displayName: string }
-⋮----
-interface Props {
-  roles: RoleOption[]
-  onSuccess: () => void
-  onCancel: () => void
-}
-⋮----
-async function onSubmit(e: React.FormEvent)
-````
-
-## File: components/forms/flock-detail-client.tsx
-````typescript
-// client: needs add-delivery form state and retire action
-⋮----
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { retireFlockAction } from '@/lib/actions/flock.actions'
-import { AddDeliveryForm } from '@/components/forms/add-delivery-form'
-import type { Flock, FlockDelivery } from '@/lib/db/schema'
-⋮----
-interface Props {
-  flock: Flock
-  deliveries: FlockDelivery[]
-  coopName: string
-  canAddDelivery: boolean
-  canRetire: boolean
-}
-⋮----
-function formatDate(date: Date | string | null): string
-⋮----
-async function handleRetire()
-⋮----
-function handleDeliverySuccess()
-⋮----
-{/* Header card */}
-⋮----
-{/* Deliveries section */}
-⋮----
-{/* Inline add delivery form */}
-````
-
-## File: components/forms/kas/transaction-form.tsx
-````typescript
-// client: needs form state and submission feedback
-⋮----
-import { useActionState, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
-import { createTransactionAction } from '@/lib/actions/cash.actions'
-import type { CashAccount } from '@/lib/db/schema/cash-account'
-import type { CashCategory } from '@/lib/db/schema/cash-category'
-⋮----
-type Props = {
-  accounts: CashAccount[]
-  categories: CashCategory[]
-  defaultAccountId?: string
-  defaultType?: 'in' | 'out'
-}
-⋮----
-type State = { success: boolean; error?: string } | null
-⋮----
-function handleSubmit(e: React.FormEvent<HTMLFormElement>)
-⋮----
-{/* Type */}
-⋮----
-{/* Account */}
-⋮----
-{/* Amount */}
-⋮----
-{/* Date */}
-⋮----
-{/* Category */}
-⋮----
-{/* Reference */}
-⋮----
-{/* Description */}
-````
-
 ## File: components/forms/laporan-filter.tsx
 ````typescript
 // client: needs onChange handlers for date inputs and entity selector
@@ -3814,12 +4757,6 @@ interface Props {
   onMoreClick: () => void
   isMoreOpen: boolean
 }
-````
-
-## File: components/layout/version-badge.tsx
-````typescript
-import Link from 'next/link'
-import { CURRENT_VERSION } from '@/lib/changelog/data'
 ````
 
 ## File: components/ui/tabs.tsx
@@ -3858,282 +4795,14 @@ function TabsContent(
 return <div className=
 ````
 
-## File: lib/actions/app-settings.actions.ts
+## File: lib/actions/changelog.actions.ts
 ````typescript
-import { z } from 'zod'
-import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
-import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import { saveAppSetting } from '@/lib/services/app-settings.service'
+import { cookies } from 'next/headers'
+import { CURRENT_VERSION } from '@/lib/changelog/data'
 ⋮----
-export async function updateAlertSettings(formData: FormData): Promise<void>
+export async function markChangelogSeen(): Promise<
 ⋮----
-type ActionResult = { success: true } | { success: false; error: string }
-⋮----
-export async function saveWaTemplateAction(formData: FormData): Promise<ActionResult>
-````
-
-## File: lib/actions/cash.actions.ts
-````typescript
-import { z } from 'zod'
-import { revalidatePath } from 'next/cache'
-import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import {
-  createTransaction,
-  createTransfer,
-  createAccount,
-  updateAccountSettings,
-} from '@/lib/services/cash.service'
-⋮----
-import { countTransactionsByAccount } from '@/lib/db/queries/cash-account.queries'
-⋮----
-type ActionResult<T = undefined> =
-  | { success: true; data: T }
-  | { success: false; error: string }
-⋮----
-// ── Schemas ──────────────────────────────────────────────────
-⋮----
-function maxDate()
-⋮----
-// ── Actions ───────────────────────────────────────────────────
-⋮----
-export async function createTransactionAction(
-  formData: FormData
-): Promise<ActionResult<
-⋮----
-export async function createTransferAction(
-  formData: FormData
-): Promise<ActionResult<
-⋮----
-export async function createAccountAction(
-  formData: FormData
-): Promise<ActionResult<
-⋮----
-export async function updateAccountAction(
-  formData: FormData
-): Promise<ActionResult>
-⋮----
-export async function createCategoryAction(
-  formData: FormData
-): Promise<ActionResult<
-⋮----
-export async function updateCategoryAction(
-  formData: FormData
-): Promise<ActionResult>
-````
-
-## File: lib/actions/coop.actions.ts
-````typescript
-import { z } from 'zod'
-import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import { createCoop, getAllCoops, updateCoop, deactivateCoop, activateCoop } from '@/lib/services/coop.service'
-⋮----
-type ActionResult<T = void> =
-  | { success: true; data: T }
-  | { success: false; error: string }
-⋮----
-export async function createCoopAction(formData: FormData): Promise<ActionResult<
-⋮----
-export async function updateCoopAction(id: string, formData: FormData): Promise<ActionResult>
-⋮----
-export async function deactivateCoopAction(id: string): Promise<ActionResult>
-⋮----
-export async function activateCoopAction(id: string): Promise<ActionResult>
-⋮----
-export async function getCoopsAction(): Promise<ActionResult<Awaited<ReturnType<typeof getAllCoops>>>>
-````
-
-## File: lib/actions/customer.actions.ts
-````typescript
-import { z } from 'zod'
-import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import {
-  createCustomer,
-  getAllCustomers,
-  updateCustomerById,
-  deactivateCustomer,
-  activateCustomer,
-} from '@/lib/services/customer.service'
-⋮----
-type ActionResult<T = void> =
-  | { success: true; data: T }
-  | { success: false; error: string }
-⋮----
-export async function createCustomerAction(formData: FormData): Promise<ActionResult<
-⋮----
-export async function updateCustomerAction(id: string, formData: FormData): Promise<ActionResult>
-⋮----
-export async function deactivateCustomerAction(id: string): Promise<ActionResult>
-⋮----
-export async function activateCustomerAction(id: string): Promise<ActionResult>
-⋮----
-export async function getCustomersAction(): Promise<ActionResult<Awaited<ReturnType<typeof getAllCustomers>>>>
-````
-
-## File: lib/actions/daily-record.actions.ts
-````typescript
-import { z } from 'zod'
-import { getRequiredSession } from '@/lib/auth/guards'
-import { saveDailyRecord, getFlockOptionsForInput, type Role } from '@/lib/services/daily-record.service'
-import { findAssignedCoopIds } from '@/lib/db/queries/user-coop-assignment.queries'
-import { findFlockById } from '@/lib/db/queries/flock.queries'
-⋮----
-type ActionResult<T = void> =
-  | { success: true; data: T }
-  | { success: false; error: string }
-⋮----
-async function assertCoopAccess(farmSchema: string, userId: string, role: string, flockId: string): Promise<
-⋮----
-export async function saveDailyRecordAction(
-  data: unknown
-): Promise<ActionResult<
-⋮----
-export async function getFlockOptionsForInputAction(): Promise<ActionResult<import('@/lib/services/daily-record.service').FlockOption[]>>
-````
-
-## File: lib/actions/flock-delivery.actions.ts
-````typescript
-import { z } from 'zod'
-import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import { createFlockDelivery } from '@/lib/services/flock-delivery.service'
-⋮----
-type ActionResult<T = void> =
-  | { success: true; data: T }
-  | { success: false; error: string }
-⋮----
-export async function createFlockDeliveryAction(formData: FormData): Promise<ActionResult<
-````
-
-## File: lib/actions/flock-phase.actions.ts
-````typescript
-import { z } from 'zod'
-import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import {
-  createFlockPhase,
-  updateFlockPhaseById,
-  deleteFlockPhaseById,
-} from '@/lib/services/flock-phase.service'
-import { revalidateTag } from 'next/cache'
-⋮----
-type ActionResult<T = void> =
-  | { success: true; data: T }
-  | { success: false; error: string }
-⋮----
-export async function createFlockPhaseAction(formData: FormData): Promise<ActionResult>
-⋮----
-export async function updateFlockPhaseAction(id: string, formData: FormData): Promise<ActionResult>
-⋮----
-export async function deleteFlockPhaseAction(id: string): Promise<ActionResult>
-````
-
-## File: lib/actions/flock.actions.ts
-````typescript
-import { z } from 'zod'
-import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import {
-  getAllActiveFlocks,
-  createFlock,
-  retireFlock,
-} from '@/lib/services/flock.service'
-⋮----
-type ActionResult<T = void> =
-  | { success: true; data: T }
-  | { success: false; error: string }
-⋮----
-export async function createFlockAction(formData: FormData): Promise<ActionResult<
-⋮----
-export async function retireFlockAction(flockId: string): Promise<ActionResult>
-⋮----
-export async function getActiveFlocksAction(): Promise<ActionResult<Awaited<ReturnType<typeof getAllActiveFlocks>>>>
-````
-
-## File: lib/actions/invoice.actions.ts
-````typescript
-import { z } from 'zod'
-import { revalidatePath } from 'next/cache'
-import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import { recordPayment, applyCredit, getInvoiceForPdf, markInvoiceSent } from '@/lib/services/invoice.service'
-import { sendInvoiceEmail } from '@/lib/services/email.service'
-import { InvoicePdfDocument } from '@/components/pdf/invoice-pdf-document'
-⋮----
-type ActionResult<T = undefined> =
-  | { success: true; data: T }
-  | { success: false; error: string }
-⋮----
-export async function recordPaymentAction(
-  formData: FormData
-): Promise<ActionResult<
-⋮----
-export async function applyCreditAction(
-  invoiceId: string,
-  creditId: string,
-  amount: number
-): Promise<ActionResult>
-⋮----
-export async function sendInvoiceEmailAction(invoiceId: string): Promise<ActionResult>
-⋮----
-// any: renderToBuffer expects ReactElement<DocumentProps> but InvoicePdfDocument
-// returns a <Document> wrapper — the runtime shape is correct, cast is safe.
-⋮----
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-````
-
-## File: lib/actions/lock-period.actions.ts
-````typescript
-import { z } from 'zod'
-import { getRequiredSession } from '@/lib/auth/guards'
-// no requirePermission needed — uses session.isAdmin directly
-import { correctDailyRecord } from '@/lib/services/lock-period.service'
-import { findCorrectionsByEntity } from '@/lib/db/queries/correction-record.queries'
-import type { CorrectionRecordWithUser } from '@/lib/db/queries/correction-record.queries'
-⋮----
-type ActionResult<T = void> =
-  | { success: true; data: T }
-  | { success: false; error: string }
-⋮----
-export async function correctDailyRecordAction(
-  formData: FormData
-): Promise<ActionResult<
-⋮----
-export async function getCorrectionHistoryAction(
-  entityId: string
-): Promise<ActionResult<CorrectionRecordWithUser[]>>
-````
-
-## File: lib/actions/notification.actions.ts
-````typescript
-import { getRequiredSession } from '@/lib/auth/guards'
-import {
-  getNotificationsForRole,
-  getUnreadCount,
-  readNotification,
-  readAllNotifications,
-} from '@/lib/services/notification.service'
-import type { Notification } from '@/lib/services/notification.service'
-⋮----
-type NotificationRole = 'operator' | 'supervisor' | 'admin'
-⋮----
-type ActionResult<T = void> =
-  | { success: true; data: T }
-  | { success: false; error: string }
-⋮----
-export async function getNotificationsAction(): Promise<ActionResult<Notification[]>>
-⋮----
-export async function getUnreadCountAction(): Promise<ActionResult<number>>
-⋮----
-export async function markNotificationReadAction(
-  notificationId: string
-): Promise<ActionResult>
-⋮----
-export async function markAllNotificationsReadAction(): Promise<ActionResult>
+httpOnly: false, // intentional: UI-state only, not sensitive
 ````
 
 ## File: lib/actions/profil.actions.ts
@@ -4155,68 +4824,6 @@ export async function gantiPasswordAction(
 ): Promise<ActionResult>
 ````
 
-## File: lib/actions/sales-order.actions.ts
-````typescript
-import { z } from 'zod'
-import { revalidatePath } from 'next/cache'
-import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import {
-  createDraftSO,
-  confirmSO,
-  cancelSO,
-  deleteDraftSO,
-  fulfillSO,
-} from '@/lib/services/sales-order.service'
-⋮----
-type ActionResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: string }
-⋮----
-export async function createDraftSOAction(formData: FormData): Promise<ActionResult<
-⋮----
-// Parse items array from FormData
-⋮----
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let items: any[] // any: raw JSON from FormData, validated by zod immediately after
-⋮----
-export async function confirmSOAction(orderId: string): Promise<ActionResult<undefined>>
-⋮----
-export async function cancelSOAction(orderId: string): Promise<ActionResult<undefined>>
-⋮----
-export async function deleteDraftSOAction(orderId: string): Promise<ActionResult<undefined>>
-⋮----
-export async function fulfillSOAction(orderId: string): Promise<ActionResult<undefined>>
-````
-
-## File: lib/actions/sales-return.actions.ts
-````typescript
-import { z } from 'zod'
-import { revalidatePath } from 'next/cache'
-import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import {
-  createSalesReturn,
-  approveSalesReturn,
-  rejectSalesReturn,
-} from '@/lib/services/sales-return.service'
-⋮----
-type ActionResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: string }
-⋮----
-export async function createSalesReturnAction(formData: FormData): Promise<ActionResult<
-⋮----
-// Parse items array from FormData
-⋮----
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let items: any[] // any: raw JSON from FormData, validated by zod immediately after
-⋮----
-export async function approveSalesReturnAction(returnId: string): Promise<ActionResult<undefined>>
-⋮----
-export async function rejectSalesReturnAction(returnId: string): Promise<ActionResult<undefined>>
-````
-
 ## File: lib/actions/stock-catalog.actions.ts
 ````typescript
 import { z } from 'zod'
@@ -4226,6 +4833,7 @@ import {
   createCategory,
   createStockItem,
   toggleStockItemActive,
+  toggleBundleMethod,
 } from '@/lib/services/stock-catalog.service'
 ⋮----
 type ActionResult<T = void> =
@@ -4243,112 +4851,106 @@ export async function createStockItemAction(
 export async function toggleStockItemActiveAction(
   itemId: string
 ): Promise<ActionResult>
+⋮----
+export async function toggleBundleMethodAction(itemId: string): Promise<ActionResult>
 ````
 
-## File: lib/actions/stock.actions.ts
+## File: lib/admin/provision-farm.ts
 ````typescript
-import { z } from 'zod'
-import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import {
-  getStockBalance,
-  getAllStockBalances,
-  createStockAdjustment,
-  submitRegradeRequest,
-  approveRegradeRequest,
-  rejectRegradeRequest,
-  createStockPurchase,
-  type StockBalance,
-} from '@/lib/services/stock.service'
+import postgres from 'postgres'
+import { readFileSync } from 'fs'
+import { join } from 'path'
+import { db } from '@/lib/db'
+import { farms } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 ⋮----
-type StockRole = 'operator' | 'supervisor' | 'admin'
+export async function provisionFarm(schemaName: string, farmName: string): Promise<void>
 ⋮----
-type ActionResult<T = void> =
-  | { success: true; data: T }
-  | { success: false; error: string }
+// Use non-pooler connection for DDL — SET search_path is unsafe with connection pooler
 ⋮----
-export async function getStockBalanceAction(
-  stockItemId: string
-): Promise<ActionResult<number>>
+// 1. Create schema
 ⋮----
-export async function getAllStockBalancesAction(): Promise<ActionResult<StockBalance[]>>
+// 2. Execute DDL template in schema context
 ⋮----
-export async function createStockAdjustmentAction(
-  formData: FormData
-): Promise<ActionResult<
+// 3. Register in public.farms
 ⋮----
-export async function submitRegradeRequestAction(
-  formData: FormData
-): Promise<ActionResult<
+// 4. Seed default roles and permissions
 ⋮----
-export async function approveRegradeRequestAction(
-  requestId: string
-): Promise<ActionResult>
-⋮----
-export async function rejectRegradeRequestAction(
-  requestId: string
-): Promise<ActionResult>
-⋮----
-export async function createStockPurchaseAction(
-  formData: FormData
-): Promise<ActionResult>
+// CLI entrypoint
 ````
 
-## File: lib/actions/user-coop-assignment.actions.ts
+## File: lib/auth/get-session.ts
 ````typescript
-import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import {
-  findAssignmentsByUser,
-  findAssignedCoopIds,
-  insertAssignment,
-  deleteAssignment,
-} from '@/lib/db/queries/user-coop-assignment.queries'
+import { createSupabaseServerClient } from './server'
+import { db } from '@/lib/db'
+import { farmUsers, farms } from '@/lib/db/schema'
+import { getFarmSchema } from '@/lib/db/schema-factory'
+import { eq } from 'drizzle-orm'
+import { unstable_cache } from 'next/cache'
+import { ALL_PERMISSIONS, type PermissionKey } from './permissions'
 ⋮----
-type ActionResult<T = void> =
-  | { success: true; data: T }
-  | { success: false; error: string }
+export type SessionUser = {
+  id: string
+  email: string
+  fullName: string
+  phone: string | null
+  roleId: string
+  roleSlug: string
+  roleName: string
+  isAdmin: boolean
+  isActive: boolean
+  createdBy: string | null
+  createdAt: Date
+  updatedAt: Date | null
+  farmSchema: string
+  farmName: string
+  permissions: Set<PermissionKey>
+}
 ⋮----
-export async function getAssignmentsForUserAction(
-  userId: string
-): Promise<ActionResult<Awaited<ReturnType<typeof findAssignmentsByUser>>>>
+// JSON-serializable version for unstable_cache (Set and Date are not serializable)
+type CachedSessionData = Omit<SessionUser, 'permissions' | 'createdAt' | 'updatedAt'> & {
+  permissions: PermissionKey[]
+  createdAt: string
+  updatedAt: string | null
+}
 ⋮----
-export async function getAssignedCoopIdsAction(userId: string): Promise<string[]>
+function getCachedSession(userId: string, email: string)
 ⋮----
-// User bisa lihat coop assignment mereka sendiri; admin bisa lihat semua
+// 1. Lookup farm schema from public.farm_users
 ⋮----
-export async function assignCoopToUserAction(userId: string, coopId: string): Promise<ActionResult>
+// 2. Fetch DB user from farm schema + farm name in parallel
 ⋮----
-export async function removeCoopFromUserAction(userId: string, coopId: string): Promise<ActionResult>
+// 3. Fetch role and permissions
+⋮----
+export async function getSession(): Promise<SessionUser | null>
 ````
 
-## File: lib/auth/guards.ts
+## File: lib/auth/permissions.ts
 ````typescript
-import { getSession } from './get-session'
-import type { SessionUser } from './get-session'
-import type { PermissionKey } from './permissions'
+type Leaf<T> = T extends string ? T : { [K in keyof T]: Leaf<T[K]> }[keyof T]
 ⋮----
-type GuardFailure = { success: false; error: string }
+export type PermissionKey = Leaf<typeof PERMISSIONS>
 ⋮----
-export async function requireAuth(): Promise<GuardFailure | null>
-⋮----
-export function hasPermission(session: SessionUser, key: PermissionKey): boolean
-⋮----
-export function requirePermission(session: SessionUser, key: PermissionKey): GuardFailure | null
-⋮----
-// Helper: get session and fail fast if not authenticated
-export async function getRequiredSession(): Promise<SessionUser | GuardFailure>
-⋮----
-/** @deprecated Use requirePermission() instead. Will be removed in Task 6. */
-export async function requireSupervisorOrAdmin(): Promise<GuardFailure | null>
-⋮----
-/** @deprecated Use requirePermission() instead. Will be removed in Task 6. */
-export async function requireAdmin(): Promise<GuardFailure | null>
+function flattenPermissions(obj: Record<string, unknown>): string[]
 ````
 
-## File: lib/changelog/index.ts
+## File: lib/changelog/types.ts
 ````typescript
-
+export type ChangeType = 'feature' | 'fix' | 'improvement' | 'breaking'
+⋮----
+export type ChangeEntry = {
+  type: ChangeType
+  text: string
+}
+⋮----
+export type VersionEntry = {
+  version: string
+  date: string        // ISO "YYYY-MM-DD"
+  title: string
+changes: ChangeEntry[]
+}
+⋮----
+date: string        // ISO "YYYY-MM-DD"
 ````
 
 ## File: lib/db/queries/cash-transaction.queries.ts
@@ -4558,52 +5160,39 @@ export async function updateUserProfil(
 )
 ````
 
-## File: lib/db/queries/roles.queries.ts
+## File: lib/db/queries/stock-catalog.queries.ts
 ````typescript
 import { db } from '@/lib/db'
 import { getFarmSchema } from '@/lib/db/schema-factory'
-import { eq, and, desc, asc, count } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 ⋮----
-export async function getRoles(farmSchema: string)
+export async function findAllCategories(farmSchema: string)
 ⋮----
-export async function getRoleById(farmSchema: string, roleId: string)
+export async function findCategoryById(farmSchema: string, id: string)
 ⋮----
-export async function getRolePermissions(farmSchema: string, roleId: string): Promise<string[]>
+export async function findCategoryByName(farmSchema: string, name: string)
 ⋮----
-export async function getUserRolePermissions(
+export async function findItemsByCategory(farmSchema: string, categoryId: string)
+⋮----
+export async function findActiveItemsByCategory(farmSchema: string, categoryId: string)
+⋮----
+export async function findItemById(farmSchema: string, id: string)
+⋮----
+// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function insertCategory(farmSchema: string, data: any)
+⋮----
+// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function insertStockItem(farmSchema: string, data: any)
+⋮----
+export async function updateStockItemActive(farmSchema: string, id: string, isActive: boolean): Promise<void>
+⋮----
+export async function updateStockItemBundleMethod(
   farmSchema: string,
-  userId: string
-): Promise<
-⋮----
-export async function getRoleUserCount(farmSchema: string, roleId: string): Promise<number>
-⋮----
-export async function createRoleQuery(
-  farmSchema: string,
-  data: { name: string; displayName: string; createdBy: string }
-)
-⋮----
-export async function updateRoleQuery(
-  farmSchema: string,
-  roleId: string,
-  data: { displayName: string }
-)
-⋮----
-export async function deleteRoleQuery(farmSchema: string, roleId: string)
-⋮----
-export async function upsertRolePermission(
-  farmSchema: string,
-  roleId: string,
-  permissionKey: string,
-  grantedBy: string
-)
-⋮----
-export async function deleteRolePermission(
-  farmSchema: string,
-  roleId: string,
-  permissionKey: string
-)
-⋮----
-export async function deleteAllRolePermissions(farmSchema: string, roleId: string)
+  id: string,
+  useBundleMethod: boolean
+): Promise<void>
 ````
 
 ## File: lib/db/schema/cash-transaction.ts
@@ -4667,23 +5256,6 @@ export type Payment = typeof payments.$inferSelect
 export type NewPayment = typeof payments.$inferInsert
 ````
 
-## File: lib/db/schema/role-permissions.ts
-````typescript
-import { pgTable, uuid, text, timestamp, primaryKey } from 'drizzle-orm/pg-core'
-import { roles } from './roles'
-⋮----
-export type RolePermission = typeof rolePermissions.$inferSelect
-export type NewRolePermission = typeof rolePermissions.$inferInsert
-````
-
-## File: lib/db/schema/roles.ts
-````typescript
-import { pgTable, uuid, text, boolean, timestamp } from 'drizzle-orm/pg-core'
-⋮----
-export type Role = typeof roles.$inferSelect
-export type NewRole = typeof roles.$inferInsert
-````
-
 ## File: lib/db/schema/sales-orders.ts
 ````typescript
 import { pgTable, uuid, text, numeric, date, timestamp, pgEnum } from 'drizzle-orm/pg-core'
@@ -4703,6 +5275,24 @@ import { users } from './users'
 ⋮----
 export type SalesReturn = typeof salesReturns.$inferSelect
 export type NewSalesReturn = typeof salesReturns.$inferInsert
+````
+
+## File: lib/db/schema/stock-items.ts
+````typescript
+import { pgTable, uuid, text, boolean, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import { stockCategories } from './stock-categories'
+⋮----
+export type StockItem = typeof stockItems.$inferSelect
+export type NewStockItem = typeof stockItems.$inferInsert
+````
+
+## File: lib/db/schema/users.ts
+````typescript
+import { pgTable, uuid, text, boolean, timestamp } from 'drizzle-orm/pg-core'
+import { roles } from './roles'
+⋮----
+export type User = typeof users.$inferSelect
+export type NewUser = typeof users.$inferInsert
 ````
 
 ## File: lib/services/alert.service.ts
@@ -4941,6 +5531,55 @@ vi.mocked(profilQueries.updateUserProfil).mockResolvedValue(null as any) // any:
 } as any) // any: partial ServiceClient for mock
 ````
 
+## File: lib/services/stock-catalog.service.ts
+````typescript
+import {
+  findAllCategories,
+  findCategoryById,
+  findCategoryByName,
+  findActiveItemsByCategory,
+  findItemsByCategory,
+  findItemById,
+  insertCategory,
+  insertStockItem,
+  updateStockItemActive,
+  updateStockItemBundleMethod,
+} from '@/lib/db/queries/stock-catalog.queries'
+import type { StockCategory, StockItem } from '@/lib/db/schema'
+⋮----
+type CreateCategoryInput = { name: string; unit: string }
+type CreateStockItemInput = { categoryId: string; name: string }
+⋮----
+export async function getCategories(farmSchema: string): Promise<StockCategory[]>
+⋮----
+export type CategoryWithItems = StockCategory & { items: StockItem[] }
+⋮----
+export async function getCategoriesWithActiveItems(farmSchema: string): Promise<CategoryWithItems[]>
+⋮----
+export async function getCategoryWithItems(
+  farmSchema: string,
+  categoryId: string
+): Promise<
+⋮----
+export async function getActiveItemsByCategory(farmSchema: string, categoryId: string): Promise<StockItem[]>
+⋮----
+export async function getActiveItemsByCategoryName(farmSchema: string, name: string): Promise<StockItem[]>
+⋮----
+export async function getActiveEggItems(farmSchema: string): Promise<StockItem[]>
+⋮----
+export async function getActiveFeedItems(farmSchema: string): Promise<StockItem[]>
+⋮----
+export async function getActiveVaccineItems(farmSchema: string): Promise<StockItem[]>
+⋮----
+export async function createCategory(farmSchema: string, input: CreateCategoryInput): Promise<StockCategory>
+⋮----
+export async function createStockItem(farmSchema: string, input: CreateStockItemInput): Promise<StockItem>
+⋮----
+export async function toggleStockItemActive(farmSchema: string, itemId: string): Promise<void>
+⋮----
+export async function toggleBundleMethod(farmSchema: string, itemId: string): Promise<void>
+````
+
 ## File: lib/services/stock.service.ts
 ````typescript
 import {
@@ -5029,22 +5668,6 @@ export async function createStockPurchase(
 ): Promise<void>
 ````
 
-## File: lib/services/user.service.test.ts
-````typescript
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-⋮----
-import { supabaseAdmin } from '@/lib/auth/admin'
-import { createUser, updateUserRole, deactivateUser, changeUserPassword } from './user.service'
-⋮----
-} as any) // any: Supabase return type is complex union
-⋮----
-} as any) // any: Supabase return type is complex union
-⋮----
-} as any) // any: partial User for mock
-⋮----
-} as any) // any: Supabase return type is complex union
-````
-
 ## File: middleware.ts
 ````typescript
 import { createServerClient } from '@supabase/ssr'
@@ -5068,73 +5691,16 @@ setAll(cookiesToSet)
 async function run()
 ````
 
-## File: app/(app)/admin/import/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { findAllActiveFlocks } from '@/lib/db/queries/flock.queries'
-import { ImportPanel } from './import-panel'
-⋮----
-export default async function ImportPage()
-````
-
-## File: app/(app)/admin/kandang/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { getAllCoopsWithPopulation } from '@/lib/services/coop.service'
-import { CoopManagementClient } from '@/components/forms/coop-management-client'
-⋮----
-export default async function KandangPage()
-````
-
-## File: app/(app)/admin/roles/page.tsx
+## File: app/(app)/flock/page.tsx
 ````typescript
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/get-session'
 import { hasPermission } from '@/lib/auth/guards'
 import { PERMISSIONS } from '@/lib/auth/permissions'
-import { listRoles } from '@/lib/services/role.service'
-import { RoleManagementClient } from './RoleManagementClient'
+import { getAllFlocks } from '@/lib/services/flock.service'
+import { FlockListClient } from '@/components/forms/flock-list-client'
 ⋮----
-export default async function RolesPage()
-````
-
-## File: app/(app)/admin/users/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { getAllUsers, getAllRoles } from '@/lib/services/user.service'
-import { UserManagementClient } from '@/components/forms/user-management-client'
-⋮----
-export default async function UsersPage()
-````
-
-## File: app/(app)/kas/page.tsx
-````typescript
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { listAccounts, getAccountBalance } from '@/lib/db/queries/cash-account.queries'
-import { listTransactions } from '@/lib/db/queries/cash-transaction.queries'
-import { Wallet, ArrowUpCircle, ArrowDownCircle, ArrowLeftRight, Plus } from 'lucide-react'
-⋮----
-function formatRupiah(amount: number)
-⋮----
-function formatDate(date: Date | string)
-⋮----
-{/* Header */}
-⋮----
-{/* Total balance card */}
-⋮----
-{/* Account cards */}
-⋮----
-<p className="text-[18px] font-bold" style=
-⋮----
-{/* Recent transactions */}
-⋮----
+canCreate=
 ````
 
 ## File: app/(app)/laporan/flock/page.tsx
@@ -5173,26 +5739,6 @@ function parseSafe(s: string, d: Date)
 function formatRupiah(n: number)
 ⋮----
 // DB error — render empty state
-````
-
-## File: app/(app)/laporan/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import {
-  Egg, Bird, Package, ShoppingCart, Users, Landmark, ArrowRight,
-} from 'lucide-react'
-import Link from 'next/link'
-⋮----
-type ReportCard = {
-  href: string
-  icon: React.ElementType
-  title: string
-  description: string
-  permissionKey: string
-}
 ````
 
 ## File: app/(app)/laporan/penjualan/customer/page.tsx
@@ -5238,6 +5784,34 @@ function formatRupiah(n: number)
 try { rows = await getSalesReport(session.farmSchema, safeFrom, safeTo) } catch { /* empty */ }
 ````
 
+## File: app/(app)/laporan/produksi/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import { getProductionReportData } from '@/lib/services/daily-record.service'
+import type { Role } from '@/lib/services/daily-record.service'
+import { KpiCard } from '@/components/ui/kpi-card'
+import { LaporanFilter } from '@/components/forms/laporan-filter'
+import { findAllCoops } from '@/lib/db/queries/coop.queries'
+⋮----
+function formatDate(dateStr: string): string
+⋮----
+function toISODate(d: Date): string
+⋮----
+function parseSafeISODate(str: string, fallback: Date): string
+⋮----
+// DB error — render empty state
+⋮----
+{/* Page header */}
+⋮----
+{/* KPI Row */}
+⋮----
+{/* Production Table */}
+````
+
 ## File: app/(app)/laporan/stok/mutasi/page.tsx
 ````typescript
 import { redirect } from 'next/navigation'
@@ -5267,43 +5841,24 @@ import { KpiCard } from '@/components/ui/kpi-card'
 try { rows = await getAllStockBalances(session.farmSchema) } catch { /* empty state */ }
 ````
 
-## File: app/(app)/produksi/[id]/edit/page.tsx
-````typescript
-import { getSession } from '@/lib/auth/get-session'
-import { redirect } from 'next/navigation'
-import { findDailyRecordById, findDailySubRecordsByRecordId } from '@/lib/db/queries/daily-record.queries'
-import { canEdit } from '@/lib/services/lock-period.service'
-import { getActiveEggItems, getActiveFeedItems, getActiveVaccineItems } from '@/lib/services/stock-catalog.service'
-import { getAllStockBalances } from '@/lib/db/queries/inventory.queries'
-import { DailyRecordEditForm } from './edit-form'
-⋮----
-type Props = { params: Promise<{ id: string }> }
-````
-
-## File: app/(app)/produksi/input/page.tsx
-````typescript
-import { getSession } from '@/lib/auth/get-session'
-import { redirect } from 'next/navigation'
-import { getFlockOptionsForInput } from '@/lib/services/daily-record.service'
-import { getActiveEggItems, getActiveFeedItems, getActiveVaccineItems } from '@/lib/services/stock-catalog.service'
-import { getAllStockBalances } from '@/lib/db/queries/inventory.queries'
-import { DailyInputForm } from '@/components/forms/daily-input-form'
-⋮----
-export default async function ProduksiInputPage()
-````
-
-## File: app/(app)/stok/regrade/page.tsx
+## File: app/(app)/stok/page.tsx
 ````typescript
 import { getSession } from '@/lib/auth/get-session'
 import { hasPermission } from '@/lib/auth/guards'
 import { PERMISSIONS } from '@/lib/auth/permissions'
 import { redirect } from 'next/navigation'
-import { getActiveEggItems } from '@/lib/services/stock-catalog.service'
-import { findPendingRegradeRequests } from '@/lib/db/queries/inventory.queries'
-import { submitRegradeRequestAction } from '@/lib/actions/stock.actions'
+import { getAllStockBalances } from '@/lib/db/queries/inventory.queries'
+import { getCategories } from '@/lib/services/stock-catalog.service'
 import Link from 'next/link'
+import type { StockBalance } from '@/lib/db/queries/inventory.queries'
 ⋮----
-async function handleSubmit(formData: FormData)
+
+⋮----
+{/* Tab strip */}
+⋮----
+{/* Mobile card list */}
+⋮----
+{/* Desktop list */}
 ````
 
 ## File: app/(auth)/login/page.tsx
@@ -5318,19 +5873,23 @@ import Image from 'next/image'
 {/* Footer */}
 ````
 
-## File: app/api/laporan/produksi-csv/route.ts
+## File: app/changelog/page.tsx
 ````typescript
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import { getProductionReportData } from '@/lib/services/daily-record.service'
-import type { Role, ProductionReportResult } from '@/lib/services/daily-record.service'
+// app/changelog/page.tsx
+import { changelog, CURRENT_VERSION } from '@/lib/changelog/data'
+import type { ChangeType } from '@/lib/changelog/types'
+import { ChangelogSeenMarker } from './ChangelogSeenMarker'
+import Image from 'next/image'
 ⋮----
-function parseSafeISODate(str: string | null, fallback: Date): string
+{/* Header */}
 ⋮----
-function escapeField(value: string): string
+{/* Entries */}
 ⋮----
-export async function GET(request: Request): Promise<Response>
+{/* Version header */}
+⋮----
+{/* Title */}
+⋮----
+{/* Changes */}
 ````
 
 ## File: app/globals.css
@@ -5366,35 +5925,6 @@ html {
 ⋮----
 .no-print {
 aside,
-````
-
-## File: components/forms/user-management-client.tsx
-````typescript
-// client: interactive user table with create form, role change, activate/deactivate
-⋮----
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { CreateUserForm } from './create-user-form'
-import { updateUserRoleAction, activateUserAction, deactivateUserAction } from '@/lib/actions/user.actions'
-import type { UserWithRoleSlug } from '@/lib/db/queries/user.queries'
-⋮----
-type RoleOption = { id: string; name: string; displayName: string; isSystem: boolean }
-⋮----
-interface Props {
-  users: UserWithRoleSlug[]
-  roles: RoleOption[]
-}
-⋮----
-async function handleRoleChange(userId: string, newRoleId: string)
-⋮----
-async function handleToggleActive(user: UserWithRoleSlug)
-⋮----
-onSuccess=
-⋮----
-onCancel=
-⋮----
-onClick=
 ````
 
 ## File: components/profil/info-akun-form.tsx
@@ -5437,16 +5967,6 @@ interface Props {
 }
 ⋮----
 export function ProfilTabs(
-````
-
-## File: lib/actions/changelog.actions.ts
-````typescript
-import { cookies } from 'next/headers'
-import { CURRENT_VERSION } from '@/lib/changelog/data'
-⋮----
-export async function markChangelogSeen(): Promise<
-⋮----
-httpOnly: false, // intentional: UI-state only, not sensitive
 ````
 
 ## File: lib/actions/import.actions.ts
@@ -5493,137 +6013,354 @@ export async function getCsvTemplateAction(
 ): Promise<ActionResult<string>>
 ````
 
-## File: lib/actions/role.actions.ts
+## File: lib/db/schema/daily-egg-bundles.ts
+````typescript
+import { integer, numeric, pgTable, timestamp, uuid, uniqueIndex, varchar } from 'drizzle-orm/pg-core'
+import { dailyEggRecords } from './daily-egg-records'
+⋮----
+export type DailyEggBundle = typeof dailyEggBundles.$inferSelect
+export type NewDailyEggBundle = typeof dailyEggBundles.$inferInsert
+````
+
+## File: lib/services/cash.service.ts
+````typescript
+import { db } from '@/lib/db'
+import type { TransactionFilter } from '@/lib/db/queries/cash-transaction.queries'
+⋮----
+export type CreateTransactionInput = {
+  accountId: string
+  type: 'in' | 'out'
+  amount: number
+  transactionDate: Date
+  categoryId?: string
+  referenceNumber?: string
+  description?: string
+}
+⋮----
+export type CreateTransferInput = {
+  fromAccountId: string
+  toAccountId: string
+  amount: number
+  transactionDate: Date
+  referenceNumber?: string
+  description?: string
+}
+⋮----
+export async function createTransaction(
+  farmSchema: string,
+  input: CreateTransactionInput,
+  userId: string
+)
+⋮----
+export async function createTransfer(
+  farmSchema: string,
+  input: CreateTransferInput,
+  userId: string
+)
+⋮----
+export async function getAccountWithBalance(farmSchema: string, id: string)
+⋮----
+export async function listAccountsWithBalances(farmSchema: string)
+⋮----
+export async function updateAccountSettings(
+  farmSchema: string,
+  id: string,
+  input: { name?: string; type?: 'cash' | 'bank' | 'ewallet'; beginningBalance?: string; isActive?: boolean }
+)
+⋮----
+export async function createAccount(
+  farmSchema: string,
+  input: { name: string; type: 'cash' | 'bank' | 'ewallet'; beginningBalance?: number }
+)
+⋮----
+export async function getTransactions(farmSchema: string, filter: TransactionFilter)
+⋮----
+export async function getDailyReport(
+  farmSchema: string,
+  accountId: string,
+  dateFrom: Date,
+  dateTo: Date
+)
+````
+
+## File: lib/services/sales-order.service.ts
+````typescript
+import { generateOrderNumber } from '@/lib/utils/order-number'
+import { assertCanEdit } from '@/lib/services/lock-period.service'
+import type { NewSalesOrder, NewSalesOrderItem, NewInventoryMovement, NewInvoice } from '@/lib/db/schema'
+⋮----
+type CreateDraftInput = {
+  customerId: string
+  orderDate: Date
+  paymentMethod: 'cash' | 'credit'
+  items: Array<{
+    itemType: 'egg_grade_a' | 'egg_grade_b' | 'flock' | 'other'
+    itemRefId?: string
+    description?: string
+    quantity: number
+    unit: 'butir' | 'ekor' | 'unit'
+    pricePerUnit: number
+    discountPct?: number
+  }>
+  taxPct?: number
+  notes?: string
+  overrideReason?: string
+}
+⋮----
+export async function createDraftSO(farmSchema: string, input: CreateDraftInput, userId: string, role: string)
+⋮----
+// Calculate totals
+⋮----
+// Generate order number
+⋮----
+export async function confirmSO(farmSchema: string, orderId: string, userId: string, role: string)
+⋮----
+// Lock period check — use orderDate as the record date
+⋮----
+// Stock availability check before confirming
+⋮----
+export async function cancelSO(farmSchema: string, orderId: string, userId: string, role: string)
+⋮----
+// Lock period check — use orderDate as the record date
+⋮----
+export async function deleteDraftSO(farmSchema: string, orderId: string, userId: string, role: string)
+⋮----
+export async function fulfillSO(farmSchema: string, orderId: string, userId: string, role: string)
+⋮----
+// Check stock for egg items
+⋮----
+// Check credit limit for credit orders
+⋮----
+// Build inventory OUT movements for egg items
+⋮----
+// Assertion: movements filter uses same predicate — fires only if predicates diverge in future refactors
+⋮----
+// Build invoice
+⋮----
+// Guard: invoice number must be non-empty and total must be > 0
+⋮----
+// Build flock retirement updates for flock items
+````
+
+## File: lib/services/sales-return.service.ts
+````typescript
+import { generateOrderNumber } from '@/lib/utils/order-number'
+import type { NewSalesReturn, NewSalesReturnItem, NewInventoryMovement, NewInvoice, NewCustomerCredit } from '@/lib/db/schema'
+⋮----
+type CreateReturnInput = {
+  orderId: string
+  returnDate: Date
+  reasonType: 'wrong_grade' | 'damaged' | 'quantity_error' | 'other'
+  items: Array<{
+    itemType: 'egg_grade_a' | 'egg_grade_b' | 'flock' | 'other'
+    itemRefId?: string
+    quantity: number
+    unit: 'butir' | 'ekor' | 'unit'
+  }>
+  notes?: string
+}
+⋮----
+export async function createSalesReturn(farmSchema: string, input: CreateReturnInput, userId: string, role: string)
+⋮----
+// Validate return quantities don't exceed original SO quantities
+⋮----
+// Generate return number
+⋮----
+export async function approveSalesReturn(farmSchema: string, returnId: string, userId: string, role: string)
+⋮----
+// Calculate credit amount: sum returnQty * pricePerUnit * (1 - discount/100) per item
+⋮----
+// Build inventory movements (IN) for egg return items only
+⋮----
+// Generate credit note invoice number
+⋮----
+// Build customer credit entry
+⋮----
+sourceInvoiceId: '', // will be overwritten in tx with actual invoice id
+⋮----
+export async function rejectSalesReturn(farmSchema: string, returnId: string, userId: string, role: string)
+````
+
+## File: app/(app)/admin/import/import-panel.tsx
+````typescript
+'use client' // client: file upload, multi-step state, CSV preview
+⋮----
+import { useState, useTransition } from 'react'
+import { Upload, Download, AlertCircle, CheckCircle2, ChevronRight, Copy, Check } from 'lucide-react'
+import { parseCsvAction, commitImportAction, getCsvTemplateAction } from '@/lib/actions/import.actions'
+import type { ImportEntity } from '@/lib/services/import.service'
+⋮----
+type ActiveFlock = {
+  id: string
+  name: string
+  coopName: string
+  arrivalDate: Date | string
+}
+⋮----
+type Step = 'select' | 'preview' | 'done'
+⋮----
+function handleCopy(id: string)
+⋮----
+onClick=
+⋮----
+function handleFileChange(e: React.ChangeEvent<HTMLInputElement>)
+⋮----
+function handleDownloadTemplate()
+⋮----
+function handleParse()
+⋮----
+function handleConfirmImport()
+⋮----
+function handleReset()
+⋮----
+{/* Entity selector */}
+⋮----
+{/* Flock reference table — only for daily_records */}
+⋮----
+{/* Step: select */}
+⋮----
+{/* Step: preview */}
+⋮----
+{/* Summary */}
+⋮----
+{/* Error rows */}
+⋮----
+{/* Sample valid rows */}
+⋮----
+{/* Step: done */}
+````
+
+## File: app/(app)/laporan/keuangan/piutang/page.tsx
+````typescript
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth/get-session'
+import { hasPermission } from '@/lib/auth/guards'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import { getAgingData } from '@/lib/services/invoice.service'
+import { KpiCard } from '@/components/ui/kpi-card'
+⋮----
+function formatRupiah(n: number): string
+⋮----
+function formatDate(d: string): string
+⋮----
+function getDaysOverdueStyle(bucket: string): React.CSSProperties
+⋮----
+// DB error — render empty state
+⋮----
+{/* Page header */}
+⋮----
+{/* KPI Row */}
+⋮----
+{/* Aging Table */}
+⋮----
+<td className="px-4 py-3 text-sm text-right" style=
+⋮----
+<td className="px-4 py-3 text-sm" style=
+````
+
+## File: components/layout/app-shell.tsx
+````typescript
+'use client' // client: needs usePathname for active nav state + drawer open state
+⋮----
+import { useState } from 'react'
+import { usePathname } from 'next/navigation'
+import { Sidebar } from './sidebar'
+import { BottomNav } from './bottom-nav'
+import { MoreDrawer } from './more-drawer'
+import type { SessionUser } from '@/lib/auth/get-session'
+import type { Notification } from '@/lib/services/notification.service'
+import type { PermissionKey } from '@/lib/auth/permissions'
+⋮----
+/** Serializable version of SessionUser safe to pass across server→client boundary */
+export type ClientUser = Omit<SessionUser, 'permissions'> & {
+  permissionKeys: PermissionKey[]
+}
+⋮----
+export function AppShell({
+  user,
+  children,
+  notifications,
+  readNotificationIds,
+  hasNewVersion,
+}: {
+  user: ClientUser
+  children: React.ReactNode
+  notifications: Notification[]
+  readNotificationIds: string[]
+  hasNewVersion: boolean
+})
+````
+
+## File: components/profil/password-form.tsx
+````typescript
+// client: form state, submit handler, eye toggle, client-side confirm check
+⋮----
+import { useState } from 'react'
+import { Eye, EyeOff, CheckCircle2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { gantiPasswordAction } from '@/lib/actions/profil.actions'
+⋮----
+function inputClass(saved: boolean)
+⋮----
+className=
+⋮----
+async function onSubmit(e: React.FormEvent)
+⋮----
+// brief green state before clearing
+````
+
+## File: components/ui/stepper-input.tsx
+````typescript
+// client: interactive stepper with +/- buttons for mobile-friendly number input
+⋮----
+interface Props {
+  value: number
+  onChange: (value: number) => void
+  min?: number
+  max?: number
+  step?: number
+  className?: string
+}
+⋮----
+function decrement()
+⋮----
+function increment()
+⋮----
+function handleChange(e: React.ChangeEvent<HTMLInputElement>)
+````
+
+## File: lib/actions/daily-record.actions.ts
 ````typescript
 import { z } from 'zod'
 import { getRequiredSession } from '@/lib/auth/guards'
-import { requirePermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import {
-  listRoles,
-  getRoleWithPermissions,
-  createRole,
-  updateRole,
-  deleteRole,
-  updatePermission,
-  setAllPermissions,
-} from '@/lib/services/role.service'
+import { saveDailyRecord, saveSingleBundle, deleteBundle, getExistingBundlesForInput, getFlockOptionsForInput, type Role } from '@/lib/services/daily-record.service'
+import { findAssignedCoopIds } from '@/lib/db/queries/user-coop-assignment.queries'
+import { findFlockById } from '@/lib/db/queries/flock.queries'
 ⋮----
 type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: false; error: string }
 ⋮----
-export async function getRolesAction(): Promise<
-  ActionResult<Awaited<ReturnType<typeof listRoles>>>
-> {
-  const session = await getRequiredSession()
-  if ('error' in session) return session
-
-  const denied = requirePermission(session, PERMISSIONS.ROLE.MANAGE)
-  if (denied) return denied
-
-  try {
-    const roles = await listRoles(session.farmSchema)
-    return { success: true, data: roles }
-} catch (e)
+async function assertCoopAccess(farmSchema: string, userId: string, role: string, flockId: string): Promise<
 ⋮----
-export async function getRoleWithPermissionsAction(
-  roleId: string
-): Promise<
-  ActionResult<Awaited<ReturnType<typeof getRoleWithPermissions>>>
-> {
-  const session = await getRequiredSession()
-  if ('error' in session) return session
-
-  const denied = requirePermission(session, PERMISSIONS.ROLE.MANAGE)
-  if (denied) return denied
-
-  try {
-    const roleWithPermissions = await getRoleWithPermissions(session.farmSchema, roleId)
-if (!roleWithPermissions)
-⋮----
-export async function createRoleAction(
-  formData: unknown
-): Promise<ActionResult>
-⋮----
-export async function updateRoleAction(
-  roleId: string,
-  formData: unknown
-): Promise<ActionResult>
-⋮----
-export async function deleteRoleAction(roleId: string): Promise<ActionResult>
-⋮----
-export async function updatePermissionAction(
-  roleId: string,
-  permissionKey: string,
-  granted: boolean
-): Promise<ActionResult>
-⋮----
-export async function setAllPermissionsAction(
-  roleId: string,
-  permissionKeys: string[]
-): Promise<ActionResult>
-````
-
-## File: lib/actions/user.actions.ts
-````typescript
-import { z } from 'zod'
-import { getRequiredSession, requirePermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import {
-  createUser,
-  getAllUsers,
-  getAllRoles,
-  updateUserRole,
-  deactivateUser,
-  activateUser,
-  changeUserPassword,
-} from '@/lib/services/user.service'
-⋮----
-type ActionResult<T = void> =
-  | { success: true; data: T }
-  | { success: false; error: string }
-⋮----
-export async function createUserAction(
-  formData: FormData
+export async function saveDailyRecordAction(
+  data: unknown
 ): Promise<ActionResult<
 ⋮----
-export async function updateUserRoleAction(
-  userId: string,
-  roleId: string
-): Promise<ActionResult>
+export async function saveBundleAction(
+  data: unknown
+): Promise<ActionResult<
 ⋮----
-export async function getAllRolesAction(): Promise<ActionResult<Awaited<ReturnType<typeof getAllRoles>>>>
+export async function deleteBundleAction(
+  bundleId: string
+): Promise<ActionResult<void>>
 ⋮----
-export async function deactivateUserAction(userId: string): Promise<ActionResult>
+export async function getExistingBundlesForInputAction(
+  flockId: string,
+  recordDate: string
+): Promise<ActionResult<Record<string, import('@/lib/services/daily-record.service').BundleWithStockItem[]>>>
 ⋮----
-export async function activateUserAction(userId: string): Promise<ActionResult>
-⋮----
-export async function changeUserPasswordAction(
-  userId: string,
-  newPassword: string
-): Promise<ActionResult>
-⋮----
-export async function getUsersAction(): Promise<ActionResult<Awaited<ReturnType<typeof getAllUsers>>>>
-````
-
-## File: lib/changelog/types.ts
-````typescript
-export type ChangeType = 'feature' | 'fix' | 'improvement' | 'breaking'
-⋮----
-export type ChangeEntry = {
-  type: ChangeType
-  text: string
-}
-⋮----
-export type VersionEntry = {
-  version: string
-  date: string        // ISO "YYYY-MM-DD"
-  title: string
-changes: ChangeEntry[]
-}
-⋮----
-date: string        // ISO "YYYY-MM-DD"
+export async function getFlockOptionsForInputAction(): Promise<ActionResult<import('@/lib/services/daily-record.service').FlockOption[]>>
 ````
 
 ## File: lib/db/farm-template.sql
@@ -5799,6 +6536,23 @@ CREATE TABLE "daily_egg_records" (
     "updated_at" timestamp with time zone
 );
 
+CREATE TABLE IF NOT EXISTS "daily_egg_bundles" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  "daily_egg_record_id" uuid NOT NULL,
+  "bundle_index" integer NOT NULL,
+  "tray_count" integer NOT NULL,
+  "top_tray_count" integer NOT NULL,
+  "qty_butir" integer NOT NULL,
+  "qty_kg" numeric(8, 2) NOT NULL,
+  "bundle_code" varchar(12),
+  "created_at" timestamptz DEFAULT now() NOT NULL,
+  "updated_at" timestamptz
+);
+ALTER TABLE "daily_egg_bundles" ADD CONSTRAINT "daily_egg_bundles_daily_egg_record_id_fk"
+  FOREIGN KEY ("daily_egg_record_id") REFERENCES "daily_egg_records"("id") ON DELETE cascade ON UPDATE no action;
+CREATE UNIQUE INDEX "daily_egg_bundles_record_index_unique"
+  ON "daily_egg_bundles" USING btree ("daily_egg_record_id", "bundle_index");
+
 CREATE TABLE "daily_feed_records" (
     "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
     "daily_record_id" uuid NOT NULL,
@@ -5836,6 +6590,7 @@ CREATE TABLE "stock_items" (
     "category_id" uuid NOT NULL,
     "name" text NOT NULL,
     "is_active" boolean DEFAULT true NOT NULL,
+    "use_bundle_method" boolean DEFAULT false NOT NULL,
     "created_at" timestamp with time zone DEFAULT now() NOT NULL,
     "updated_at" timestamp with time zone
 );
@@ -6183,781 +6938,6 @@ CREATE UNIQUE INDEX "daily_vaccine_records_record_item_unique" ON "daily_vaccine
 CREATE UNIQUE INDEX "flocks_one_active_per_coop" ON "flocks" ("coop_id") WHERE "retired_at" IS NULL;
 ````
 
-## File: lib/db/queries/user.queries.ts
-````typescript
-import { db } from '@/lib/db'
-import { getFarmSchema } from '@/lib/db/schema-factory'
-import { eq } from 'drizzle-orm'
-⋮----
-export type UserWithRoleSlug = {
-  id: string
-  email: string
-  fullName: string
-  roleId: string
-  roleSlug: string
-  roleName: string
-  isActive: boolean
-  createdAt: Date
-  createdBy: string | null
-  updatedAt: Date | null
-}
-⋮----
-export async function findAllUsers(farmSchema: string): Promise<UserWithRoleSlug[]>
-⋮----
-export async function findUserById(farmSchema: string, id: string)
-⋮----
-// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function insertUser(farmSchema: string, data: any)
-⋮----
-// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function updateUser(farmSchema: string, id: string, data: any)
-````
-
-## File: lib/db/schema/users.ts
-````typescript
-import { pgTable, uuid, text, boolean, timestamp } from 'drizzle-orm/pg-core'
-import { roles } from './roles'
-⋮----
-export type User = typeof users.$inferSelect
-export type NewUser = typeof users.$inferInsert
-````
-
-## File: lib/services/cash.service.ts
-````typescript
-import { db } from '@/lib/db'
-import type { TransactionFilter } from '@/lib/db/queries/cash-transaction.queries'
-⋮----
-export type CreateTransactionInput = {
-  accountId: string
-  type: 'in' | 'out'
-  amount: number
-  transactionDate: Date
-  categoryId?: string
-  referenceNumber?: string
-  description?: string
-}
-⋮----
-export type CreateTransferInput = {
-  fromAccountId: string
-  toAccountId: string
-  amount: number
-  transactionDate: Date
-  referenceNumber?: string
-  description?: string
-}
-⋮----
-export async function createTransaction(
-  farmSchema: string,
-  input: CreateTransactionInput,
-  userId: string
-)
-⋮----
-export async function createTransfer(
-  farmSchema: string,
-  input: CreateTransferInput,
-  userId: string
-)
-⋮----
-export async function getAccountWithBalance(farmSchema: string, id: string)
-⋮----
-export async function listAccountsWithBalances(farmSchema: string)
-⋮----
-export async function updateAccountSettings(
-  farmSchema: string,
-  id: string,
-  input: { name?: string; type?: 'cash' | 'bank' | 'ewallet'; beginningBalance?: string; isActive?: boolean }
-)
-⋮----
-export async function createAccount(
-  farmSchema: string,
-  input: { name: string; type: 'cash' | 'bank' | 'ewallet'; beginningBalance?: number }
-)
-⋮----
-export async function getTransactions(farmSchema: string, filter: TransactionFilter)
-⋮----
-export async function getDailyReport(
-  farmSchema: string,
-  accountId: string,
-  dateFrom: Date,
-  dateTo: Date
-)
-````
-
-## File: lib/services/daily-record.service.ts
-````typescript
-import {
-  findDailyRecord,
-  upsertDailyRecordTx,
-  getTotalDepletionByFlock,
-  getCumulativeDepletionByFlockUpTo,
-  getProductionReport,
-  getFlockPerformanceReport,
-  type FlockPerformanceRow,
-} from '@/lib/db/queries/daily-record.queries'
-import { getStockBalance } from '@/lib/db/queries/inventory.queries'
-import { findAllActiveFlocks, findFlockById } from '@/lib/db/queries/flock.queries'
-import { sumDeliveriesQuantityByFlockId } from '@/lib/db/queries/flock-delivery.queries'
-import { findAssignedCoopIds } from '@/lib/db/queries/user-coop-assignment.queries'
-import { db } from '@/lib/db'
-import { getFarmSchema } from '@/lib/db/schema-factory'
-import { eq } from 'drizzle-orm'
-import { assertCanEdit } from '@/lib/services/lock-period.service'
-import type { DailyRecord } from '@/lib/db/schema'
-⋮----
-export type Role = 'operator' | 'supervisor' | 'admin'
-⋮----
-export function validateBackdate(recordDate: Date, now: Date, role: Role): void
-⋮----
-export function computeIsLateInput(recordDate: Date, submittedAt: Date): boolean
-⋮----
-export function computeActivePopulation(
-  initialCount: number,
-  records: { deaths: number; culled: number }[]
-): number
-⋮----
-type EggEntry = { stockItemId: string; qtyButir: number; qtyKg: number }
-type FeedEntry = { stockItemId: string; qtyUsed: number }
-type VaccineEntry = { stockItemId: string; qtyUsed: number }
-⋮----
-type SaveDailyRecordInput = {
-  flockId: string
-  recordDate: string // YYYY-MM-DD
-  deaths: number
-  culled: number
-  eggsCracked: number
-  eggsAbnormal: number
-  notes?: string
-  eggEntries: EggEntry[]
-  feedEntries: FeedEntry[]
-  vaccineEntries: VaccineEntry[]
-}
-⋮----
-recordDate: string // YYYY-MM-DD
-⋮----
-export async function saveDailyRecord(
-  farmSchema: string,
-  input: SaveDailyRecordInput,
-  userId: string,
-  role: Role,
-  now: Date = new Date()
-): Promise<DailyRecord>
-⋮----
-// Validate feed/vaccine stock
-⋮----
-// any: farm schema returns recordDate as Date; cast to public DailyRecord (string) expected by callers
-⋮----
-dailyRecordId: '', // will be set in tx
-⋮----
-// any: farm schema date fields (recordDate: Date) differ from public DailyRecord type (recordDate: string)
-⋮----
-export type FlockOption = {
-  id: string
-  name: string
-  coopName: string
-  totalCount: number
-  currentPopulation: number
-}
-⋮----
-export async function getFlockOptionsForInput(farmSchema: string, userId: string, role: Role): Promise<FlockOption[]>
-⋮----
-export type EnrichedProductionRow = {
-  recordDate: string
-  coopId: string
-  coopName: string
-  flockId: string
-  flockName: string
-  activePopulation: number
-  deaths: number
-  culled: number
-  totalEggsButir: number
-  hdp: number
-}
-⋮----
-export type ProductionReportResult = {
-  rows: EnrichedProductionRow[]
-  kpi: {
-    totalDeaths: number
-    totalCulled: number
-  }
-}
-⋮----
-export async function getProductionReportData(
-  farmSchema: string,
-  from: string,
-  to: string,
-  role: Role,
-  coopId?: string
-): Promise<ProductionReportResult>
-⋮----
-export async function updateDailyRecordAyam(
-  farmSchema: string,
-  recordId: string,
-  input: { deaths?: number; culled?: number; notes?: string },
-  userId: string,
-  role: Role,
-  now: Date = new Date()
-): Promise<DailyRecord>
-⋮----
-// any: farm schema date fields (recordDate: Date) differ from public DailyRecord type (recordDate: string)
-⋮----
-export async function getFlockPerformanceData(
-  farmSchema: string,
-  from: string,
-  to: string,
-  flockId?: string
-): Promise<FlockPerformanceRow[]>
-````
-
-## File: lib/services/role.service.ts
-````typescript
-import { revalidateTag } from 'next/cache'
-import {
-  getRoles,
-  getRoleById,
-  getRolePermissions,
-  getRoleUserCount,
-  createRoleQuery,
-  updateRoleQuery,
-  deleteRoleQuery,
-  upsertRolePermission,
-  deleteRolePermission,
-  deleteAllRolePermissions,
-} from '@/lib/db/queries/roles.queries'
-⋮----
-export async function listRoles(farmSchema: string)
-⋮----
-export async function getRoleWithPermissions(
-  farmSchema: string,
-  roleId: string
-): Promise<
-⋮----
-type CreateRoleInput = { name: string; displayName: string }
-type ServiceResult<T = undefined> =
-  | { success: true; data: T }
-  | { success: false; error: string }
-type ServiceVoidResult = { success: true } | { success: false; error: string }
-⋮----
-export async function createRole(
-  farmSchema: string,
-  data: CreateRoleInput,
-  actorId: string
-): Promise<ServiceResult<Awaited<ReturnType<typeof createRoleQuery>>>>
-⋮----
-export async function updateRole(
-  farmSchema: string,
-  roleId: string,
-  data: { displayName: string },
-  // actorId reserved for future audit trail
-  _actorId: string
-): Promise<ServiceResult<NonNullable<Awaited<ReturnType<typeof updateRoleQuery>>>>>
-⋮----
-// actorId reserved for future audit trail
-⋮----
-export async function deleteRole(
-  farmSchema: string,
-  roleId: string
-): Promise<ServiceVoidResult>
-⋮----
-export async function updatePermission(
-  farmSchema: string,
-  roleId: string,
-  permissionKey: string,
-  granted: boolean,
-  actorId: string
-): Promise<ServiceVoidResult>
-⋮----
-export async function setAllPermissions(
-  farmSchema: string,
-  roleId: string,
-  permissionKeys: string[],
-  actorId: string
-): Promise<ServiceVoidResult>
-````
-
-## File: lib/services/sales-order.service.ts
-````typescript
-import { generateOrderNumber } from '@/lib/utils/order-number'
-import { assertCanEdit } from '@/lib/services/lock-period.service'
-import type { NewSalesOrder, NewSalesOrderItem, NewInventoryMovement, NewInvoice } from '@/lib/db/schema'
-⋮----
-type CreateDraftInput = {
-  customerId: string
-  orderDate: Date
-  paymentMethod: 'cash' | 'credit'
-  items: Array<{
-    itemType: 'egg_grade_a' | 'egg_grade_b' | 'flock' | 'other'
-    itemRefId?: string
-    description?: string
-    quantity: number
-    unit: 'butir' | 'ekor' | 'unit'
-    pricePerUnit: number
-    discountPct?: number
-  }>
-  taxPct?: number
-  notes?: string
-  overrideReason?: string
-}
-⋮----
-export async function createDraftSO(farmSchema: string, input: CreateDraftInput, userId: string, role: string)
-⋮----
-// Calculate totals
-⋮----
-// Generate order number
-⋮----
-export async function confirmSO(farmSchema: string, orderId: string, userId: string, role: string)
-⋮----
-// Lock period check — use orderDate as the record date
-⋮----
-// Stock availability check before confirming
-⋮----
-export async function cancelSO(farmSchema: string, orderId: string, userId: string, role: string)
-⋮----
-// Lock period check — use orderDate as the record date
-⋮----
-export async function deleteDraftSO(farmSchema: string, orderId: string, userId: string, role: string)
-⋮----
-export async function fulfillSO(farmSchema: string, orderId: string, userId: string, role: string)
-⋮----
-// Check stock for egg items
-⋮----
-// Check credit limit for credit orders
-⋮----
-// Build inventory OUT movements for egg items
-⋮----
-// Assertion: movements filter uses same predicate — fires only if predicates diverge in future refactors
-⋮----
-// Build invoice
-⋮----
-// Guard: invoice number must be non-empty and total must be > 0
-⋮----
-// Build flock retirement updates for flock items
-````
-
-## File: lib/services/sales-return.service.ts
-````typescript
-import { generateOrderNumber } from '@/lib/utils/order-number'
-import type { NewSalesReturn, NewSalesReturnItem, NewInventoryMovement, NewInvoice, NewCustomerCredit } from '@/lib/db/schema'
-⋮----
-type CreateReturnInput = {
-  orderId: string
-  returnDate: Date
-  reasonType: 'wrong_grade' | 'damaged' | 'quantity_error' | 'other'
-  items: Array<{
-    itemType: 'egg_grade_a' | 'egg_grade_b' | 'flock' | 'other'
-    itemRefId?: string
-    quantity: number
-    unit: 'butir' | 'ekor' | 'unit'
-  }>
-  notes?: string
-}
-⋮----
-export async function createSalesReturn(farmSchema: string, input: CreateReturnInput, userId: string, role: string)
-⋮----
-// Validate return quantities don't exceed original SO quantities
-⋮----
-// Generate return number
-⋮----
-export async function approveSalesReturn(farmSchema: string, returnId: string, userId: string, role: string)
-⋮----
-// Calculate credit amount: sum returnQty * pricePerUnit * (1 - discount/100) per item
-⋮----
-// Build inventory movements (IN) for egg return items only
-⋮----
-// Generate credit note invoice number
-⋮----
-// Build customer credit entry
-⋮----
-sourceInvoiceId: '', // will be overwritten in tx with actual invoice id
-⋮----
-export async function rejectSalesReturn(farmSchema: string, returnId: string, userId: string, role: string)
-````
-
-## File: lib/services/user.service.ts
-````typescript
-import { supabaseAdmin } from '@/lib/auth/admin'
-import { db } from '@/lib/db'
-import { farmUsers } from '@/lib/db/schema'
-import {
-  findAllUsers,
-  findUserById,
-  insertUser,
-  updateUser,
-} from '@/lib/db/queries/user.queries'
-import { getRoles } from '@/lib/db/queries/roles.queries'
-import type { UserWithRoleSlug } from '@/lib/db/queries/user.queries'
-import type { User } from '@/lib/db/schema'
-⋮----
-export async function getAllRoles(farmSchema: string)
-⋮----
-type CreateUserInput = {
-  email: string
-  password: string
-  fullName: string
-  roleId: string
-  createdBy: string
-}
-⋮----
-export async function createUser(farmSchema: string, input: CreateUserInput): Promise<User>
-⋮----
-export async function getAllUsers(farmSchema: string): Promise<UserWithRoleSlug[]>
-⋮----
-export async function getUserById(farmSchema: string, id: string): Promise<User | null>
-⋮----
-export async function updateUserRole(
-  farmSchema: string,
-  id: string,
-  roleId: string
-): Promise<User | null>
-⋮----
-export async function deactivateUser(farmSchema: string, id: string): Promise<void>
-⋮----
-export async function activateUser(farmSchema: string, id: string): Promise<void>
-⋮----
-export async function changeUserPassword(id: string, newPassword: string): Promise<void>
-````
-
-## File: app/(app)/admin/import/import-panel.tsx
-````typescript
-'use client' // client: file upload, multi-step state, CSV preview
-⋮----
-import { useState, useTransition } from 'react'
-import { Upload, Download, AlertCircle, CheckCircle2, ChevronRight, Copy, Check } from 'lucide-react'
-import { parseCsvAction, commitImportAction, getCsvTemplateAction } from '@/lib/actions/import.actions'
-import type { ImportEntity } from '@/lib/services/import.service'
-⋮----
-type ActiveFlock = {
-  id: string
-  name: string
-  coopName: string
-  arrivalDate: Date | string
-}
-⋮----
-type Step = 'select' | 'preview' | 'done'
-⋮----
-function handleCopy(id: string)
-⋮----
-onClick=
-⋮----
-function handleFileChange(e: React.ChangeEvent<HTMLInputElement>)
-⋮----
-function handleDownloadTemplate()
-⋮----
-function handleParse()
-⋮----
-function handleConfirmImport()
-⋮----
-function handleReset()
-⋮----
-{/* Entity selector */}
-⋮----
-{/* Flock reference table — only for daily_records */}
-⋮----
-{/* Step: select */}
-⋮----
-{/* Step: preview */}
-⋮----
-{/* Summary */}
-⋮----
-{/* Error rows */}
-⋮----
-{/* Sample valid rows */}
-⋮----
-{/* Step: done */}
-````
-
-## File: app/(app)/admin/roles/RoleManagementClient.tsx
-````typescript
-// client: interactive role management with permission matrix and real-time toggles
-⋮----
-import { useState, useTransition, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { Lock, Trash2, Plus, X, Pencil } from 'lucide-react'
-import {
-  getRoleWithPermissionsAction,
-  createRoleAction,
-  updateRoleAction,
-  deleteRoleAction,
-  updatePermissionAction,
-} from '@/lib/actions/role.actions'
-⋮----
-type Role = {
-  id: string
-  name: string
-  displayName: string
-  isSystem: boolean
-  isActive: boolean
-  createdAt: Date
-}
-⋮----
-interface Props {
-  roles: Role[]
-}
-⋮----
-function isProtectedRole(role: Role)
-⋮----
-// Derived: clear permissions when no role selected
-⋮----
-// eslint-disable-next-line react-hooks/set-state-in-effect
-⋮----
-async function handleTogglePermission(key: string, currentlyGranted: boolean)
-⋮----
-// Optimistic update
-⋮----
-// Revert
-⋮----
-async function handleDeleteRole(role: Role)
-⋮----
-{/* Left panel: roles list */}
-⋮----
-e.stopPropagation()
-setEditingRole(role)
-⋮----
-handleDeleteRole(role)
-⋮----
-onClick=
-⋮----
-onClose=
-⋮----
-setShowCreate(false)
-startTransition(()
-⋮----
-setEditingRole(null)
-⋮----
-// client: modal form for creating a role
-⋮----
-// client: modal form for editing role display name
-⋮----
-async function handleSubmit(e: React.FormEvent)
-⋮----
-onChange=
-````
-
-## File: app/(app)/flock/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import { getAllFlocks } from '@/lib/services/flock.service'
-import { FlockListClient } from '@/components/forms/flock-list-client'
-⋮----
-canCreate=
-````
-
-## File: app/(app)/laporan/keuangan/piutang/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import { getAgingData } from '@/lib/services/invoice.service'
-import { KpiCard } from '@/components/ui/kpi-card'
-⋮----
-function formatRupiah(n: number): string
-⋮----
-function formatDate(d: string): string
-⋮----
-function getDaysOverdueStyle(bucket: string): React.CSSProperties
-⋮----
-// DB error — render empty state
-⋮----
-{/* Page header */}
-⋮----
-{/* KPI Row */}
-⋮----
-{/* Aging Table */}
-⋮----
-<td className="px-4 py-3 text-sm text-right" style=
-⋮----
-<td className="px-4 py-3 text-sm" style=
-````
-
-## File: app/(app)/laporan/produksi/page.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { Suspense } from 'react'
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import { getProductionReportData } from '@/lib/services/daily-record.service'
-import type { Role } from '@/lib/services/daily-record.service'
-import { KpiCard } from '@/components/ui/kpi-card'
-import { LaporanFilter } from '@/components/forms/laporan-filter'
-import { findAllCoops } from '@/lib/db/queries/coop.queries'
-⋮----
-function formatDate(dateStr: string): string
-⋮----
-function toISODate(d: Date): string
-⋮----
-function parseSafeISODate(str: string, fallback: Date): string
-⋮----
-// DB error — render empty state
-⋮----
-{/* Page header */}
-⋮----
-{/* KPI Row */}
-⋮----
-{/* Production Table */}
-````
-
-## File: app/(app)/layout.tsx
-````typescript
-import { redirect } from 'next/navigation'
-import { cookies } from 'next/headers'
-import { getSession } from '@/lib/auth/get-session'
-import { AppShell, type ClientUser } from '@/components/layout/app-shell'
-import {
-  getNotificationsForRole,
-  getReadNotificationIds,
-} from '@/lib/services/notification.service'
-import { CURRENT_VERSION } from '@/lib/changelog/data'
-⋮----
-export default async function AppLayout(
-⋮----
-type NotificationRole = typeof NOTIFICATION_ROLES[number]
-````
-
-## File: app/(app)/stok/page.tsx
-````typescript
-import { getSession } from '@/lib/auth/get-session'
-import { hasPermission } from '@/lib/auth/guards'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import { redirect } from 'next/navigation'
-import { getAllStockBalances } from '@/lib/db/queries/inventory.queries'
-import { getCategories } from '@/lib/services/stock-catalog.service'
-import Link from 'next/link'
-import type { StockBalance } from '@/lib/db/queries/inventory.queries'
-⋮----
-
-⋮----
-{/* Tab strip */}
-⋮----
-{/* Mobile card list */}
-⋮----
-{/* Desktop list */}
-````
-
-## File: components/forms/daily-input-form.tsx
-````typescript
-// client: tabs, dynamic state, sessionStorage persistence
-⋮----
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { saveDailyRecordAction } from '@/lib/actions/daily-record.actions'
-import type { FlockOption } from '@/lib/services/daily-record.service'
-import type { StockItem } from '@/lib/db/schema'
-import { StepperInput } from '@/components/ui/stepper-input'
-⋮----
-type StockItemWithBalance = StockItem & { balance: number }
-⋮----
-type Props = {
-  flocks: FlockOption[]
-  userRole: 'operator' | 'supervisor' | 'admin'
-  eggItems: StockItem[]
-  feedItems: StockItemWithBalance[]
-  vaccineItems: StockItemWithBalance[]
-}
-⋮----
-type EggEntry = { stockItemId: string; qtyButir: number; qtyKg: number }
-type FeedEntry = { stockItemId: string; qtyUsed: number }
-⋮----
-function todayUTC(): string
-⋮----
-function minDate(role: 'operator' | 'supervisor' | 'admin'): string
-⋮----
-type TabKey = typeof TABS[number]['key']
-⋮----
-// deferred: telur retak & abnormal UI not yet built — hardcoded 0 for now
-⋮----
-function updateEggButir(idx: number, val: number)
-function updateEggKg(idx: number, val: number)
-function updateFeed(idx: number, val: number)
-function updateVaccine(idx: number, val: number)
-⋮----
-async function submitForm()
-⋮----
-{/* Header: Flock + Date */}
-⋮----
-{/* Tab strip */}
-⋮----
-{/* Tab content */}
-⋮----
-{/* Sticky submit */}
-````
-
-## File: components/profil/password-form.tsx
-````typescript
-// client: form state, submit handler, eye toggle, client-side confirm check
-⋮----
-import { useState } from 'react'
-import { Eye, EyeOff, CheckCircle2 } from 'lucide-react'
-import { toast } from 'sonner'
-import { gantiPasswordAction } from '@/lib/actions/profil.actions'
-⋮----
-function inputClass(saved: boolean)
-⋮----
-className=
-⋮----
-async function onSubmit(e: React.FormEvent)
-⋮----
-// brief green state before clearing
-````
-
-## File: components/ui/stepper-input.tsx
-````typescript
-// client: interactive stepper with +/- buttons for mobile-friendly number input
-⋮----
-interface Props {
-  value: number
-  onChange: (value: number) => void
-  min?: number
-  max?: number
-  step?: number
-  className?: string
-}
-⋮----
-function decrement()
-⋮----
-function increment()
-⋮----
-function handleChange(e: React.ChangeEvent<HTMLInputElement>)
-````
-
-## File: lib/admin/provision-farm.ts
-````typescript
-import postgres from 'postgres'
-import { readFileSync } from 'fs'
-import { join } from 'path'
-import { db } from '@/lib/db'
-import { farms } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
-⋮----
-export async function provisionFarm(schemaName: string, farmName: string): Promise<void>
-⋮----
-// Use non-pooler connection for DDL — SET search_path is unsafe with connection pooler
-⋮----
-// 1. Create schema
-⋮----
-// 2. Execute DDL template in schema context
-⋮----
-// 3. Register in public.farms
-⋮----
-// 4. Seed default roles and permissions
-⋮----
-// CLI entrypoint
-````
-
-## File: lib/auth/permissions.ts
-````typescript
-type Leaf<T> = T extends string ? T : { [K in keyof T]: Leaf<T[K]> }[keyof T]
-⋮----
-export type PermissionKey = Leaf<typeof PERMISSIONS>
-⋮----
-function flattenPermissions(obj: Record<string, unknown>): string[]
-````
-
 ## File: lib/db/queries/inventory.queries.ts
 ````typescript
 import { db } from '@/lib/db'
@@ -7173,32 +7153,6 @@ export async function listSalesOrders(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ````
 
-## File: lib/db/schema-factory.ts
-````typescript
-import {
-  pgSchema,
-  uuid,
-  text,
-  boolean,
-  integer,
-  date,
-  timestamp,
-  numeric,
-  uniqueIndex,
-  primaryKey,
-} from 'drizzle-orm/pg-core'
-⋮----
-export function getFarmSchema(schema: string)
-⋮----
-// --- Enums ---
-⋮----
-// --- Tables (dependency order) ---
-⋮----
-id: uuid('id').primaryKey(), // no defaultRandom — sync'd from Supabase Auth
-⋮----
-export type FarmTables = ReturnType<typeof getFarmSchema>
-````
-
 ## File: lib/services/flock.service.ts
 ````typescript
 import {
@@ -7289,52 +7243,6 @@ export async function gantiPasswordService(
 )
 ````
 
-## File: app/changelog/page.tsx
-````typescript
-// app/changelog/page.tsx
-import { changelog, CURRENT_VERSION } from '@/lib/changelog/data'
-import type { ChangeType } from '@/lib/changelog/types'
-import { ChangelogSeenMarker } from './ChangelogSeenMarker'
-import Image from 'next/image'
-⋮----
-{/* Header */}
-⋮----
-{/* Entries */}
-⋮----
-{/* Version header */}
-⋮----
-{/* Title */}
-⋮----
-{/* Changes */}
-````
-
-## File: components/layout/more-drawer.tsx
-````typescript
-// client: slide-up drawer for "Lainnya" bottom nav item
-⋮----
-import Link from 'next/link'
-import { LayoutDashboard, Landmark, ShoppingCart, Settings, LogOut } from 'lucide-react'
-import type { ClientUser } from './app-shell'
-⋮----
-interface Props {
-  isOpen: boolean
-  onClose: () => void
-  user: ClientUser
-}
-⋮----
-{/* Backdrop */}
-⋮----
-{/* Slide-up sheet */}
-⋮----
-{/* Handle bar */}
-⋮----
-{/* Menu grid */}
-⋮----
-{/* User info + logout */}
-⋮----
-{/* Logout via GET route that calls supabase.auth.signOut() and redirects to /login */}
-````
-
 ## File: app/(app)/kas/[accountId]/page.tsx
 ````typescript
 import { getSession } from '@/lib/auth/get-session'
@@ -7412,205 +7320,115 @@ async function handleRetire(flockId: string)
 onClick=
 ````
 
-## File: components/layout/app-shell.tsx
+## File: components/layout/more-drawer.tsx
 ````typescript
-'use client' // client: needs usePathname for active nav state + drawer open state
+// client: slide-up drawer for "Lainnya" bottom nav item
+⋮----
+import Link from 'next/link'
+import { LayoutDashboard, Landmark, ShoppingCart, Settings, LogOut } from 'lucide-react'
+import type { ClientUser } from './app-shell'
+⋮----
+interface Props {
+  isOpen: boolean
+  onClose: () => void
+  user: ClientUser
+}
+⋮----
+{/* Backdrop */}
+⋮----
+{/* Slide-up sheet */}
+⋮----
+{/* Handle bar */}
+⋮----
+{/* Menu grid */}
+⋮----
+{/* User info + logout */}
+⋮----
+{/* Logout via GET route that calls supabase.auth.signOut() and redirects to /login */}
+````
+
+## File: components/layout/sidebar.tsx
+````typescript
+// client: needs useState for accordion open/close state
 ⋮----
 import { useState } from 'react'
-import { usePathname } from 'next/navigation'
-import { Sidebar } from './sidebar'
-import { BottomNav } from './bottom-nav'
-import { MoreDrawer } from './more-drawer'
-import type { SessionUser } from '@/lib/auth/get-session'
-import type { Notification } from '@/lib/services/notification.service'
+import Image from 'next/image'
+import Link from 'next/link'
+import { LayoutDashboard, Egg, Package, DollarSign, Settings, LogOut, BarChart2, ChevronDown, Wallet } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import type { ClientUser } from './app-shell'
 import type { PermissionKey } from '@/lib/auth/permissions'
+import type { Notification } from '@/lib/services/notification.service'
+import { PERMISSIONS } from '@/lib/auth/permissions'
+import { NotificationBell } from '@/components/ui/notification-bell'
+import { VersionBadge } from '@/components/layout/version-badge'
 ⋮----
-/** Serializable version of SessionUser safe to pass across server→client boundary */
-export type ClientUser = Omit<SessionUser, 'permissions'> & {
-  permissionKeys: PermissionKey[]
+type NavSubItem = {
+  href: string
+  label: string
+  /** permission required to see this sub-item. undefined = always visible */
+  requiredPermission?: PermissionKey
 }
 ⋮----
-export function AppShell({
-  user,
-  children,
-  notifications,
-  readNotificationIds,
-  hasNewVersion,
-}: {
-  user: ClientUser
-  children: React.ReactNode
-  notifications: Notification[]
-  readNotificationIds: string[]
-  hasNewVersion: boolean
-})
+/** permission required to see this sub-item. undefined = always visible */
+⋮----
+type NavItem =
+  | { kind: 'flat'; href: string; icon: LucideIcon; label: string; requiredPermission?: PermissionKey }
+  | { kind: 'accordion'; id: string; icon: LucideIcon; label: string; requiredPermission?: PermissionKey; children: NavSubItem[] }
+⋮----
+// no permission required — always visible
+⋮----
+function getInitials(name: string)
+⋮----
+function canSee(requiredPermission: PermissionKey | undefined, permissionKeys: string[]): boolean
+⋮----
+// Prevents /admin matching /admin/kandang — requires trailing slash or exact match
+function isActive(currentPath: string, href: string): boolean
+⋮----
+function getDefaultOpenId(
+  sections: typeof NAV_SECTIONS,
+  currentPath: string,
+  permissionKeys: string[],
+): string | null
+⋮----
+function toggleAccordion(id: string)
+⋮----
+{/* Brand */}
+⋮----
+{/* Farm info box */}
+⋮----
+// accordion item
+⋮----
+{/* User card */}
+⋮----
+{/* Logout via GET route that calls supabase.auth.signOut() and redirects to /login */}
 ````
 
-## File: lib/auth/get-session.ts
+## File: lib/db/schema-factory.ts
 ````typescript
-import { createSupabaseServerClient } from './server'
-import { db } from '@/lib/db'
-import { farmUsers, farms } from '@/lib/db/schema'
-import { getFarmSchema } from '@/lib/db/schema-factory'
-import { eq } from 'drizzle-orm'
-import { unstable_cache } from 'next/cache'
-import { ALL_PERMISSIONS, type PermissionKey } from './permissions'
+import {
+  pgSchema,
+  uuid,
+  text,
+  boolean,
+  integer,
+  date,
+  timestamp,
+  numeric,
+  uniqueIndex,
+  primaryKey,
+  varchar,
+} from 'drizzle-orm/pg-core'
 ⋮----
-export type SessionUser = {
-  id: string
-  email: string
-  fullName: string
-  phone: string | null
-  roleId: string
-  roleSlug: string
-  roleName: string
-  isAdmin: boolean
-  isActive: boolean
-  createdBy: string | null
-  createdAt: Date
-  updatedAt: Date | null
-  farmSchema: string
-  farmName: string
-  permissions: Set<PermissionKey>
-}
+export function getFarmSchema(schema: string)
 ⋮----
-// JSON-serializable version for unstable_cache (Set and Date are not serializable)
-type CachedSessionData = Omit<SessionUser, 'permissions' | 'createdAt' | 'updatedAt'> & {
-  permissions: PermissionKey[]
-  createdAt: string
-  updatedAt: string | null
-}
+// --- Enums ---
 ⋮----
-function getCachedSession(userId: string, email: string)
+// --- Tables (dependency order) ---
 ⋮----
-// 1. Lookup farm schema from public.farm_users
+id: uuid('id').primaryKey(), // no defaultRandom — sync'd from Supabase Auth
 ⋮----
-// 2. Fetch DB user from farm schema + farm name in parallel
-⋮----
-// 3. Fetch role and permissions
-⋮----
-export async function getSession(): Promise<SessionUser | null>
-````
-
-## File: lib/db/queries/daily-record.queries.ts
-````typescript
-import { db } from '@/lib/db'
-import { getFarmSchema } from '@/lib/db/schema-factory'
-import { eq, and, desc, sum, asc, inArray, sql } from 'drizzle-orm'
-⋮----
-export type DailySubRecords = {
-  eggRecords: { stockItemId: string; qtyButir: number; qtyKg: number }[]
-  feedRecords: { stockItemId: string; qtyUsed: number }[]
-  vaccineRecords: { stockItemId: string; qtyUsed: number }[]
-}
-⋮----
-export async function findDailyRecordById(farmSchema: string, id: string)
-⋮----
-export async function findDailySubRecordsByRecordId(farmSchema: string, recordId: string): Promise<DailySubRecords>
-⋮----
-export async function findDailyRecord(farmSchema: string, flockId: string, recordDate: string)
-⋮----
-export async function findRecentDailyRecords(farmSchema: string, flockId: string, limit: number)
-⋮----
-export type DailyRecordWithFlock = {
-  id: string
-  flockId: string
-  recordDate: string | Date
-  deaths: number
-  culled: number
-  eggsCracked: number
-  eggsAbnormal: number
-  notes: string | null
-  isLateInput: boolean
-  isImported: boolean
-  importedBy: string | null
-  createdBy: string | null
-  createdAt: Date
-  flockName: string
-  coopName: string
-  coopId: string
-  totalEggsButir: number
-  totalFeedKg: number
-}
-⋮----
-export async function findRecentDailyRecordsMultiFlocks(
-  farmSchema: string,
-  flockIds: string[],
-  limit: number,
-): Promise<DailyRecordWithFlock[]>
-⋮----
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-⋮----
-export async function getTotalDepletionByFlock(
-  farmSchema: string,
-  flockId: string
-): Promise<
-⋮----
-export async function getCumulativeDepletionByFlockUpTo(
-  farmSchema: string,
-  flockId: string,
-  upToDate: string
-): Promise<
-⋮----
-// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function upsertDailyRecordTx(farmSchema: string, input: any)
-⋮----
-// Delete old movements from this record (by sourceId reference)
-⋮----
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-⋮----
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-⋮----
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-⋮----
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-⋮----
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-⋮----
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-⋮----
-export type ProductionReportRow = {
-  recordDate: string | Date
-  coopId: string
-  coopName: string
-  flockId: string
-  flockName: string
-  flockTotalCount: number
-  deaths: number
-  culled: number
-  totalEggsButir: number
-}
-⋮----
-export async function getProductionReport(
-  farmSchema: string,
-  from: string,
-  to: string,
-  coopId?: string
-): Promise<ProductionReportRow[]>
-⋮----
-export type FlockPerformanceRow = {
-  flockId: string
-  flockName: string
-  coopName: string
-  initialCount: number
-  arrivalDate: string
-  totalDays: number
-  ageWeeks: number
-  totalEggsButir: number
-  totalDeaths: number
-  totalCulled: number
-  totalFeedKg: number
-  avgHdp: number
-  mortalityPct: number
-  fcr: number
-}
-⋮----
-export async function getFlockPerformanceReport(
-  farmSchema: string,
-  from: string,
-  to: string,
-  flockId?: string
-): Promise<FlockPerformanceRow[]>
+export type FarmTables = ReturnType<typeof getFarmSchema>
 ````
 
 ## File: lib/services/import.service.test.ts
@@ -7862,64 +7680,475 @@ export async function generateDailyRecordsCsvTemplate(farmSchema: string): Promi
 export function getCsvTemplate(_entity: 'customers'): string
 ````
 
-## File: components/layout/sidebar.tsx
+## File: components/forms/daily-input-form.tsx
 ````typescript
-// client: needs useState for accordion open/close state
+// client: tabs, dynamic state, sessionStorage persistence
 ⋮----
-import { useState } from 'react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { LayoutDashboard, Egg, Package, DollarSign, Settings, LogOut, BarChart2, ChevronDown, Wallet } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
-import type { ClientUser } from './app-shell'
-import type { PermissionKey } from '@/lib/auth/permissions'
-import type { Notification } from '@/lib/services/notification.service'
-import { PERMISSIONS } from '@/lib/auth/permissions'
-import { NotificationBell } from '@/components/ui/notification-bell'
-import { VersionBadge } from '@/components/layout/version-badge'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import {
+  saveDailyRecordAction,
+  saveBundleAction,
+  deleteBundleAction,
+  getExistingBundlesForInputAction,
+} from '@/lib/actions/daily-record.actions'
+import type { FlockOption } from '@/lib/services/daily-record.service'
+import type { BundleWithStockItem } from '@/lib/services/daily-record.service'
+import type { StockItem } from '@/lib/db/schema'
+import { StepperInput } from '@/components/ui/stepper-input'
 ⋮----
-type NavSubItem = {
-  href: string
-  label: string
-  /** permission required to see this sub-item. undefined = always visible */
-  requiredPermission?: PermissionKey
+type StockItemWithBalance = StockItem & { balance: number }
+⋮----
+type Props = {
+  flocks: FlockOption[]
+  userRole: 'operator' | 'supervisor' | 'admin'
+  eggItems: StockItem[]
+  feedItems: StockItemWithBalance[]
+  vaccineItems: StockItemWithBalance[]
 }
 ⋮----
-/** permission required to see this sub-item. undefined = always visible */
+type DraftBundle = { trayCount: number; topTrayCount: number; qtyKg: number }
+type SimpleEggEntry = { stockItemId: string; qtyButir: number; qtyKg: number }
+type FeedEntry = { stockItemId: string; qtyUsed: number }
 ⋮----
-type NavItem =
-  | { kind: 'flat'; href: string; icon: LucideIcon; label: string; requiredPermission?: PermissionKey }
-  | { kind: 'accordion'; id: string; icon: LucideIcon; label: string; requiredPermission?: PermissionKey; children: NavSubItem[] }
+function todayUTC(): string
 ⋮----
-// no permission required — always visible
+function minDate(role: 'operator' | 'supervisor' | 'admin'): string
 ⋮----
-function getInitials(name: string)
+function computeButir(trayCount: number, topTrayCount: number): number
 ⋮----
-function canSee(requiredPermission: PermissionKey | undefined, permissionKeys: string[]): boolean
+function emptyDraft(): DraftBundle
 ⋮----
-// Prevents /admin matching /admin/kandang — requires trailing slash or exact match
-function isActive(currentPath: string, href: string): boolean
+type TabKey = typeof TABS[number]['key']
 ⋮----
-function getDefaultOpenId(
-  sections: typeof NAV_SECTIONS,
-  currentPath: string,
-  permissionKeys: string[],
-): string | null
+// deferred: telur retak & abnormal UI not yet built — hardcoded 0 for now
 ⋮----
-function toggleAccordion(id: string)
+// simple entries for non-bundle egg items
 ⋮----
-{/* Brand */}
+// draft bundle: one draft per stockItemId (not yet saved)
 ⋮----
-{/* Farm info box */}
+// saved bundles: server-persisted bundles per stockItemId
 ⋮----
-// accordion item
+// per-item loading state for save bundle
 ⋮----
-{/* User card */}
+// success toast message
 ⋮----
-{/* Logout via GET route that calls supabase.auth.signOut() and redirects to /login */}
+// Fetch existing saved bundles when flockId or recordDate changes
+⋮----
+// simple egg helpers
+function updateSimpleButir(idx: number, val: number)
+function updateSimpleKg(idx: number, val: number)
+⋮----
+// bundle save handler — per stockItemId
+async function handleSaveBundle(stockItemId: string)
+⋮----
+// bundle delete handler
+async function handleDeleteBundle(bundleId: string, bundleCode: string | null, bundleIndex?: number)
+⋮----
+// totals across all egg items — bundle totals come from savedBundles
+⋮----
+function updateFeed(idx: number, val: number)
+function updateVaccine(idx: number, val: number)
+⋮----
+async function submitForm()
+⋮----
+// build eggEntries — bundle items are saved separately, only simple items go here
+⋮----
+{/* Header: Flock + Date */}
+⋮----
+{/* Bundle success toast */}
+⋮----
+{/* Tab strip */}
+⋮----
+{/* Tab content */}
+⋮----
+{/* Zona A: Draft ikatan baru */}
+⋮----
+<button
+⋮----
+{/* Zona B: List tersimpan */}
+⋮----
+// Simple (butir + kg) item
+⋮----
+{/* Sticky submit */}
+````
+
+## File: lib/services/daily-record.service.ts
+````typescript
+import {
+  findDailyRecord,
+  upsertDailyRecordTx,
+  getTotalDepletionByFlock,
+  getCumulativeDepletionByFlockUpTo,
+  getProductionReport,
+  getFlockPerformanceReport,
+  getDailyEggRecordsByRecordId,
+  getBundlesByEggRecordId,
+  getNextBundleSequence,
+  getBundlesByFlockDate,
+  getBundleWithContext,
+  type FlockPerformanceRow,
+  type BundleWithStockItem,
+} from '@/lib/db/queries/daily-record.queries'
+import { getStockBalance } from '@/lib/db/queries/inventory.queries'
+import { findAllActiveFlocks, findFlockById } from '@/lib/db/queries/flock.queries'
+import { sumDeliveriesQuantityByFlockId } from '@/lib/db/queries/flock-delivery.queries'
+import { findAssignedCoopIds } from '@/lib/db/queries/user-coop-assignment.queries'
+import { db } from '@/lib/db'
+import { getFarmSchema } from '@/lib/db/schema-factory'
+import { eq, and, sql } from 'drizzle-orm'
+⋮----
+async function getBundleStockItemIds(farmSchema: string): Promise<string[]>
+import { assertCanEdit } from '@/lib/services/lock-period.service'
+import type { DailyRecord, DailyEggBundle } from '@/lib/db/schema'
+⋮----
+export type Role = 'operator' | 'supervisor' | 'admin'
+⋮----
+export function validateBackdate(recordDate: Date, now: Date, role: Role): void
+⋮----
+export function computeIsLateInput(recordDate: Date, submittedAt: Date): boolean
+⋮----
+export function computeActivePopulation(
+  initialCount: number,
+  records: { deaths: number; culled: number }[]
+): number
+⋮----
+type FeedEntry = { stockItemId: string; qtyUsed: number }
+type VaccineEntry = { stockItemId: string; qtyUsed: number }
+⋮----
+type SaveDailyRecordInput = {
+  flockId: string
+  recordDate: string // YYYY-MM-DD
+  deaths: number
+  culled: number
+  eggsCracked: number
+  eggsAbnormal: number
+  notes?: string
+  eggEntries: Array<{ stockItemId: string; qtyButir: number; qtyKg: number }>
+  feedEntries: FeedEntry[]
+  vaccineEntries: VaccineEntry[]
+}
+⋮----
+recordDate: string // YYYY-MM-DD
+⋮----
+function computeBundleButir(trayCount: number, topTrayCount: number): number
+⋮----
+function formatBundleCode(recordDate: string, seq: number): string
+⋮----
+export async function saveDailyRecord(
+  farmSchema: string,
+  input: SaveDailyRecordInput,
+  userId: string,
+  role: Role,
+  now: Date = new Date()
+): Promise<DailyRecord>
+⋮----
+// Validate feed/vaccine stock
+⋮----
+// any: farm schema returns recordDate as Date; cast to public DailyRecord (string) expected by callers
+⋮----
+dailyRecordId: '', // will be set in tx
+⋮----
+// any: farm schema date fields (recordDate: Date) differ from public DailyRecord type (recordDate: string)
+⋮----
+export type SavedBundle = {
+  bundleCode: string
+  bundleIndex: number
+  qtyButir: number
+  qtyKg: string
+}
+⋮----
+export async function saveSingleBundle(
+  farmSchema: string,
+  input: {
+    flockId: string
+    recordDate: string
+    stockItemId: string
+    trayCount: number
+    topTrayCount: number
+    qtyKg: number
+  },
+  userId: string,
+  role: Role,
+  now: Date = new Date()
+): Promise<SavedBundle>
+⋮----
+// Upsert daily_records header
+⋮----
+// Get next sequence
+⋮----
+// Upsert daily_egg_records (add to running total)
+⋮----
+// Insert bundle row
+⋮----
+// Insert inventory movement
+⋮----
+export async function deleteBundle(
+  farmSchema: string,
+  bundleId: string,
+  _userId: string,
+  role: Role,
+  now: Date = new Date()
+): Promise<void>
+⋮----
+// Subtract from daily_egg_records total
+⋮----
+// Delete bundle
+⋮----
+// Delete matching inventory movement
+⋮----
+export async function getExistingBundlesForInput(
+  farmSchema: string,
+  flockId: string,
+  recordDate: string
+): Promise<Record<string, BundleWithStockItem[]>>
+⋮----
+export type FlockOption = {
+  id: string
+  name: string
+  coopName: string
+  totalCount: number
+  currentPopulation: number
+}
+⋮----
+export async function getFlockOptionsForInput(farmSchema: string, userId: string, role: Role): Promise<FlockOption[]>
+⋮----
+export type EnrichedProductionRow = {
+  recordDate: string
+  coopId: string
+  coopName: string
+  flockId: string
+  flockName: string
+  activePopulation: number
+  deaths: number
+  culled: number
+  totalEggsButir: number
+  hdp: number
+}
+⋮----
+export type ProductionReportResult = {
+  rows: EnrichedProductionRow[]
+  kpi: {
+    totalDeaths: number
+    totalCulled: number
+  }
+}
+⋮----
+export async function getProductionReportData(
+  farmSchema: string,
+  from: string,
+  to: string,
+  role: Role,
+  coopId?: string
+): Promise<ProductionReportResult>
+⋮----
+export async function updateDailyRecordAyam(
+  farmSchema: string,
+  recordId: string,
+  input: { deaths?: number; culled?: number; notes?: string },
+  userId: string,
+  role: Role,
+  now: Date = new Date()
+): Promise<DailyRecord>
+⋮----
+// any: farm schema date fields (recordDate: Date) differ from public DailyRecord type (recordDate: string)
+⋮----
+export async function getFlockPerformanceData(
+  farmSchema: string,
+  from: string,
+  to: string,
+  flockId?: string
+): Promise<FlockPerformanceRow[]>
+⋮----
+export async function getExistingBundlesForRecord(
+  farmSchema: string,
+  dailyRecordId: string
+): Promise<Record<string, DailyEggBundle[]>>
 ````
 
 ## File: lib/changelog/data.ts
 ````typescript
 import type { VersionEntry } from './types'
+````
+
+## File: lib/db/queries/daily-record.queries.ts
+````typescript
+import { db } from '@/lib/db'
+import { getFarmSchema } from '@/lib/db/schema-factory'
+import { eq, and, desc, sum, asc, inArray, sql, max } from 'drizzle-orm'
+import { DailyEggBundle, NewDailyEggBundle } from '@/lib/db/schema'
+⋮----
+export type DailySubRecords = {
+  eggRecords: { stockItemId: string; qtyButir: number; qtyKg: number }[]
+  feedRecords: { stockItemId: string; qtyUsed: number }[]
+  vaccineRecords: { stockItemId: string; qtyUsed: number }[]
+}
+⋮----
+export async function findDailyRecordById(farmSchema: string, id: string)
+⋮----
+export async function findDailySubRecordsByRecordId(farmSchema: string, recordId: string): Promise<DailySubRecords>
+⋮----
+export async function findDailyRecord(farmSchema: string, flockId: string, recordDate: string)
+⋮----
+export async function findRecentDailyRecords(farmSchema: string, flockId: string, limit: number)
+⋮----
+export type DailyRecordWithFlock = {
+  id: string
+  flockId: string
+  recordDate: string | Date
+  deaths: number
+  culled: number
+  eggsCracked: number
+  eggsAbnormal: number
+  notes: string | null
+  isLateInput: boolean
+  isImported: boolean
+  importedBy: string | null
+  createdBy: string | null
+  createdAt: Date
+  flockName: string
+  coopName: string
+  coopId: string
+  totalEggsButir: number
+  totalFeedKg: number
+  totalVaccineQty: number
+}
+⋮----
+export async function findRecentDailyRecordsMultiFlocks(
+  farmSchema: string,
+  flockIds: string[],
+  limit: number,
+): Promise<DailyRecordWithFlock[]>
+⋮----
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+⋮----
+export async function getTotalDepletionByFlock(
+  farmSchema: string,
+  flockId: string
+): Promise<
+⋮----
+export async function getCumulativeDepletionByFlockUpTo(
+  farmSchema: string,
+  flockId: string,
+  upToDate: string
+): Promise<
+⋮----
+// any: dynamic farm schema — exact type from getFarmSchema not statically available at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function upsertDailyRecordTx(farmSchema: string, input: any)
+⋮----
+// bundleStockItemIds: egg records for these items are managed by bundle flow, skip delete
+⋮----
+// Delete only non-bundle egg records; bundle items are managed separately via saveSingleBundle
+⋮----
+// Delete old movements from this record (by sourceId reference)
+⋮----
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+⋮----
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+⋮----
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+⋮----
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+⋮----
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+⋮----
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+⋮----
+export type ProductionReportRow = {
+  recordDate: string | Date
+  coopId: string
+  coopName: string
+  flockId: string
+  flockName: string
+  flockTotalCount: number
+  deaths: number
+  culled: number
+  totalEggsButir: number
+}
+⋮----
+export async function getProductionReport(
+  farmSchema: string,
+  from: string,
+  to: string,
+  coopId?: string
+): Promise<ProductionReportRow[]>
+⋮----
+export type FlockPerformanceRow = {
+  flockId: string
+  flockName: string
+  coopName: string
+  initialCount: number
+  arrivalDate: string
+  totalDays: number
+  ageWeeks: number
+  totalEggsButir: number
+  totalDeaths: number
+  totalCulled: number
+  totalFeedKg: number
+  avgHdp: number
+  mortalityPct: number
+  fcr: number
+}
+⋮----
+export async function getFlockPerformanceReport(
+  farmSchema: string,
+  from: string,
+  to: string,
+  flockId?: string
+): Promise<FlockPerformanceRow[]>
+⋮----
+export async function getDailyEggRecordsByRecordId(
+  farmSchema: string,
+  dailyRecordId: string
+): Promise<
+⋮----
+export async function insertEggBundles(
+  farmSchema: string,
+  bundles: Omit<NewDailyEggBundle, 'id' | 'createdAt' | 'updatedAt'>[]
+): Promise<void>
+⋮----
+export async function deleteBundlesByEggRecordId(
+  farmSchema: string,
+  dailyEggRecordId: string
+): Promise<void>
+⋮----
+export async function getBundlesByEggRecordId(
+  farmSchema: string,
+  dailyEggRecordId: string
+): Promise<DailyEggBundle[]>
+⋮----
+export async function getNextBundleSequence(
+  farmSchema: string,
+  flockId: string,
+  recordDate: string
+): Promise<number>
+⋮----
+export async function insertSingleBundle(
+  farmSchema: string,
+  data: {
+    dailyEggRecordId: string
+    bundleIndex: number
+    trayCount: number
+    topTrayCount: number
+    qtyButir: number
+    qtyKg: string
+    bundleCode: string
+  }
+): Promise<DailyEggBundle>
+⋮----
+export async function deleteBundleById(farmSchema: string, bundleId: string): Promise<void>
+⋮----
+export type BundleWithStockItem = DailyEggBundle & { stockItemId: string }
+⋮----
+export async function getBundlesByFlockDate(
+  farmSchema: string,
+  flockId: string,
+  recordDate: string
+): Promise<BundleWithStockItem[]>
+⋮----
+export async function getBundleWithContext(
+  farmSchema: string,
+  bundleId: string
+): Promise<
 ````
