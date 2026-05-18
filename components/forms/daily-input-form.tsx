@@ -1,7 +1,7 @@
 'use client'
 // client: tabs, dynamic state, sessionStorage persistence
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   saveDailyRecordAction,
@@ -10,7 +10,9 @@ import {
   getExistingBundlesForInputAction,
   getOpenBundlesForCarryOverAction,
   addBundleContributionAction,
+  getExistingDailyRecordAction,
 } from '@/lib/actions/daily-record.actions'
+import { correctDailyRecordAction } from '@/lib/actions/lock-period.actions'
 import type { FlockOption } from '@/lib/services/daily-record.service'
 import type { BundleWithStockItem } from '@/lib/services/daily-record.service'
 import type { StockItem } from '@/lib/db/schema'
@@ -32,6 +34,7 @@ type CarryOverBundle = {
 type Props = {
   flocks: FlockOption[]
   userRole: 'operator' | 'supervisor' | 'admin'
+  isAdmin: boolean
   eggItems: StockItem[]
   feedItems: StockItemWithBalance[]
   vaccineItems: StockItemWithBalance[]
@@ -62,6 +65,32 @@ function emptyDraft(): DraftBundle {
   return { trayCount: 1, topTrayCount: 0, qtyKg: 0 }
 }
 
+/**
+ * Compute whether the form is in open, locked, or correction mode.
+ *   open       — editable with no special UI
+ *   locked     — non-admin past their role window; form is read-only
+ *   correction — admin editing a past record; correction reason required for audit trail
+ */
+function computeLockStatus(
+  recordDate: string,
+  role: 'operator' | 'supervisor' | 'admin',
+  isAdmin: boolean,
+): 'open' | 'locked' | 'correction' {
+  const d = new Date(recordDate + 'T00:00:00Z')
+  const now = new Date()
+  const nowDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  const recDay = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+  const diffDays = Math.round((nowDay - recDay) / 86_400_000)
+
+  if (isAdmin) {
+    // Admin can always edit; any past date (> today) triggers correction audit trail
+    return diffDays > 0 ? 'correction' : 'open'
+  }
+
+  const limit = role === 'operator' ? 1 : role === 'supervisor' ? 7 : 365
+  return diffDays > limit ? 'locked' : 'open'
+}
+
 const TABS = [
   { key: 'ayam', label: '🐓 Ayam' },
   { key: 'telur', label: '🥚 Telur' },
@@ -74,12 +103,23 @@ type TabKey = typeof TABS[number]['key']
 const inputClass = 'mt-1 w-full border border-[var(--lf-border)] rounded-xl px-3 py-3 text-base bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--lf-blue)]'
 const numInputClass = 'w-full border border-[var(--lf-border)] rounded-lg px-2 py-2 text-sm bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--lf-blue)] text-center'
 
-export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineItems }: Props) {
+export function DailyInputForm({ flocks, userRole, isAdmin, eggItems, feedItems, vaccineItems }: Props) {
   const router = useRouter()
   const defaultFlockId = flocks[0]?.id ?? ''
 
   const [flockId, setFlockId] = useState(defaultFlockId)
   const [recordDate, setRecordDate] = useState(todayUTC())
+
+  // Auto-load state
+  const [loadedRecordId, setLoadedRecordId] = useState<string | null>(null)
+  const [autoLoading, setAutoLoading] = useState(false)
+  const [correctionReason, setCorrectionReason] = useState('')
+
+  // Derived: lock status is purely a function of recordDate + role + isAdmin — no state needed
+  const lockStatus = useMemo(
+    () => computeLockStatus(recordDate, userRole, isAdmin),
+    [recordDate, userRole, isAdmin]
+  )
   const [deaths, setDeaths] = useState(0)
   const [culled, setCulled] = useState(0)
   // deferred: telur retak & abnormal UI not yet built — hardcoded 0 for now
@@ -153,6 +193,69 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
     })
     return () => { cancelled = true }
   }, [flockId, recordDate])
+
+  // Auto-load existing daily record when flock or date changes.
+  // When locked, skip fetch and leave form at defaults — lockStatus banner shows.
+  useEffect(() => {
+    if (!flockId || !recordDate || lockStatus === 'locked') return
+
+    let cancelled = false
+    void Promise.resolve()
+      .then(() => {
+        if (!cancelled) setAutoLoading(true)
+        return getExistingDailyRecordAction(flockId, recordDate)
+      })
+      .then((result) => {
+        if (cancelled) return
+        setAutoLoading(false)
+
+        if (!result.success || result.data === null) {
+          // No existing record — clear form fields
+          setLoadedRecordId(null)
+          setDeaths(0)
+          setCulled(0)
+          setNotes('')
+          setSimpleEggEntries(
+            eggItems.filter((i) => !i.useBundleMethod).map((i) => ({ stockItemId: i.id, qtyButir: 0, qtyKg: 0 }))
+          )
+          setFeedEntries(feedItems.map((i) => ({ stockItemId: i.id, qtyUsed: 0 })))
+          setVaccineEntries(vaccineItems.map((i) => ({ stockItemId: i.id, qtyUsed: 0 })))
+          return
+        }
+
+        // Existing record found — populate form
+        const rec = result.data
+        setLoadedRecordId(rec.id)
+        setDeaths(rec.deaths)
+        setCulled(rec.culled)
+        setNotes(rec.notes ?? '')
+
+        // Merge egg entries from server into local simple entries
+        setSimpleEggEntries(
+          eggItems.filter((i) => !i.useBundleMethod).map((i) => {
+            const found = rec.eggEntries.find((e) => e.stockItemId === i.id)
+            return { stockItemId: i.id, qtyButir: found?.qtyButir ?? 0, qtyKg: found?.qtyKg ?? 0 }
+          })
+        )
+
+        // Merge feed entries
+        setFeedEntries(
+          feedItems.map((i) => {
+            const found = rec.feedEntries.find((e) => e.stockItemId === i.id)
+            return { stockItemId: i.id, qtyUsed: found?.qtyUsed ?? 0 }
+          })
+        )
+
+        // Merge vaccine entries
+        setVaccineEntries(
+          vaccineItems.map((i) => {
+            const found = rec.vaccineEntries.find((e) => e.stockItemId === i.id)
+            return { stockItemId: i.id, qtyUsed: found?.qtyUsed ?? 0 }
+          })
+        )
+      })
+    return () => { cancelled = true }
+  }, [flockId, recordDate, lockStatus, eggItems, feedItems, vaccineItems])
 
   const flock = flocks.find((f) => f.id === flockId)
   const totalDepletion = deaths + culled
@@ -237,6 +340,10 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
   }
 
   async function submitForm() {
+    if (lockStatus === 'locked') { setError('Periode input sudah terkunci untuk role Anda'); return }
+    if (lockStatus === 'correction' && correctionReason.trim().length < 3) {
+      setError('Alasan koreksi minimal 3 karakter'); return
+    }
     if (depletionOverflow) { setError('Total depletion melebihi populasi aktif'); return }
     setError(null)
     setPending(true)
@@ -263,10 +370,23 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
       })
       if (!result.success) {
         setError(result.error ?? null)
-      } else {
-        router.push('/produksi')
-        router.refresh()
+        return
       }
+
+      // If correction mode, also create audit trail record
+      if (lockStatus === 'correction') {
+        const correctionId = loadedRecordId ?? result.data.id
+        const fd = new FormData()
+        fd.set('recordId', correctionId)
+        fd.set('reason', correctionReason.trim())
+        fd.set('deaths', String(deaths))
+        fd.set('culled', String(culled))
+        // Fire-and-forget: main save already succeeded; correction failure should not block user
+        void correctDailyRecordAction(fd)
+      }
+
+      router.push('/produksi')
+      router.refresh()
     } catch {
       setError('Gagal terhubung ke server. Coba lagi.')
     } finally {
@@ -284,7 +404,7 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
       <div className="bg-white rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)] space-y-3">
         <div>
           <label className="text-xs font-medium text-[var(--lf-text-mid)] uppercase tracking-wide">Flock</label>
-          <select value={flockId} onChange={(e) => setFlockId(e.target.value)} className={inputClass}>
+          <select value={flockId} onChange={(e) => { setFlockId(e.target.value); setCorrectionReason('') }} className={inputClass}>
             {flocks.map((f) => (
               <option key={f.id} value={f.id}>{f.name} — {f.coopName}</option>
             ))}
@@ -296,7 +416,7 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
             <input
               type="date"
               value={recordDate}
-              onChange={(e) => setRecordDate(e.target.value)}
+              onChange={(e) => { setRecordDate(e.target.value); setCorrectionReason('') }}
               max={todayUTC()}
               min={minDate(userRole)}
               className={inputClass}
@@ -311,6 +431,34 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
           </div>
         </div>
       </div>
+
+      {/* Auto-loading indicator */}
+      {autoLoading && (
+        <div className="rounded-xl px-4 py-3 text-sm" style={{ background: 'var(--lf-blue-pale)', color: 'var(--lf-blue-active)' }}>
+          Memuat data tersimpan...
+        </div>
+      )}
+
+      {/* Loaded record indicator */}
+      {!autoLoading && loadedRecordId && lockStatus !== 'locked' && (
+        <div className="rounded-xl px-4 py-3 text-sm font-medium" style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0' }}>
+          Data tersimpan ditemukan — form sudah diisi otomatis.
+        </div>
+      )}
+
+      {/* Locked status banner */}
+      {lockStatus === 'locked' && (
+        <div className="rounded-xl px-4 py-3 text-sm font-medium" style={{ background: 'var(--lf-danger-bg)', color: 'var(--lf-danger-text)' }}>
+          Periode input sudah terkunci. Anda tidak dapat mengedit data ini.
+        </div>
+      )}
+
+      {/* Correction mode banner */}
+      {lockStatus === 'correction' && (
+        <div className="rounded-xl px-4 py-3 text-sm font-medium" style={{ background: '#fff7ed', color: '#9a3412', border: '1px solid #fed7aa' }}>
+          Mode koreksi — perubahan akan dicatat di audit trail.
+        </div>
+      )}
 
       {/* Bundle success toast */}
       {bundleToast && (
@@ -775,6 +923,23 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
         )}
       </div>
 
+      {/* Correction reason field — only visible in correction mode */}
+      {lockStatus === 'correction' && (
+        <div className="bg-white rounded-xl p-4 shadow-lf-sm border border-[var(--lf-border)]" style={{ borderColor: '#fed7aa' }}>
+          <label className="text-xs font-semibold uppercase tracking-wide block mb-2" style={{ color: '#9a3412' }}>
+            Alasan Koreksi <span style={{ color: 'var(--lf-danger-text)' }}>*</span>
+          </label>
+          <textarea
+            value={correctionReason}
+            onChange={(e) => setCorrectionReason(e.target.value)}
+            placeholder="Wajib diisi — alasan perubahan data lampau"
+            rows={2}
+            className="w-full border rounded-xl px-3 py-3 text-base bg-[var(--lf-input-bg)] focus:outline-none focus:ring-2 focus:ring-orange-300"
+            style={{ borderColor: '#fed7aa' }}
+          />
+        </div>
+      )}
+
       {/* Sticky submit */}
       <div className="fixed bottom-4 left-4 right-4 z-10 md:static md:z-auto md:left-auto md:right-auto md:bottom-auto md:mt-2">
         {error && (
@@ -785,16 +950,18 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
         <button
           type="button"
           onClick={() => void submitForm()}
-          disabled={pending || depletionOverflow}
+          disabled={pending || depletionOverflow || lockStatus === 'locked'}
           className="w-full font-semibold rounded-xl transition-opacity disabled:opacity-50"
           style={{
             minHeight: '52px',
-            background: 'linear-gradient(to right, var(--lf-blue), var(--lf-blue-dark))',
+            background: lockStatus === 'locked'
+              ? 'var(--lf-text-soft)'
+              : 'linear-gradient(to right, var(--lf-blue), var(--lf-blue-dark))',
             color: 'white',
             fontSize: '15px',
           }}
         >
-          {pending ? 'Menyimpan...' : 'Simpan'}
+          {pending ? 'Menyimpan...' : lockStatus === 'correction' ? 'Simpan Koreksi' : 'Simpan'}
         </button>
       </div>
     </div>
