@@ -238,6 +238,8 @@ export async function saveSingleBundle(
   if (!flock) throw new Error('Flock tidak ditemukan')
 
   const qtyButir = computeBundleButir(input.trayCount, input.topTrayCount)
+  if (qtyButir <= 0) throw new Error('Jumlah butir harus lebih dari 0 (isi Nampan dan Atas)')
+  if (input.qtyKg <= 0) throw new Error('Kg harus lebih dari 0')
   const qtyKgStr = input.qtyKg.toFixed(2)
   const isLateInput = computeIsLateInput(recordDate, now)
 

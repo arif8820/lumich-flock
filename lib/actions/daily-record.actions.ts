@@ -73,7 +73,7 @@ const saveBundleSchema = z.object({
   stockItemId: z.string().uuid(),
   trayCount: z.coerce.number().int().min(1),
   topTrayCount: z.coerce.number().int().min(0).max(30),
-  qtyKg: z.coerce.number().min(0),
+  qtyKg: z.coerce.number().min(0.01, 'Kg harus lebih dari 0'),
 })
 
 export async function saveBundleAction(

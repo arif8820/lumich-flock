@@ -444,7 +444,7 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
                         <button
                           type="button"
                           onClick={() => void handleSaveBundle(item.id)}
-                          disabled={isPending || !flockId || !recordDate}
+                          disabled={isPending || !flockId || !recordDate || computeButir(draft.trayCount, draft.topTrayCount) <= 0 || draft.qtyKg <= 0}
                           className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
                           style={{ background: 'var(--lf-blue-active)', color: 'white' }}
                         >
@@ -631,7 +631,7 @@ export function DailyInputForm({ flocks, userRole, eggItems, feedItems, vaccineI
                                     </button>
                                     <button
                                       type="button"
-                                      disabled={isPendingContrib}
+                                      disabled={isPendingContrib || computeButir(draft.trayCount, draft.topTrayCount) <= 0 || draft.qtyKg <= 0}
                                       onClick={async () => {
                                         setContributionPending((prev) => ({ ...prev, [bundle.bundleId]: true }))
                                         setCarryError((prev) => ({ ...prev, [bundle.bundleId]: '' }))
